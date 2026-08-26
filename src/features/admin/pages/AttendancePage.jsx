@@ -85,7 +85,7 @@ export function AttendancePage({ directorData, opData, scopeBranchIds = [], open
       </div>
 
       {records.length === 0 ? (
-        <EmptyState icon={<Icon name="clipboard-list" size={18} />} title="Davomat yozuvlari yo'q" subtitle="O'qituvchi davomat olganda shu yerda ko'rinadi." />
+        <EmptyState icon={CalendarCheck} title="Davomat yozuvlari yo'q" subtitle="O'qituvchi davomat olganda shu yerda ko'rinadi." />
       ) : (
         <div className="space-y-3">
           {records.map(rec => {

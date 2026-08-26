@@ -173,8 +173,9 @@ export function getManagerPerformanceStats(
   const students = getManagerStudents(manager, opData, directorData);
   const totalBrought = students.length;
 
-  const oneWeekStudents = students.filter(
+  const oneMonthStudents = students.filter(
     (s) =>
+      s.studiedOneMonth === true ||
       s.studiedOneWeek === true ||
       s.hasContract === true ||
       s.contractSigned === true ||
@@ -195,18 +196,17 @@ export function getManagerPerformanceStats(
   const trialStudents = students.filter(
     (s) =>
       s.status === "trial" ||
-      (s.studiedOneWeek === false && s.status !== "churn"),
+      (s.studiedOneMonth === false && s.status !== "churn"),
   );
 
   const salaryType = manager.salaryType || "fixed";
-  const fixedBase =
-    salaryType === "fixed" ? Number(manager.monthlySalary || 0) : 0;
+  const fixedBase = Number(manager.monthlySalary || manager.salaryAmount || 0);
   const kpiStudentRate = Number(manager.kpiStudentAmount || 0);
   const kpiBonusRate = Number(manager.kpiContractBonus || 0);
 
   const studentEarned = salaryType === "kpi" ? totalBrought * kpiStudentRate : 0;
   const bonusEarned =
-    salaryType === "kpi" ? oneWeekStudents.length * kpiBonusRate : 0;
+    salaryType === "kpi" ? oneMonthStudents.length * kpiBonusRate : 0;
   const totalKpiBonus = studentEarned + bonusEarned;
 
   const expectedPay =
@@ -225,8 +225,10 @@ export function getManagerPerformanceStats(
   return {
     students,
     totalBrought,
-    oneWeekStudentsCount: oneWeekStudents.length,
-    oneWeekStudents,
+    oneMonthStudentsCount: oneMonthStudents.length,
+    oneMonthStudents,
+    oneWeekStudentsCount: oneMonthStudents.length,
+    oneWeekStudents: oneMonthStudents,
     leftStudentsCount: leftStudents.length,
     leftStudents,
     activeStudentsCount: activeStudents.length,

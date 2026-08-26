@@ -102,7 +102,7 @@ export function ManagerPayrollModal({
             </span>
             {manager.salaryType === "kpi" && (
               <span className="text-[11px] text-slate-500">
-                (O'quvchi: {money(manager.kpiStudentAmount || 0)} so'm + Bonus:{" "}
+                (O'quvchiga: {money(manager.kpiStudentAmount || 0)} so'm + 1 oy o'qiganlik bonusi:{" "}
                 {money(manager.kpiContractBonus || 0)} so'm)
               </span>
             )}
@@ -162,7 +162,7 @@ export function ManagerPayrollModal({
               O'quvchilar ko'rsatkichi
             </p>
             <p className="text-xs font-bold text-slate-800 mt-1">
-              {stats?.totalBrought || 0} ta o'quvchi • {stats?.oneWeekStudentsCount || 0} ta 1 hafta o'qigan
+              {stats?.totalBrought || 0} ta o'quvchi • {stats?.oneMonthStudentsCount || 0} ta 1 oy o'qigan
             </p>
           </div>
         </div>

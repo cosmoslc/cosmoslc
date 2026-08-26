@@ -50,10 +50,12 @@ export const ALL_NAV_PAGES = [
   // 2. Lidlar
   { id: "leads", label: "Lidlar", icon: UserCheck, group: "leads" },
 
-  // 3. Talabalar, Guruhlar, O'qituvchilar
+  // 3. Talabalar, Guruhlar, O'qituvchilar, Davomat
   { id: "students", label: "Talabalar", icon: GraduationCap, group: "academic" },
   { id: "groups", label: "Guruhlar", icon: ClipboardList, group: "academic" },
   { id: "teachers", label: "O'qituvchilar", icon: Users, group: "academic" },
+  { id: "attendance", label: "Davomat", icon: CalendarCheck, group: "academic" },
+  { id: "employeeAttendance", label: "Xodimlar davomati", icon: CalendarCheck, group: "academic" },
 
   // 4. Moliya (Submenus)
   { id: "payments", label: "To'lovlar", icon: CreditCard, group: "finance" },
@@ -119,6 +121,16 @@ export const DEFAULT_MANAGER_PAGES = [
   "coins",
   "holidays",
   "archive",
+  "archiveLeads",
+  "archiveStudents",
+  "archiveTeachers",
+  "archiveStaff",
+  "archiveGroups",
+  "archivePayments",
+  "archiveSalaries",
+  "archiveExpenses",
+  "archiveAdditionalIncome",
+  "archiveBonuses",
   "settings",
   "notifications",
 ];
@@ -249,6 +261,7 @@ export const NAV_ICON_COLORS = {
   profile: "#8b5cf6",
   centerSettings: "#7f8c8d",
   settings: "#db2777",
+  reports: "#0ea5e9",
   notifications: "#00bcd4",
 };
 

@@ -728,9 +728,7 @@ export function DebtorsPage({
                 <tr>
                   <td colSpan={7} className="py-16 text-center">
                     <EmptyState
-                      icon={
-                        <CheckCircle2 size={32} className="text-emerald-500 mx-auto" />
-                      }
+                      icon={CheckCircle2}
                       title="Qarzdorlar topilmadi!"
                       subtitle="Barcha o'quvchilar to'lovlarini muvaffaqiyatli amalga oshirgan yoki filtr bo'yicha ma'lumot yo'q."
                     />

@@ -1,3 +1,4 @@
+import { isValidElement } from "react";
 import { Loader2, X, Bell, Star } from "lucide-react";
 import { useTheme } from "../theme/ThemeContext";
 import {
@@ -321,7 +322,13 @@ export function EmptyState({ icon: Icon, title, subtitle, action }) {
       className={`${GLASS_SOFT} rounded-xl p-10 flex flex-col items-center text-center gap-3`}
     >
       <div className="w-14 h-14 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
-        {Icon && <Icon size={26} className="text-slate-400" />}
+        {Icon && (
+          isValidElement(Icon) ? (
+            Icon
+          ) : (
+            <Icon size={26} className="text-slate-400" />
+          )
+        )}
       </div>
       <p className="text-slate-900 dark:text-white font-medium">{title}</p>
       {subtitle && (

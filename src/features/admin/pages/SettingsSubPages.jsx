@@ -320,53 +320,7 @@ export function SalariesPage({ directorData }) {
 }
 
 // 3. Lavozimlar (Positions / Roles)
-export function PositionsPage() {
-  const [roles, setRoles] = useState([
-    { id: "r1", title: "Bosh Direktor (Super Admin)", usersCount: 1, permissions: ["Full System Access", "Financial Audit", "Branch Management", "Staff Salaries"] },
-    { id: "r2", title: "Filial Menejeri", usersCount: 3, permissions: ["Lead Management", "Student Registration", "Group Creation", "Daily Payment Collection"] },
-    { id: "r3", title: "Administrator / Qabulxona", usersCount: 4, permissions: ["Lead Contact", "Attendance Taking", "Receipt Printing", "Student Info View"] },
-    { id: "r4", title: "O'qituvchi / Mentor", usersCount: 12, permissions: ["Teacher Cabinet Access", "Attendance Marking", "Homework & Coin Distribution"] },
-    { id: "r5", title: "Buxgalter / Kassir", usersCount: 2, permissions: ["Financial Reports", "Expense Entry", "Salary Approvals", "Bank Transfers"] },
-  ]);
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Users className="text-purple-500" />
-            Lavozimlar va Ruxsatlar
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Xodimlarning lavozim ierarxiyasi va tizim modullariga ruxsat darajalari
-          </p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {roles.map((r) => (
-          <div key={r.id} className={`${GLASS} p-5 rounded-2xl space-y-3`}>
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-slate-900 dark:text-white text-base">{r.title}</h3>
-              <span className="px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 text-xs font-semibold">
-                {r.usersCount} nafar xodim
-              </span>
-            </div>
-            <div className="text-xs text-slate-500 font-medium">Biriktirilgan Ruxsatlar:</div>
-            <div className="flex flex-wrap gap-1.5">
-              {r.permissions.map((p, i) => (
-                <span key={i} className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs flex items-center gap-1">
-                  <Check size={12} className="text-emerald-500" />
-                  {p}
-                </span>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+export { PositionsPage } from "./PositionsPage";
 
 // 4. Chek Sozlamalari (Receipt Settings)
 export function ReceiptSettingsPage() {

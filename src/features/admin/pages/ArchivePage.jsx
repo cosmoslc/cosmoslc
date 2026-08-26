@@ -39,7 +39,45 @@ const BTN_PRIMARY =
 const BTN_GHOST =
   "inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 rounded-xl transition-all";
 
+const MOCK_FALLBACK_ARCHIVES = {
+  leads: [
+    { id: "arch-l1", name: "Sardor Latipov", phone: "+998 90 345 67 89", targetCourse: "Python Fullstack", branchName: "Chilonzor", deletedAt: "2026-08-20T10:30:00", reason: "Mijoz rad etdi", deletedBy: "Direktor" },
+    { id: "arch-l2", name: "Nilufar Azimova", phone: "+998 94 888 77 66", targetCourse: "IELTS Intensive", branchName: "Yunusobod", deletedAt: "2026-08-18T14:15:00", reason: "Aloqaga chiqmadi", deletedBy: "Menejer" }
+  ],
+  students: [
+    { id: "arch-s1", name: "Jasur Rahmatov", phone: "+998 91 222 33 44", courseName: "Frontend React", groupName: "FE-104", deletedAt: "2026-08-15T09:00:00", reason: "Shaxsiy sabablar", deletedBy: "Administrator" }
+  ],
+  teachers: [
+    { id: "arch-t1", name: "Bobur Alimov", phone: "+998 93 111 22 33", subject: "Ingliz tili / IELTS", branchName: "Chilonzor", deletedAt: "2026-08-10T11:00:00", reason: "Shartnoma muddati tugadi", deletedBy: "Direktor" }
+  ],
+  staff: [
+    { id: "arch-st1", name: "Diyora Sobirova", phone: "+998 90 999 88 77", position: "Administrator", branchName: "Chilonzor", deletedAt: "2026-08-05T16:20:00", reason: "O'z xohishi bilan", deletedBy: "HR Menejer" }
+  ],
+  groups: [
+    { id: "arch-g1", name: "Python-09", courseName: "Python Basics", teacherName: "Anvar Saidov", roomName: "201-xona", studentCount: 12, deletedAt: "2026-08-12T15:00:00", reason: "Guruh bitirdi", deletedBy: "Direktor" }
+  ],
+  courses: [
+    { id: "arch-c1", name: "Android Kotlin", price: 900000, duration: "6 oy", branchName: "Chilonzor", deletedAt: "2026-08-01T12:00:00", reason: "Eski dastur", deletedBy: "Direktor" }
+  ],
+  payments: [
+    { id: "arch-p1", title: "Talaba to'lovi - Bekzod (FE-101)", amount: 800000, type: "Naqd", branchName: "Chilonzor", deletedAt: "2026-08-19T12:00:00", reason: "Xato kiritilgan to'lov", deletedBy: "Menejer" }
+  ],
+  salaries: [
+    { id: "arch-sal1", title: "O'qituvchi maoshi - Anvar Saidov", amount: 4500000, type: "Karta (UzCard)", branchName: "Chilonzor", deletedAt: "2026-08-14T10:00:00", reason: "Qayta hisob-kitob", deletedBy: "Buxgalter" }
+  ],
+  expenses: [
+    { id: "arch-ex1", title: "Ofis kantselyariya xarajatlari", amount: 240000, type: "Naqd", branchName: "Yunusobod", deletedAt: "2026-08-11T16:00:00", reason: "Bekor qilingan chek", deletedBy: "Menejer" }
+  ],
+  additionalIncome: [
+    { id: "arch-inc1", title: "O'quv qo'llanma kitoblar sotuvi", amount: 650000, type: "Naqd", branchName: "Chilonzor", deletedAt: "2026-08-08T17:30:00", reason: "Kitob qaytarildi", deletedBy: "Administrator" }
+  ],
+  bonuses: [
+    { id: "arch-bon1", title: "Oyning eng yaxshi sotuvchisi bonusi", amount: 500000, type: "Karta", branchName: "Chilonzor", deletedAt: "2026-08-01T09:30:00", reason: "Bonus qayta ajratildi", deletedBy: "Direktor" }
+  ]
+};
+
 export function ArchivePage({
+  initialTab = "leads",
   directorData = {},
   opData = {},
   currentBranchId,
@@ -49,28 +87,34 @@ export function ArchivePage({
   onRestoreCourse,
   addNotification = () => {},
 }) {
-  const [archives, setArchives] = useState({
-    groups: [],
-    students: [],
-    leads: [],
-    courses: [],
-  });
-  const [activeTab, setActiveTab] = useState("groups"); // 'groups' | 'students' | 'leads' | 'courses'
+  const [archives, setArchives] = useState(MOCK_FALLBACK_ARCHIVES);
+  const [activeTab, setActiveTab] = useState(initialTab || "leads");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBranch, setSelectedBranch] = useState(currentBranchId || "all");
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   useEffect(() => {
     if (currentBranchId !== undefined) {
       setSelectedBranch(currentBranchId);
     }
   }, [currentBranchId]);
-  const [selectedItem, setSelectedItem] = useState(null); // for detail drawer/modal
-  const [modalAction, setModalAction] = useState(null); // { type: 'restore' | 'delete' | 'clearAll', item, category }
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [modalAction, setModalAction] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
 
   const loadData = async () => {
     const data = await fetchArchives();
-    setArchives(data || { groups: [], students: [], leads: [], courses: [] });
+    const loaded = data || {};
+    const merged = {};
+    Object.keys(MOCK_FALLBACK_ARCHIVES).forEach((key) => {
+      merged[key] = loaded[key] && loaded[key].length > 0 ? loaded[key] : MOCK_FALLBACK_ARCHIVES[key];
+    });
+    setArchives(merged);
   };
 
   useEffect(() => {
@@ -201,14 +245,28 @@ export function ArchivePage({
 
   const tabTitle = (tab) => {
     switch (tab) {
-      case "groups":
-        return "O'chirilgan Guruhlar";
-      case "students":
-        return "O'chirilgan O'quvchilar";
       case "leads":
         return "O'chirilgan Lidlar";
+      case "students":
+        return "O'chirilgan Talabalar";
+      case "teachers":
+        return "O'chirilgan O'qituvchilar";
+      case "staff":
+        return "O'chirilgan Xodimlar";
+      case "groups":
+        return "O'chirilgan Guruhlar";
       case "courses":
         return "O'chirilgan Kurslar";
+      case "payments":
+        return "O'chirilgan To'lovlar";
+      case "salaries":
+        return "O'chirilgan Ish Haqlari";
+      case "expenses":
+        return "O'chirilgan Xarajatlar";
+      case "additionalIncome":
+        return "O'chirilgan Qo'shimcha Daromadlar";
+      case "bonuses":
+        return "O'chirilgan Bonuslar";
       default:
         return "Arxiv";
     }
@@ -362,89 +420,45 @@ export function ArchivePage({
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 dark:border-slate-800">
           {/* Tabs */}
           <div className="flex items-center gap-1.5 p-1 bg-slate-100/90 dark:bg-slate-800/80 rounded-xl max-w-full overflow-x-auto">
-            <button
-              onClick={() => setActiveTab("groups")}
-              className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all shrink-0 ${
-                activeTab === "groups"
-                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
-              }`}
-            >
-              <Users size={14} className="text-sky-600 dark:text-sky-400" />
-              <span>Guruhlar</span>
-              <span
-                className={`px-1.5 py-0.5 rounded-full text-[10px] ${
-                  activeTab === "groups"
-                    ? "bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300"
-                    : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
-                }`}
-              >
-                {counts.groups}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("students")}
-              className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all shrink-0 ${
-                activeTab === "students"
-                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
-              }`}
-            >
-              <GraduationCap size={14} className="text-violet-600 dark:text-violet-400" />
-              <span>O'quvchilar</span>
-              <span
-                className={`px-1.5 py-0.5 rounded-full text-[10px] ${
-                  activeTab === "students"
-                    ? "bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-violet-300"
-                    : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
-                }`}
-              >
-                {counts.students}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("leads")}
-              className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all shrink-0 ${
-                activeTab === "leads"
-                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
-              }`}
-            >
-              <Target size={14} className="text-amber-600 dark:text-amber-400" />
-              <span>Lidlar</span>
-              <span
-                className={`px-1.5 py-0.5 rounded-full text-[10px] ${
-                  activeTab === "leads"
-                    ? "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300"
-                    : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
-                }`}
-              >
-                {counts.leads}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("courses")}
-              className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all shrink-0 ${
-                activeTab === "courses"
-                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
-              }`}
-            >
-              <BookOpen size={14} className="text-emerald-600 dark:text-emerald-400" />
-              <span>Kurslar</span>
-              <span
-                className={`px-1.5 py-0.5 rounded-full text-[10px] ${
-                  activeTab === "courses"
-                    ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
-                    : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
-                }`}
-              >
-                {counts.courses}
-              </span>
-            </button>
+            {[
+              { id: "leads", label: "Lidlar", icon: Target, color: "text-amber-500" },
+              { id: "students", label: "Talabalar", icon: GraduationCap, color: "text-violet-500" },
+              { id: "teachers", label: "O'qituvchilar", icon: Users, color: "text-purple-500" },
+              { id: "staff", label: "Xodimlar", icon: UserCheck, color: "text-blue-500" },
+              { id: "groups", label: "Guruhlar", icon: Layers, color: "text-sky-500" },
+              { id: "courses", label: "Kurslar", icon: BookOpen, color: "text-emerald-500" },
+              { id: "payments", label: "To'lovlar", icon: CreditCard, color: "text-emerald-600" },
+              { id: "salaries", label: "Ish haqi", icon: Coins, color: "text-teal-600" },
+              { id: "expenses", label: "Xarajatlar", icon: Wallet, color: "text-orange-500" },
+              { id: "additionalIncome", label: "Qo'shimcha daromadlar", icon: Sparkles, color: "text-green-500" },
+              { id: "bonuses", label: "Bonuslar", icon: Sparkles, color: "text-pink-500" },
+            ].map((tab) => {
+              const IconComp = tab.icon;
+              const count = (archives[tab.id] || []).length;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-all shrink-0 ${
+                    activeTab === tab.id
+                      ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+                  }`}
+                >
+                  <IconComp size={14} className={tab.color} />
+                  <span>{tab.label}</span>
+                  <span
+                    className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+                      activeTab === tab.id
+                        ? "bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300"
+                        : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
           {/* Search & Filter */}
@@ -908,6 +922,115 @@ export function ArchivePage({
                             })
                           }
                           title="Butunlay o'chirish"
+                          className="p-1.5 rounded-xl text-rose-500 hover:text-rose-700 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* 5. O'qituvchilar va Xodimlar Jadvali */}
+        {["teachers", "staff"].includes(activeTab) && filteredList.length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold">
+                  <th className="pb-3 px-3">F.I.Sh / Ism</th>
+                  <th className="pb-3 px-3">Telefon</th>
+                  <th className="pb-3 px-3">{activeTab === "teachers" ? "Fan / Mutaxassislik" : "Lavozim"}</th>
+                  <th className="pb-3 px-3">Filial</th>
+                  <th className="pb-3 px-3">O'chirilgan Sana</th>
+                  <th className="pb-3 px-3 text-right">Amallar</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredList.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50/70 transition-colors group">
+                    <td className="py-3.5 px-3 font-semibold text-slate-900">{item.name}</td>
+                    <td className="py-3.5 px-3 text-slate-700">{item.phone || "-"}</td>
+                    <td className="py-3.5 px-3 text-slate-700">{item.subject || item.position || "-"}</td>
+                    <td className="py-3.5 px-3">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-medium text-[11px]">
+                        <MapPin size={10} className="text-slate-400" />
+                        {item.branchName || "Barcha filiallar"}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-3">
+                      <p className="text-slate-700 font-medium">{formatDate(item.deletedAt)}</p>
+                      <p className="text-[10px] text-slate-400">Kim: {item.deletedBy || "Direktor"}</p>
+                    </td>
+                    <td className="py-3.5 px-3 text-right">
+                      <div className="inline-flex items-center gap-1.5 justify-end">
+                        <button
+                          onClick={() => setModalAction({ type: "restore", category: activeTab, item })}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold border border-emerald-200/80 transition-all active:scale-95"
+                        >
+                          <RotateCcw size={13} /> Tiklash
+                        </button>
+                        <button
+                          onClick={() => setModalAction({ type: "delete", category: activeTab, item })}
+                          className="p-1.5 rounded-xl text-rose-500 hover:text-rose-700 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* 6. Moliyaviy Arxivlar (To'lovlar, Ish haqi, Xarajatlar, Qo'shimcha daromadlar, Bonuslar) */}
+        {["payments", "salaries", "expenses", "additionalIncome", "bonuses"].includes(activeTab) && filteredList.length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold">
+                  <th className="pb-3 px-3">Nomi / Nima uchun</th>
+                  <th className="pb-3 px-3">Summa</th>
+                  <th className="pb-3 px-3">To'lov Turi</th>
+                  <th className="pb-3 px-3">Filial</th>
+                  <th className="pb-3 px-3">O'chirilgan Sana</th>
+                  <th className="pb-3 px-3 text-right">Amallar</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredList.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50/70 transition-colors group">
+                    <td className="py-3.5 px-3">
+                      <p className="font-semibold text-slate-900">{item.title || item.name}</p>
+                      {item.reason && <p className="text-[11px] text-amber-600 mt-0.5">Sabab: {item.reason}</p>}
+                    </td>
+                    <td className="py-3.5 px-3 font-bold text-slate-900">{money(item.amount || 0)} so'm</td>
+                    <td className="py-3.5 px-3 text-slate-700">{item.type || "Naqd"}</td>
+                    <td className="py-3.5 px-3">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-medium text-[11px]">
+                        <MapPin size={10} className="text-slate-400" />
+                        {item.branchName || "Barcha filiallar"}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-3">
+                      <p className="text-slate-700 font-medium">{formatDate(item.deletedAt)}</p>
+                      <p className="text-[10px] text-slate-400">Kim: {item.deletedBy || "Direktor"}</p>
+                    </td>
+                    <td className="py-3.5 px-3 text-right">
+                      <div className="inline-flex items-center gap-1.5 justify-end">
+                        <button
+                          onClick={() => setModalAction({ type: "restore", category: activeTab, item })}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold border border-emerald-200/80 transition-all active:scale-95"
+                        >
+                          <RotateCcw size={13} /> Tiklash
+                        </button>
+                        <button
+                          onClick={() => setModalAction({ type: "delete", category: activeTab, item })}
                           className="p-1.5 rounded-xl text-rose-500 hover:text-rose-700 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all"
                         >
                           <Trash2 size={15} />

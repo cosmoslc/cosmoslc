@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, isValidElement } from "react";
 import { Star, X, ChevronRight, Bell, Loader2 } from "lucide-react";
 import {
   BG_GRADIENT,
@@ -361,7 +361,13 @@ export function EmptyState({ icon: Icon, title, subtitle, action }) {
       className={`${GLASS_SOFT} rounded-xl p-10 flex flex-col items-center text-center gap-3`}
     >
       <div className="w-14 h-14 rounded-xl bg-white border border-slate-200 flex items-center justify-center">
-        <Icon size={26} className="text-slate-400" />
+        {Icon && (
+          isValidElement(Icon) ? (
+            Icon
+          ) : (
+            <Icon size={26} className="text-slate-400" />
+          )
+        )}
       </div>
       <p className="text-slate-900 font-medium">{title}</p>
       {subtitle && (

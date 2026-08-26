@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Check,
   Plus,
@@ -14,38 +14,102 @@ import {
   Phone,
   User,
   Lock,
+  Briefcase,
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
+  FileText,
+  FileSpreadsheet,
 } from "lucide-react";
 import { Modal, PhoneInput, BranchPicker } from "../components/primitives";
 import { INPUT_CLS, LABEL_CLS, PrimaryButton } from "../theme/tokens";
 import { hashPassword } from "../utils/helpers";
+import { INITIAL_ROLES } from "../pages/PositionsPage";
+import {
+  getStaffCustomFields,
+  getStaffFormCompletionStatus,
+} from "../utils/staffFormFields";
 
-export function ManagerFormModal({ editing, branches, onSubmit, onClose }) {
+export function ManagerFormModal({ editing, branches = [], onSubmit, onClose }) {
+  // Load roles/positions
+  const availableRoles = useMemo(() => {
+    try {
+      const saved = localStorage.getItem("cosmos_custom_roles_v2");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return INITIAL_ROLES;
+  }, []);
+
+  // Form Fields
   const [name, setName] = useState(editing?.name || "");
   const [phone, setPhone] = useState(editing?.phone || "");
+  const [password, setPassword] = useState(editing?.rawPassword || "");
+  const [showPassword, setShowPassword] = useState(false);
+  const [gender, setGender] = useState(editing?.gender || "male"); // 'male' | 'female'
   const [birthDate, setBirthDate] = useState(editing?.birthDate || "");
   const [address, setAddress] = useState(editing?.address || "");
 
-  // Salary type: 'fixed' or 'kpi'
-  const [salaryType, setSalaryType] = useState(editing?.salaryType || "fixed");
-  const [monthlySalary, setMonthlySalary] = useState(
-    editing?.monthlySalary !== undefined ? editing.monthlySalary : "5000000",
-  );
-  const [kpiStudentAmount, setKpiStudentAmount] = useState(
-    editing?.kpiStudentAmount !== undefined ? editing.kpiStudentAmount : "50000",
-  );
-  const [kpiContractBonus, setKpiContractBonus] = useState(
-    editing?.kpiContractBonus !== undefined ? editing.kpiContractBonus : "100000",
+  // Role / Position
+  const [selectedRoleId, setSelectedRoleId] = useState(
+    editing?.roleId || editing?.role || availableRoles[1]?.id || "role-admin"
   );
 
-  const [branchIds, setBranchIds] = useState(editing?.branchIds || []);
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  // Salary & Salary Type
+  // types: 'fixed' (oylik oklad), 'hourly' (soatbay), 'lesson' (darsbay), 'percent' (foiz), 'kpi' (kpi/bonus)
+  const [salaryType, setSalaryType] = useState(editing?.salaryType || "fixed");
+  const [salaryAmount, setSalaryAmount] = useState(
+    editing?.monthlySalary !== undefined
+      ? String(editing.monthlySalary)
+      : editing?.salaryAmount !== undefined
+      ? String(editing.salaryAmount)
+      : "5000000"
+  );
+  const [kpiStudentAmount, setKpiStudentAmount] = useState(
+    editing?.kpiStudentAmount !== undefined ? String(editing.kpiStudentAmount) : "50000"
+  );
+  const [kpiContractBonus, setKpiContractBonus] = useState(
+    editing?.kpiContractBonus !== undefined ? String(editing.kpiContractBonus) : "100000"
+  );
+
+  // Branches
+  const [branchIds, setBranchIds] = useState(
+    editing?.branchIds || (editing?.branchId ? [editing.branchId] : [])
+  );
+
+  // Note / Comment
+  const [notes, setNotes] = useState(editing?.notes || "");
+
+  // Custom Form Fields & Values
+  const customFields = useMemo(() => getStaffCustomFields(), []);
+  const [customFormData, setCustomFormData] = useState(
+    editing?.customFormData || {}
+  );
+  const [showCustomForm, setShowCustomForm] = useState(
+    Boolean(editing?.customFormData && Object.keys(editing.customFormData).length > 0)
+  );
+
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // Selected role object
+  const selectedRole =
+    availableRoles.find((r) => r.id === selectedRoleId) || availableRoles[0];
+
+  const handleCustomFieldChange = (fieldId, value) => {
+    setCustomFormData((prev) => ({
+      ...prev,
+      [fieldId]: value,
+    }));
+  };
+
   async function submit() {
     if (!name.trim()) {
-      setError("Menejer ism-familiyasini kiriting.");
+      setError("Xodim ism-familiyasini kiriting.");
       return;
     }
     if (!phone.trim()) {
@@ -57,26 +121,55 @@ export function ManagerFormModal({ editing, branches, onSubmit, onClose }) {
       return;
     }
     if (!editing && (!password || password.length < 4)) {
-      setError("Yangi menejer uchun tizimga kirish paroli (kamida 4 ta belgi) majburiy.");
+      setError("Yangi xodim uchun tizimga kirish paroli (kamida 4 ta belgi) majburiy.");
       return;
     }
 
     setBusy(true);
+
+    const parsedSalary = parseFloat(salaryAmount) || 0;
+    const completion = getStaffFormCompletionStatus(
+      { customFormData },
+      customFields
+    );
+
     const payload = {
+      ...(editing || {}),
       name: name.trim(),
       phone: phone.trim(),
-      birthDate,
+      gender,
+      birthDate: birthDate || null,
       address: address.trim(),
+      roleId: selectedRole?.id,
+      roleName: selectedRole?.name || "Xodim",
+      roleCode: selectedRole?.code,
+      roleColor: selectedRole?.color || "#6366f1",
+      permissions: selectedRole?.permissions || [],
+      allowedPages: selectedRole?.permissions || editing?.allowedPages || [
+        "home",
+        "payments",
+        "teachers",
+        "courses",
+        "groups",
+        "finance",
+        "holidays",
+      ],
       salaryType,
-      monthlySalary: salaryType === "fixed" ? parseFloat(monthlySalary) || 0 : 0,
+      monthlySalary: parsedSalary,
+      salaryAmount: parsedSalary,
       kpiStudentAmount: salaryType === "kpi" ? parseFloat(kpiStudentAmount) || 0 : 0,
       kpiContractBonus: salaryType === "kpi" ? parseFloat(kpiContractBonus) || 0 : 0,
       branchIds,
+      branchId: branchIds[0] || null,
+      notes: notes.trim(),
+      customFormData,
+      isFormCompleted: completion.isCompleted,
+      formFillPercent: completion.percent,
     };
 
     if (password) {
       payload.passwordHash = await hashPassword(password);
-      payload.rawPassword = password; // kept for display to director
+      payload.rawPassword = password;
     }
 
     setBusy(false);
@@ -86,13 +179,13 @@ export function ManagerFormModal({ editing, branches, onSubmit, onClose }) {
 
   return (
     <Modal
-      title={editing ? "Menejerni tahrirlash" : "Yangi menejer qo'shish"}
+      title={editing ? "Xodim ma'lumotlarini tahrirlash" : "Yangi xodim qo'shish"}
       onClose={onClose}
       wide
     >
-      <div className="space-y-4 text-slate-800">
-        {/* Shaxsiy ma'lumotlar */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+      <div className="space-y-4 text-slate-800 dark:text-slate-200">
+        {/* Asosiy shaxsiy ma'lumotlar - Flattened 2 ustunli to'r */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={LABEL_CLS}>
               <User size={13} className="inline mr-1 text-indigo-600" />
@@ -101,11 +194,12 @@ export function ManagerFormModal({ editing, branches, onSubmit, onClose }) {
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Masalan: Jasur Rahimov"
+              placeholder="Masalan: Jamshid Alimov"
               className={INPUT_CLS}
               autoFocus
             />
           </div>
+
           <div>
             <label className={LABEL_CLS}>
               <Phone size={13} className="inline mr-1 text-indigo-600" />
@@ -115,8 +209,62 @@ export function ManagerFormModal({ editing, branches, onSubmit, onClose }) {
           </div>
         </div>
 
-        {/* Tug'ilgan sana va Yashash joyi */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        {/* Parol va Jinsi */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className={LABEL_CLS}>
+              <Lock size={13} className="inline mr-1 text-indigo-600" />
+              Tizimga kirish paroli {!editing && "*"}
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={editing ? "O'zgartirmaslik uchun bo'sh qoldiring" : "Kamida 4 ta belgi..."}
+                className={`${INPUT_CLS} pr-10`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className={LABEL_CLS}>Jinsi</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setGender("male")}
+                className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${
+                  gender === "male"
+                    ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                    : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                <span>👨</span> Erkak
+              </button>
+              <button
+                type="button"
+                onClick={() => setGender("female")}
+                className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${
+                  gender === "female"
+                    ? "bg-pink-600 text-white border-pink-600 shadow-xs"
+                    : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                <span>👩</span> Ayol
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Tug'ilgan sana va Manzil */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={LABEL_CLS}>
               <Calendar size={13} className="inline mr-1 text-slate-500" />
@@ -129,6 +277,7 @@ export function ManagerFormModal({ editing, branches, onSubmit, onClose }) {
               className={INPUT_CLS}
             />
           </div>
+
           <div>
             <label className={LABEL_CLS}>
               <MapPin size={13} className="inline mr-1 text-slate-500" />
@@ -137,117 +286,97 @@ export function ManagerFormModal({ editing, branches, onSubmit, onClose }) {
             <input
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              placeholder="Toshkent sh., Chilonzor tumani..."
+              placeholder="Shahar, tuman, ko'cha..."
               className={INPUT_CLS}
             />
           </div>
         </div>
 
-        {/* Ishlaydigan filiallari */}
+        {/* Lavozim tanlash (Positions dropdown) */}
         <div>
           <label className={LABEL_CLS}>
-            <Building2 size={13} className="inline mr-1 text-indigo-600" />
-            Ishlaydigan filiali *
+            <Briefcase size={13} className="inline mr-1 text-indigo-600" />
+            Lavozimi (Roli) *
           </label>
-          <BranchPicker
-            branches={branches}
-            value={branchIds}
-            onChange={setBranchIds}
-          />
+          <div className="space-y-1.5">
+            <select
+              value={selectedRoleId}
+              onChange={(e) => setSelectedRoleId(e.target.value)}
+              className={INPUT_CLS}
+            >
+              {availableRoles.map((role) => (
+                <option key={role.id} value={role.id}>
+                  {role.name} ({role.code || "rol"})
+                </option>
+              ))}
+            </select>
+
+            {selectedRole && (
+              <div className="flex items-center gap-2 pt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                <span
+                  className="w-2.5 h-2.5 rounded-full shrink-0"
+                  style={{ backgroundColor: selectedRole.color || "#6366f1" }}
+                />
+                <span>
+                  Biriktiriladigan ruxsatlar soni:{" "}
+                  <strong className="text-slate-800 dark:text-slate-200">
+                    {selectedRole.permissions?.length || 0} ta modul
+                  </strong>
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Oylik maosh turi tanlovi */}
-        <div className="pt-2 border-t border-slate-100">
-          <label className="text-xs font-bold text-slate-900 block mb-2">
-            Oylik maosh turi va to'lov modeli *
+        {/* Ish haqi va Maosh turi (Fixed yoki KPI+Bonus) */}
+        <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+          <label className={LABEL_CLS}>
+            <DollarSign size={13} className="inline mr-1 text-emerald-600" />
+            Ish haqi va Maosh hisoblash modeli
           </label>
-          <div className="grid grid-cols-2 gap-2.5">
-            {/* Fixed Option */}
-            <div
-              onClick={() => setSalaryType("fixed")}
-              className={`p-3 rounded-xl border cursor-pointer transition-all ${
-                salaryType === "fixed"
-                  ? "bg-indigo-50/80 border-indigo-400 ring-2 ring-indigo-200"
-                  : "bg-slate-50/70 border-slate-200 hover:bg-slate-100"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <div
-                  className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                    salaryType === "fixed"
-                      ? "border-indigo-600 bg-indigo-600"
-                      : "border-slate-300 bg-white"
-                  }`}
-                >
-                  {salaryType === "fixed" && (
-                    <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                  )}
-                </div>
-                <span className="font-bold text-xs text-slate-900">
-                  Belgilangan oylik (Fixed)
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 mt-1 pl-6">
-                Har oy bir xil qat'iy summa to'lanadi
-              </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1.5">
+            <div>
+              <label className="text-[11px] font-semibold text-slate-500 mb-1 block">
+                Maosh hisoblash turi *
+              </label>
+              <select
+                value={salaryType}
+                onChange={(e) => setSalaryType(e.target.value)}
+                className={INPUT_CLS}
+              >
+                <option value="fixed">Oylik belgilangan oklad (Fixed)</option>
+                <option value="kpi">KPI + Bonus (O'quvchi soni + 1 oy o'qiganligi uchun)</option>
+              </select>
             </div>
 
-            {/* KPI + BONUS Option */}
-            <div
-              onClick={() => setSalaryType("kpi")}
-              className={`p-3 rounded-xl border cursor-pointer transition-all ${
-                salaryType === "kpi"
-                  ? "bg-indigo-50/80 border-indigo-400 ring-2 ring-indigo-200"
-                  : "bg-slate-50/70 border-slate-200 hover:bg-slate-100"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <div
-                  className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                    salaryType === "kpi"
-                      ? "border-indigo-600 bg-indigo-600"
-                      : "border-slate-300 bg-white"
-                  }`}
-                >
-                  {salaryType === "kpi" && (
-                    <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                  )}
-                </div>
-                <span className="font-bold text-xs text-slate-900">
-                  KPI + BONUS
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 mt-1 pl-6">
-                Olib kelgan o'quvchi va 1 hafta o'qigan shartnomaga qarab
-              </p>
-            </div>
-          </div>
-
-          {/* Dynamic Inputs based on Salary Type */}
-          {salaryType === "fixed" ? (
-            <div className="mt-3 bg-slate-50 border border-slate-200/80 rounded-xl p-3">
-              <label className={LABEL_CLS}>
-                <DollarSign size={13} className="inline mr-1 text-emerald-600" />
-                Belgilangan oylik maosh summasi (so'mda) *
+            <div>
+              <label className="text-[11px] font-semibold text-slate-500 mb-1 block">
+                {salaryType === "fixed"
+                  ? "Oylik belgilangan oklad (so'm) *"
+                  : "Asosiy oklad (baza, so'm)"}
               </label>
               <input
                 type="number"
-                value={monthlySalary}
-                onChange={(e) => setMonthlySalary(e.target.value)}
-                placeholder="Masalan: 5000000"
+                value={salaryAmount}
+                onChange={(e) => setSalaryAmount(e.target.value)}
+                placeholder={salaryType === "fixed" ? "5000000" : "0 yoki baza oklad..."}
                 className={INPUT_CLS}
               />
-              <p className="text-[11px] text-slate-500 mt-1">
-                Menejerga har oy hisoblanadigan kafolatlangan qat'iy maosh summasi.
-              </p>
             </div>
-          ) : (
-            <div className="mt-3 bg-indigo-50/40 border border-indigo-100 rounded-xl p-3.5 space-y-3">
+          </div>
+
+          {salaryType === "kpi" && (
+            <div className="mt-3 p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/60 space-y-2.5">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-900 dark:text-indigo-300">
+                <Sparkles size={14} className="text-indigo-600" />
+                KPI va Bonus stavkalari
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className={LABEL_CLS}>
-                    <Award size={13} className="inline mr-1 text-indigo-600" />
-                    Har bir o'quvchi uchun summa (so'm) *
+                  <label className="text-[11px] font-semibold text-indigo-700 dark:text-indigo-400 mb-1 block">
+                    Har bir olib kelingan / biriktirilgan o'quvchi uchun (so'm) *
                   </label>
                   <input
                     type="number"
@@ -257,13 +386,13 @@ export function ManagerFormModal({ editing, branches, onSubmit, onClose }) {
                     className={INPUT_CLS}
                   />
                   <p className="text-[10px] text-slate-500 mt-1">
-                    Menejer tizimga kiritgan/olib kelgan har bir o'quvchi uchun
+                    Xodim jalb qilgan har 1 ta o'quvchi uchun to'lanadigan summa
                   </p>
                 </div>
+
                 <div>
-                  <label className={LABEL_CLS}>
-                    <Gift size={13} className="inline mr-1 text-amber-600" />
-                    1 hafta o'qigan shartnoma bonusi (so'm) *
+                  <label className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 mb-1 block">
+                    1 oy o'qiganligi uchun bonus (so'm) *
                   </label>
                   <input
                     type="number"
@@ -273,63 +402,139 @@ export function ManagerFormModal({ editing, branches, onSubmit, onClose }) {
                     className={INPUT_CLS}
                   />
                   <p className="text-[10px] text-slate-500 mt-1">
-                    O'quvchi guruhga qo'shilib 1 hafta o'qib shartnoma tuzsa
+                    O'quvchi markazda 1 oy to'liq o'qiganda xodimga qo'shimcha bonus
                   </p>
                 </div>
+              </div>
+
+              <div className="text-[11px] text-indigo-700 dark:text-indigo-300 bg-white/80 dark:bg-slate-900/80 p-2.5 rounded-lg border border-indigo-100 dark:border-indigo-900/50">
+                💡 <strong>Hisoblash tartibi:</strong> Jami maosh = Asosiy oklad + (O'quvchilar soni × Har bir o'quvchi summasi) + (1 oy o'qigan o'quvchilar soni × 1 oylik bonus)
               </div>
             </div>
           )}
         </div>
 
-        {/* Tizimga kirish paroli */}
-        <div className="pt-2 border-t border-slate-100">
+        {/* Kirishga ruxsat etilgan filiallar (Multiple choice) */}
+        <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
           <label className={LABEL_CLS}>
-            <Lock size={13} className="inline mr-1 text-slate-600" />
-            {editing
-              ? "Tizimga kirish paroli (bo'sh qoldirilsa eski parol saqlanadi)"
-              : "Tizimga kirish paroli *"}
+            <Building2 size={13} className="inline mr-1 text-indigo-600" />
+            Kirishga ruxsat etilgan filiallar (Bir nechta tanlash mumkin) *
           </label>
-          <div className="relative">
-            <input
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Kamida 4 ta belgi (masalan: 123456)"
-              className={`${INPUT_CLS} pr-10`}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-            >
-              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-          <p className="text-[11px] text-slate-400 mt-1">
-            Menejer ushbu telefon raqam va parol bilan alohida "Menejer" tizimiga kiradi.
-          </p>
+          <BranchPicker
+            branches={branches}
+            value={branchIds}
+            onChange={setBranchIds}
+          />
         </div>
 
+        {/* Izoh */}
+        <div>
+          <label className={LABEL_CLS}>
+            <FileText size={13} className="inline mr-1 text-slate-500" />
+            Qo'shimcha izoh / eslatma
+          </label>
+          <input
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Xodim bo'yicha qisqa ma'lumot yoki eslatma..."
+            className={INPUT_CLS}
+          />
+        </div>
+
+        {/* Xodim Formasi (Qo'shimcha ma'lumotlar uchun forma) */}
+        <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setShowCustomForm(!showCustomForm)}
+              className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1.5 cursor-pointer py-1"
+            >
+              <Sparkles size={14} />
+              <span>Xodim formasi (Qo'shimcha ma'lumotlar)</span>
+              {showCustomForm ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+            <span className="text-[11px] text-slate-400">
+              {Object.values(customFormData).filter(Boolean).length} /{" "}
+              {customFields.length} to'ldirilgan
+            </span>
+          </div>
+
+          {showCustomForm && (
+            <div className="mt-3 pt-3 border-t border-dashed border-slate-200 dark:border-slate-800">
+              {customFields.length === 0 ? (
+                <p className="text-xs text-slate-400 italic">
+                  Qo'shimcha forma maydonlari sozlanmagan.
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {customFields.map((field) => (
+                    <div key={field.id}>
+                      <label className={LABEL_CLS}>
+                        {field.label} {field.required && "*"}
+                      </label>
+                      {field.type === "select" ? (
+                        <select
+                          value={customFormData[field.id] || ""}
+                          onChange={(e) =>
+                            handleCustomFieldChange(field.id, e.target.value)
+                          }
+                          className={INPUT_CLS}
+                        >
+                          <option value="">Tanlang...</option>
+                          {(field.options || []).map((opt) => (
+                            <option key={opt} value={opt}>
+                              {opt}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type={field.type || "text"}
+                          value={customFormData[field.id] || ""}
+                          onChange={(e) =>
+                            handleCustomFieldChange(field.id, e.target.value)
+                          }
+                          placeholder={field.placeholder || field.label}
+                          className={INPUT_CLS}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Error message */}
         {error && (
-          <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+          <div className="bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 text-xs font-semibold p-2.5 rounded-xl border border-rose-200 dark:border-rose-900">
             {error}
           </div>
         )}
 
-        <div className="pt-2">
-          <PrimaryButton onClick={submit} disabled={busy} className="w-full">
+        {/* Action Buttons */}
+        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          >
+            Bekor qilish
+          </button>
+          <PrimaryButton onClick={submit} disabled={busy}>
             {busy ? (
-              <Loader2 size={16} className="animate-spin" />
+              <span className="flex items-center gap-1.5">
+                <Loader2 size={14} className="animate-spin" /> Saqlanmoqda...
+              </span>
             ) : editing ? (
-              <Check size={16} />
+              "O'zgarishlarni saqlash"
             ) : (
-              <Plus size={16} />
-            )}{" "}
-            {editing ? "Saqlash" : "Menejerni qo'shish"}
+              "Xodimni qo'shish"
+            )}
           </PrimaryButton>
         </div>
       </div>
     </Modal>
   );
 }
-

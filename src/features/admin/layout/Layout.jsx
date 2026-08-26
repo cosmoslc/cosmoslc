@@ -249,6 +249,8 @@ export function AppShell({
   // Accordion state for sub-menus
   const [openMenus, setOpenMenus] = useState({
     finance: true,
+    reports: true,
+    financialReports: true,
     settings: true,
     office: true,
     academic: true,
@@ -256,14 +258,59 @@ export function AppShell({
     forms: false,
   });
 
+  const [pinnedFlyout, setPinnedFlyout] = useState(null);
+
   const toggleMenu = (key) => {
-    setOpenMenus((prev) => ({ ...prev, [key]: !prev[key] }));
+    if (collapsed) {
+      setPinnedFlyout((prev) => (prev === key ? null : key));
+    } else {
+      setOpenMenus((prev) => ({ ...prev, [key]: !prev[key] }));
+    }
   };
+
+  const handleNavigate = (pageId) => {
+    goTo(pageId);
+    setMobileOpen(false);
+    setPinnedFlyout(null);
+  };
+
+  useEffect(() => {
+    if (!pinnedFlyout) return;
+    const handleClickOutside = (e) => {
+      if (!e.target.closest(".app-sidebar")) {
+        setPinnedFlyout(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [pinnedFlyout]);
 
   // Auto-expand menu if active item is inside it
   useEffect(() => {
     if (["payments", "additionalIncome", "salaries", "expenses", "debtors"].includes(view)) {
       setOpenMenus((prev) => ({ ...prev, finance: true }));
+    } else if (
+      [
+        "reportCourse",
+        "reportTeacherPerformance",
+        "reportCashflow",
+        "reportSalaries",
+        "reportDiscounts",
+        "reportSmsSent",
+        "reportWorkTime",
+        "reportJournals",
+        "reportCoins",
+        "reportPoints",
+        "reportExams",
+        "reportLeads",
+        "reportGroupRemoved",
+        "reportAttendance",
+      ].includes(view)
+    ) {
+      setOpenMenus((prev) => ({ ...prev, reports: true }));
+      if (["reportCourse", "reportTeacherPerformance", "reportCashflow"].includes(view)) {
+        setOpenMenus((prev) => ({ ...prev, financialReports: true }));
+      }
     } else if (["centerSettings", "branches", "positions", "managers", "rooms", "holidays", "receiptSettings", "courses", "reasons", "placementTest", "points", "examTemplates", "smsBuy", "autoSms", "smsTemplates", "simpleForm", "teacherForm", "staffForm", "referralForm", "tags", "paymentTypes"].includes(view)) {
       setOpenMenus((prev) => ({ ...prev, settings: true }));
       if (["branches", "positions", "managers", "rooms", "holidays", "receiptSettings"].includes(view)) {
@@ -705,6 +752,26 @@ export function AppShell({
               </li>
             )}
 
+            {/* Xodimlar davomati (Direct Menu) */}
+            {isAllowed("employeeAttendance") && (
+              <li>
+                <button
+                  id="nav-item-employeeAttendance"
+                  onClick={() => handleNavigate("employeeAttendance")}
+                  className={`nav-item ${view === "employeeAttendance" ? "active" : ""}`}
+                  title={collapsed ? "Xodimlar davomati" : undefined}
+                >
+                  <span
+                    className="ic"
+                    style={{ color: NAV_ICON_COLORS.employeeAttendance || "#1abc9c" }}
+                  >
+                    <CalendarCheck size={18} />
+                  </span>
+                  <span className="label">Xodimlar davomati</span>
+                </button>
+              </li>
+            )}
+
             {/* 2. MOLIYA BO'LIMI (SUBMENU) */}
             {canShowGroup(["payments", "additionalIncome", "salaries", "expenses", "debtors"]) && (
               <>
@@ -713,12 +780,12 @@ export function AppShell({
                     <span>Moliya</span>
                   </li>
                 )}
-                <li className="nav-parent-wrapper">
+                <li className={`nav-parent-wrapper ${pinnedFlyout === "finance" ? "is-flyout-open" : ""}`}>
                   <div
                     id="nav-parent-finance"
                     onClick={() => toggleMenu("finance")}
                     className={`nav-parent-item ${
-                      openMenus.finance ? "is-open" : ""
+                      openMenus.finance || pinnedFlyout === "finance" ? "is-open" : ""
                     } ${
                       ["payments", "additionalIncome", "salaries", "expenses", "debtors"].includes(view)
                         ? "has-active-child"
@@ -737,14 +804,16 @@ export function AppShell({
                   </div>
                   {(openMenus.finance || collapsed) && (
                     <ul className="nav-sub-menu">
+                      {collapsed && (
+                        <li className="px-2 py-1 mb-1 border-b border-slate-100 dark:border-slate-800 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                          Moliya
+                        </li>
+                      )}
                       {isAllowed("payments") && (
                         <li>
                           <button
                             id="nav-sub-payments"
-                            onClick={() => {
-                              goTo("payments");
-                              setMobileOpen(false);
-                            }}
+                            onClick={() => handleNavigate("payments")}
                             className={`nav-sub-item ${
                               view === "payments" ? "active" : ""
                             }`}
@@ -758,10 +827,7 @@ export function AppShell({
                         <li>
                           <button
                             id="nav-sub-additionalIncome"
-                            onClick={() => {
-                              goTo("additionalIncome");
-                              setMobileOpen(false);
-                            }}
+                            onClick={() => handleNavigate("additionalIncome")}
                             className={`nav-sub-item ${
                               view === "additionalIncome" ? "active" : ""
                             }`}
@@ -775,10 +841,7 @@ export function AppShell({
                         <li>
                           <button
                             id="nav-sub-salaries"
-                            onClick={() => {
-                              goTo("salaries");
-                              setMobileOpen(false);
-                            }}
+                            onClick={() => handleNavigate("salaries")}
                             className={`nav-sub-item ${
                               view === "salaries" ? "active" : ""
                             }`}
@@ -792,10 +855,7 @@ export function AppShell({
                         <li>
                           <button
                             id="nav-sub-expenses"
-                            onClick={() => {
-                              goTo("expenses");
-                              setMobileOpen(false);
-                            }}
+                            onClick={() => handleNavigate("expenses")}
                             className={`nav-sub-item ${
                               view === "expenses" ? "active" : ""
                             }`}
@@ -809,10 +869,7 @@ export function AppShell({
                         <li>
                           <button
                             id="nav-sub-debtors"
-                            onClick={() => {
-                              goTo("debtors");
-                              setMobileOpen(false);
-                            }}
+                            onClick={() => handleNavigate("debtors")}
                             className={`nav-sub-item ${
                               view === "debtors" ? "active" : ""
                             }`}
@@ -828,7 +885,443 @@ export function AppShell({
               </>
             )}
 
-            {/* 3. SOZLAMALAR BO'LIMI (SUBMENU) */}
+            {/* 3. HISOBOTLAR BO'LIMI (SUBMENU) */}
+            <>
+              {!collapsed && (
+                <li className="nav-divider">
+                  <span>Hisobotlar</span>
+                </li>
+              )}
+              <li className={`nav-parent-wrapper ${pinnedFlyout === "reports" ? "is-flyout-open" : ""}`}>
+                <div
+                  id="nav-parent-reports"
+                  onClick={() => toggleMenu("reports")}
+                className={`nav-parent-item ${
+                  openMenus.reports || pinnedFlyout === "reports" ? "is-open" : ""
+                } ${
+                  [
+                    "reportCourse",
+                    "reportTeacherPerformance",
+                    "reportCashflow",
+                    "reportSalaries",
+                    "reportDiscounts",
+                    "reportSmsSent",
+                    "reportWorkTime",
+                    "reportJournals",
+                    "reportCoins",
+                    "reportPoints",
+                    "reportExams",
+                    "reportLeads",
+                    "reportGroupRemoved",
+                    "reportAttendance",
+                  ].includes(view)
+                    ? "has-active-child"
+                    : ""
+                }`}
+                title={collapsed ? "Hisobotlar" : undefined}
+              >
+                <span
+                  className="ic"
+                  style={{ color: NAV_ICON_COLORS.reports || "#0ea5e9" }}
+                >
+                  <BarChart3 size={18} />
+                </span>
+                <span className="label">Hisobotlar</span>
+                <ChevronDown size={14} className="chev" />
+              </div>
+
+              {(openMenus.reports || collapsed) && (
+                <ul className="nav-sub-menu">
+                  {collapsed && (
+                    <li className="px-2 py-1 mb-1 border-b border-slate-100 dark:border-slate-800 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                      Hisobotlar
+                    </li>
+                  )}
+                  {/* Moliyaviy hisobotlar Sub-menu */}
+                  <li className="nav-parent-wrapper pl-2 mt-1">
+                    <div
+                      onClick={() => toggleMenu("financialReports")}
+                      className="flex items-center justify-between py-1.5 px-3 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-200"
+                    >
+                      <span>Moliyaviy hisobotlar</span>
+                      <ChevronDown
+                        size={12}
+                        className={`transition-transform ${
+                          openMenus.financialReports ? "rotate-180" : ""
+                        }`}
+                      />
+                    </div>
+                    {openMenus.financialReports && (
+                      <ul className="pl-3 border-l border-slate-200 dark:border-slate-800 space-y-0.5 mt-1">
+                        <li>
+                          <button
+                            onClick={() => handleNavigate("reportCourse")}
+                            className={`nav-sub-item ${
+                              view === "reportCourse" ? "active" : ""
+                            }`}
+                          >
+                            <span className="sub-dot" />
+                            <span>Kurs hisoboti</span>
+                          </button>
+                        </li>
+                        <li>
+                          <button
+                            onClick={() => handleNavigate("reportTeacherPerformance")}
+                            className={`nav-sub-item ${
+                              view === "reportTeacherPerformance" ? "active" : ""
+                            }`}
+                          >
+                            <span className="sub-dot" />
+                            <span>O'qituvchi samaradorligi</span>
+                          </button>
+                        </li>
+                        <li>
+                          <button
+                            onClick={() => handleNavigate("reportCashflow")}
+                            className={`nav-sub-item ${
+                              view === "reportCashflow" ? "active" : ""
+                            }`}
+                          >
+                            <span className="sub-dot" />
+                            <span>Pul oqimi</span>
+                          </button>
+                        </li>
+                      </ul>
+                    )}
+                  </li>
+
+                  {/* Ish haqi hisoboti */}
+                  <li>
+                    <button
+                      onClick={() => handleNavigate("reportSalaries")}
+                      className={`nav-sub-item ${
+                        view === "reportSalaries" ? "active" : ""
+                      }`}
+                    >
+                      <span className="sub-dot" />
+                      <span>Ish haqi hisoboti</span>
+                    </button>
+                  </li>
+
+                  {/* Chegirma hisoboti */}
+                  <li>
+                    <button
+                      onClick={() => handleNavigate("reportDiscounts")}
+                      className={`nav-sub-item ${
+                        view === "reportDiscounts" ? "active" : ""
+                      }`}
+                    >
+                      <span className="sub-dot" />
+                      <span>Chegirma hisoboti</span>
+                    </button>
+                  </li>
+
+                  {/* Yuborilgan smslar hisoboti */}
+                  <li>
+                    <button
+                      onClick={() => handleNavigate("reportSmsSent")}
+                      className={`nav-sub-item ${
+                        view === "reportSmsSent" ? "active" : ""
+                      }`}
+                    >
+                      <span className="sub-dot" />
+                      <span>Yuborilgan SMSlar hisoboti</span>
+                    </button>
+                  </li>
+
+                  {/* Ish vaqti hisoboti */}
+                  <li>
+                    <button
+                      onClick={() => handleNavigate("reportWorkTime")}
+                      className={`nav-sub-item ${
+                        view === "reportWorkTime" ? "active" : ""
+                      }`}
+                    >
+                      <span className="sub-dot" />
+                      <span>Ish vaqti hisoboti</span>
+                    </button>
+                  </li>
+
+                  {/* Jurnallar */}
+                  <li>
+                    <button
+                      onClick={() => handleNavigate("reportJournals")}
+                      className={`nav-sub-item ${
+                        view === "reportJournals" ? "active" : ""
+                      }`}
+                    >
+                      <span className="sub-dot" />
+                      <span>Jurnallar</span>
+                    </button>
+                  </li>
+
+                  {/* Tanga hisoboti */}
+                  <li>
+                    <button
+                      onClick={() => handleNavigate("reportCoins")}
+                      className={`nav-sub-item ${
+                        view === "reportCoins" ? "active" : ""
+                      }`}
+                    >
+                      <span className="sub-dot" />
+                      <span>Tanga hisoboti</span>
+                    </button>
+                  </li>
+
+                  {/* Ballar hisoboti */}
+                  <li>
+                    <button
+                      onClick={() => handleNavigate("reportPoints")}
+                      className={`nav-sub-item ${
+                        view === "reportPoints" ? "active" : ""
+                      }`}
+                    >
+                      <span className="sub-dot" />
+                      <span>Ballar hisoboti</span>
+                    </button>
+                  </li>
+
+                  {/* Imtihon hisobotlari */}
+                  <li>
+                    <button
+                      onClick={() => handleNavigate("reportExams")}
+                      className={`nav-sub-item ${
+                        view === "reportExams" ? "active" : ""
+                      }`}
+                    >
+                      <span className="sub-dot" />
+                      <span>Imtihon hisobotlari</span>
+                    </button>
+                  </li>
+
+                  {/* Lidlar hisoboti */}
+                  <li>
+                    <button
+                      onClick={() => handleNavigate("reportLeads")}
+                      className={`nav-sub-item ${
+                        view === "reportLeads" ? "active" : ""
+                      }`}
+                    >
+                      <span className="sub-dot" />
+                      <span>Lidlar hisoboti</span>
+                    </button>
+                  </li>
+
+                  {/* Guruhdan o'chirilganlar hisoboti */}
+                  <li>
+                    <button
+                      onClick={() => handleNavigate("reportGroupRemoved")}
+                      className={`nav-sub-item ${
+                        view === "reportGroupRemoved" ? "active" : ""
+                      }`}
+                    >
+                      <span className="sub-dot" />
+                      <span>Guruhdan o'chirilganlar hisoboti</span>
+                    </button>
+                  </li>
+
+                  {/* Davomat hisobotlari */}
+                  <li>
+                    <button
+                      onClick={() => handleNavigate("reportAttendance")}
+                      className={`nav-sub-item ${
+                        view === "reportAttendance" ? "active" : ""
+                      }`}
+                    >
+                      <span className="sub-dot" />
+                      <span>Davomat hisobotlari</span>
+                    </button>
+                  </li>
+                </ul>
+              )}
+            </li>
+          </>
+
+            {/* 4. ARXIV BO'LIMI (SUBMENU) */}
+            {isAllowed("archive") && (
+              <>
+                {!collapsed && (
+                  <li className="nav-divider">
+                    <span>Arxiv</span>
+                  </li>
+                )}
+                <li className={`nav-parent-wrapper ${pinnedFlyout === "archive" ? "is-flyout-open" : ""}`}>
+                  <div
+                    id="nav-parent-archive"
+                    onClick={() => toggleMenu("archive")}
+                  className={`nav-parent-item ${
+                    openMenus.archive || pinnedFlyout === "archive" ? "is-open" : ""
+                  } ${
+                    [
+                      "archive",
+                      "archiveLeads",
+                      "archiveStudents",
+                      "archiveTeachers",
+                      "archiveStaff",
+                      "archiveGroups",
+                      "archivePayments",
+                      "archiveSalaries",
+                      "archiveExpenses",
+                      "archiveAdditionalIncome",
+                      "archiveBonuses",
+                    ].includes(view)
+                      ? "has-active-child"
+                      : ""
+                  }`}
+                  title={collapsed ? "Arxiv" : undefined}
+                >
+                  <span
+                    className="ic"
+                    style={{ color: NAV_ICON_COLORS.archive || "#64748b" }}
+                  >
+                    <Archive size={18} />
+                  </span>
+                  <span className="label">Arxiv</span>
+                  <ChevronDown size={14} className="chev" />
+                </div>
+
+                {(openMenus.archive || collapsed) && (
+                  <ul className="nav-sub-menu">
+                    {collapsed && (
+                      <li className="px-2 py-1 mb-1 border-b border-slate-100 dark:border-slate-800 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                        Arxiv
+                      </li>
+                    )}
+                    <li>
+                      <button
+                        id="nav-sub-archiveLeads"
+                        onClick={() => handleNavigate("archiveLeads")}
+                        className={`nav-sub-item ${
+                          view === "archiveLeads" || view === "archive" ? "active" : ""
+                        }`}
+                      >
+                        <span className="sub-dot" />
+                        <span>Lidlar</span>
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        id="nav-sub-archiveStudents"
+                        onClick={() => handleNavigate("archiveStudents")}
+                        className={`nav-sub-item ${view === "archiveStudents" ? "active" : ""}`}
+                      >
+                        <span className="sub-dot" />
+                        <span>Talabalar</span>
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        id="nav-sub-archiveTeachers"
+                        onClick={() => handleNavigate("archiveTeachers")}
+                        className={`nav-sub-item ${view === "archiveTeachers" ? "active" : ""}`}
+                      >
+                        <span className="sub-dot" />
+                        <span>O'qituvchilar</span>
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        id="nav-sub-archiveStaff"
+                        onClick={() => handleNavigate("archiveStaff")}
+                        className={`nav-sub-item ${view === "archiveStaff" ? "active" : ""}`}
+                      >
+                        <span className="sub-dot" />
+                        <span>Xodimlar</span>
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        id="nav-sub-archiveGroups"
+                        onClick={() => handleNavigate("archiveGroups")}
+                        className={`nav-sub-item ${view === "archiveGroups" ? "active" : ""}`}
+                      >
+                        <span className="sub-dot" />
+                        <span>Guruhlar</span>
+                      </button>
+                    </li>
+
+                    {/* Moliya Sub-menu inside Arxiv */}
+                    <li className="nav-parent-wrapper pl-1 mt-1">
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenus((prev) => ({ ...prev, archiveFinance: !prev.archiveFinance }));
+                        }}
+                        className="flex items-center justify-between py-1.5 px-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <CreditCard size={13} />
+                          <span>Moliya</span>
+                        </div>
+                        <ChevronDown
+                          size={12}
+                          className={`transition-transform ${
+                            openMenus.archiveFinance ? "rotate-180" : ""
+                          }`}
+                        />
+                      </div>
+                      {(openMenus.archiveFinance || collapsed) && (
+                        <ul className="pl-3 border-l border-slate-200 dark:border-slate-800 space-y-0.5 mt-1">
+                          <li>
+                            <button
+                              id="nav-sub-archivePayments"
+                              onClick={() => handleNavigate("archivePayments")}
+                              className={`nav-sub-item ${view === "archivePayments" ? "active" : ""}`}
+                            >
+                              <span className="sub-dot" />
+                              <span>To'lovlar</span>
+                            </button>
+                          </li>
+                          <li>
+                            <button
+                              id="nav-sub-archiveSalaries"
+                              onClick={() => handleNavigate("archiveSalaries")}
+                              className={`nav-sub-item ${view === "archiveSalaries" ? "active" : ""}`}
+                            >
+                              <span className="sub-dot" />
+                              <span>Ish haqi</span>
+                            </button>
+                          </li>
+                          <li>
+                            <button
+                              id="nav-sub-archiveExpenses"
+                              onClick={() => handleNavigate("archiveExpenses")}
+                              className={`nav-sub-item ${view === "archiveExpenses" ? "active" : ""}`}
+                            >
+                              <span className="sub-dot" />
+                              <span>Xarajatlar</span>
+                            </button>
+                          </li>
+                          <li>
+                            <button
+                              id="nav-sub-archiveAdditionalIncome"
+                              onClick={() => handleNavigate("archiveAdditionalIncome")}
+                              className={`nav-sub-item ${view === "archiveAdditionalIncome" ? "active" : ""}`}
+                            >
+                              <span className="sub-dot" />
+                              <span>Qo'shimcha daromadlar</span>
+                            </button>
+                          </li>
+                          <li>
+                            <button
+                              id="nav-sub-archiveBonuses"
+                              onClick={() => handleNavigate("archiveBonuses")}
+                              className={`nav-sub-item ${view === "archiveBonuses" ? "active" : ""}`}
+                            >
+                              <span className="sub-dot" />
+                              <span>Bonuslar</span>
+                            </button>
+                          </li>
+                        </ul>
+                      )}
+                    </li>
+                  </ul>
+                )}
+              </li>
+            </>
+          )}
+
+            {/* 4. SOZLAMALAR BO'LIMI (SUBMENU) */}
             {canShowGroup(["centerSettings", "branches", "positions", "managers", "rooms", "holidays", "receiptSettings", "courses", "reasons", "placementTest", "points", "examTemplates", "smsBuy", "autoSms", "smsTemplates", "simpleForm", "teacherForm", "staffForm", "referralForm", "tags", "paymentTypes"]) && (
               <>
                 {!collapsed && (
@@ -836,12 +1329,12 @@ export function AppShell({
                     <span>Sozlamalar</span>
                   </li>
                 )}
-                <li className="nav-parent-wrapper">
+                <li className={`nav-parent-wrapper ${pinnedFlyout === "settings" ? "is-flyout-open" : ""}`}>
                   <div
                     id="nav-parent-settings"
                     onClick={() => toggleMenu("settings")}
                     className={`nav-parent-item ${
-                      openMenus.settings ? "is-open" : ""
+                      openMenus.settings || pinnedFlyout === "settings" ? "is-open" : ""
                     } ${
                       ["centerSettings", "branches", "positions", "managers", "rooms", "holidays", "receiptSettings", "courses", "reasons", "placementTest", "points", "examTemplates", "smsBuy", "autoSms", "smsTemplates", "simpleForm", "teacherForm", "staffForm", "referralForm", "tags", "paymentTypes"].includes(view)
                         ? "has-active-child"
@@ -860,15 +1353,17 @@ export function AppShell({
                   </div>
                   {(openMenus.settings || collapsed) && (
                     <ul className="nav-sub-menu">
+                      {collapsed && (
+                        <li className="px-2 py-1 mb-1 border-b border-slate-100 dark:border-slate-800 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                          Sozlamalar
+                        </li>
+                      )}
                       {/* Umumiy sozlamalar */}
                       {isAllowed("centerSettings") && (
                         <li>
                           <button
                             id="nav-sub-centerSettings"
-                            onClick={() => {
-                              goTo("centerSettings");
-                              setMobileOpen(false);
-                            }}
+                            onClick={() => handleNavigate("centerSettings")}
                             className={`nav-sub-item ${
                               view === "centerSettings" || view === "settings" ? "active" : ""
                             }`}
@@ -892,7 +1387,7 @@ export function AppShell({
                           <ul className="pl-3 border-l border-slate-200 dark:border-slate-800 space-y-0.5 mt-1">
                             <li>
                               <button
-                                onClick={() => { goTo("branches"); setMobileOpen(false); }}
+                                onClick={() => handleNavigate("branches")}
                                 className={`nav-sub-item ${view === "branches" ? "active" : ""}`}
                               >
                                 <span className="sub-dot" />
@@ -901,7 +1396,7 @@ export function AppShell({
                             </li>
                             <li>
                               <button
-                                onClick={() => { goTo("positions"); setMobileOpen(false); }}
+                                onClick={() => handleNavigate("positions")}
                                 className={`nav-sub-item ${view === "positions" ? "active" : ""}`}
                               >
                                 <span className="sub-dot" />
@@ -910,7 +1405,7 @@ export function AppShell({
                             </li>
                             <li>
                               <button
-                                onClick={() => { goTo("managers"); setMobileOpen(false); }}
+                                onClick={() => handleNavigate("managers")}
                                 className={`nav-sub-item ${view === "managers" ? "active" : ""}`}
                               >
                                 <span className="sub-dot" />
@@ -919,7 +1414,7 @@ export function AppShell({
                             </li>
                             <li>
                               <button
-                                onClick={() => { goTo("rooms"); setMobileOpen(false); }}
+                                onClick={() => handleNavigate("rooms")}
                                 className={`nav-sub-item ${view === "rooms" ? "active" : ""}`}
                               >
                                 <span className="sub-dot" />
@@ -928,7 +1423,7 @@ export function AppShell({
                             </li>
                             <li>
                               <button
-                                onClick={() => { goTo("holidays"); setMobileOpen(false); }}
+                                onClick={() => handleNavigate("holidays")}
                                 className={`nav-sub-item ${view === "holidays" ? "active" : ""}`}
                               >
                                 <span className="sub-dot" />
@@ -937,7 +1432,7 @@ export function AppShell({
                             </li>
                             <li>
                               <button
-                                onClick={() => { goTo("receiptSettings"); setMobileOpen(false); }}
+                                onClick={() => handleNavigate("receiptSettings")}
                                 className={`nav-sub-item ${view === "receiptSettings" ? "active" : ""}`}
                               >
                                 <span className="sub-dot" />
@@ -961,7 +1456,7 @@ export function AppShell({
                           <ul className="pl-3 border-l border-slate-200 dark:border-slate-800 space-y-0.5 mt-1">
                             <li>
                               <button
-                                onClick={() => { goTo("courses"); setMobileOpen(false); }}
+                                onClick={() => handleNavigate("courses")}
                                 className={`nav-sub-item ${view === "courses" ? "active" : ""}`}
                               >
                                 <span className="sub-dot" />
@@ -970,7 +1465,7 @@ export function AppShell({
                             </li>
                             <li>
                               <button
-                                onClick={() => { goTo("reasons"); setMobileOpen(false); }}
+                                onClick={() => handleNavigate("reasons")}
                                 className={`nav-sub-item ${view === "reasons" ? "active" : ""}`}
                               >
                                 <span className="sub-dot" />
@@ -979,7 +1474,7 @@ export function AppShell({
                             </li>
                             <li>
                               <button
-                                onClick={() => { goTo("placementTest"); setMobileOpen(false); }}
+                                onClick={() => handleNavigate("placementTest")}
                                 className={`nav-sub-item ${view === "placementTest" ? "active" : ""}`}
                               >
                                 <span className="sub-dot" />
@@ -988,7 +1483,7 @@ export function AppShell({
                             </li>
                             <li>
                               <button
-                                onClick={() => { goTo("points"); setMobileOpen(false); }}
+                                onClick={() => handleNavigate("points")}
                                 className={`nav-sub-item ${view === "points" ? "active" : ""}`}
                               >
                                 <span className="sub-dot" />
@@ -997,7 +1492,7 @@ export function AppShell({
                             </li>
                             <li>
                               <button
-                                onClick={() => { goTo("examTemplates"); setMobileOpen(false); }}
+                                onClick={() => handleNavigate("examTemplates")}
                                 className={`nav-sub-item ${view === "examTemplates" ? "active" : ""}`}
                               >
                                 <span className="sub-dot" />
@@ -1021,7 +1516,7 @@ export function AppShell({
                           <ul className="pl-3 border-l border-slate-200 dark:border-slate-800 space-y-0.5 mt-1">
                             <li>
                               <button
-                                onClick={() => { goTo("smsBuy"); setMobileOpen(false); }}
+                                onClick={() => handleNavigate("smsBuy")}
                                 className={`nav-sub-item ${view === "smsBuy" ? "active" : ""}`}
                               >
                                 <span className="sub-dot" />
@@ -1030,7 +1525,7 @@ export function AppShell({
                             </li>
                             <li>
                               <button
-                                onClick={() => { goTo("autoSms"); setMobileOpen(false); }}
+                                onClick={() => handleNavigate("autoSms")}
                                 className={`nav-sub-item ${view === "autoSms" ? "active" : ""}`}
                               >
                                 <span className="sub-dot" />
@@ -1039,7 +1534,7 @@ export function AppShell({
                             </li>
                             <li>
                               <button
-                                onClick={() => { goTo("smsTemplates"); setMobileOpen(false); }}
+                                onClick={() => handleNavigate("smsTemplates")}
                                 className={`nav-sub-item ${view === "smsTemplates" ? "active" : ""}`}
                               >
                                 <span className="sub-dot" />
@@ -1063,7 +1558,7 @@ export function AppShell({
                           <ul className="pl-3 border-l border-slate-200 dark:border-slate-800 space-y-0.5 mt-1">
                             <li>
                               <button
-                                onClick={() => { goTo("simpleForm"); setMobileOpen(false); }}
+                                onClick={() => handleNavigate("simpleForm")}
                                 className={`nav-sub-item ${view === "simpleForm" ? "active" : ""}`}
                               >
                                 <span className="sub-dot" />
@@ -1072,7 +1567,7 @@ export function AppShell({
                             </li>
                             <li>
                               <button
-                                onClick={() => { goTo("teacherForm"); setMobileOpen(false); }}
+                                onClick={() => handleNavigate("teacherForm")}
                                 className={`nav-sub-item ${view === "teacherForm" ? "active" : ""}`}
                               >
                                 <span className="sub-dot" />
@@ -1081,7 +1576,7 @@ export function AppShell({
                             </li>
                             <li>
                               <button
-                                onClick={() => { goTo("staffForm"); setMobileOpen(false); }}
+                                onClick={() => handleNavigate("staffForm")}
                                 className={`nav-sub-item ${view === "staffForm" ? "active" : ""}`}
                               >
                                 <span className="sub-dot" />
@@ -1090,7 +1585,7 @@ export function AppShell({
                             </li>
                             <li>
                               <button
-                                onClick={() => { goTo("referralForm"); setMobileOpen(false); }}
+                                onClick={() => handleNavigate("referralForm")}
                                 className={`nav-sub-item ${view === "referralForm" ? "active" : ""}`}
                               >
                                 <span className="sub-dot" />
@@ -1106,10 +1601,7 @@ export function AppShell({
                         <li>
                           <button
                             id="nav-sub-tags"
-                            onClick={() => {
-                              goTo("tags");
-                              setMobileOpen(false);
-                            }}
+                            onClick={() => handleNavigate("tags")}
                             className={`nav-sub-item ${
                               view === "tags" ? "active" : ""
                             }`}
@@ -1125,10 +1617,7 @@ export function AppShell({
                         <li>
                           <button
                             id="nav-sub-paymentTypes"
-                            onClick={() => {
-                              goTo("paymentTypes");
-                              setMobileOpen(false);
-                            }}
+                            onClick={() => handleNavigate("paymentTypes")}
                             className={`nav-sub-item ${
                               view === "paymentTypes" ? "active" : ""
                             }`}

@@ -799,9 +799,7 @@ export function PaymentsPage({
                 <tr>
                   <td colSpan={7} className="py-16 text-center">
                     <EmptyState
-                      icon={
-                        <CreditCard size={28} className="text-slate-400 mx-auto" />
-                      }
+                      icon={CreditCard}
                       title="To'lovlar topilmadi"
                       subtitle="Belgilangan filtrlar yoki qidiruv bo'yicha ma'lumot mavjud emas."
                     />

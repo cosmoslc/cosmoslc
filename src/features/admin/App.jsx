@@ -64,10 +64,10 @@ import { HolidaysPage } from "./pages/HolidaysPage";
 import { ProfileSettingsHub } from "./pages/ProfileSettingsHub";
 import { CenterSettingsPage } from "./pages/CenterSettingsPage";
 import { NotificationsPage } from "./pages/NotificationsPage";
+import { PositionsPage } from "./pages/PositionsPage";
 import {
   AdditionalIncomePage,
   SalariesPage,
-  PositionsPage,
   ReceiptSettingsPage,
   ReasonsPage,
   PlacementTestPage,
@@ -79,6 +79,23 @@ import {
   FormsBuilderPage,
   TagsPage,
 } from "./pages/SettingsSubPages";
+
+import {
+  CourseReportPage,
+  TeacherPerformanceReportPage,
+  CashflowReportPage,
+  SalariesReportPage,
+  DiscountsReportPage,
+  SmsSentReportPage,
+  WorkTimeReportPage,
+  JournalsReportPage,
+  CoinsReportPage,
+  PointsReportPage,
+  ExamsReportPage,
+  LeadsReportPage,
+  GroupRemovedReportPage,
+  AttendanceReportPage,
+} from "./pages/ReportsSubPages";
 
 // Modals
 import { BranchFormModal } from "./modals/BranchFormModal";
@@ -1194,8 +1211,21 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
             />
           )}
 
-          {view === "archive" && (
+          {(view === "archive" || view.startsWith("archive")) && (
             <ArchivePage
+              initialTab={
+                view === "archiveLeads" ? "leads" :
+                view === "archiveStudents" ? "students" :
+                view === "archiveTeachers" ? "teachers" :
+                view === "archiveStaff" ? "staff" :
+                view === "archiveGroups" ? "groups" :
+                view === "archivePayments" ? "payments" :
+                view === "archiveSalaries" ? "salaries" :
+                view === "archiveExpenses" ? "expenses" :
+                view === "archiveAdditionalIncome" ? "additionalIncome" :
+                view === "archiveBonuses" ? "bonuses" :
+                "leads"
+              }
               directorData={directorData}
               opData={opData}
               scopeBranches={scopeBranches}
@@ -1297,6 +1327,22 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
           {view === "tags" && (
             <TagsPage />
           )}
+
+          {/* Hisobotlar Sahifalari */}
+          {view === "reportCourse" && <CourseReportPage />}
+          {view === "reportTeacherPerformance" && <TeacherPerformanceReportPage />}
+          {view === "reportCashflow" && <CashflowReportPage />}
+          {view === "reportSalaries" && <SalariesReportPage />}
+          {view === "reportDiscounts" && <DiscountsReportPage />}
+          {view === "reportSmsSent" && <SmsSentReportPage />}
+          {view === "reportWorkTime" && <WorkTimeReportPage />}
+          {view === "reportJournals" && <JournalsReportPage />}
+          {view === "reportCoins" && <CoinsReportPage />}
+          {view === "reportPoints" && <PointsReportPage />}
+          {view === "reportExams" && <ExamsReportPage />}
+          {view === "reportLeads" && <LeadsReportPage />}
+          {view === "reportGroupRemoved" && <GroupRemovedReportPage />}
+          {view === "reportAttendance" && <AttendanceReportPage />}
         </ErrorBoundary>
       </AppShell>
 
@@ -1323,7 +1369,7 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
 
         {modal?.type === "managerForm" && (
           <ManagerFormModal
-            editing={modal.manager}
+            editing={modal.manager || modal.editing}
             branches={directorData?.branches || []}
             onSubmit={handleSaveManager}
             onClose={() => setModal(null)}

@@ -315,6 +315,7 @@ html.dark body {
   border-right: 1px solid var(--line);
   padding: 16px 12px 24px;
   overflow-y: auto;
+  max-height: calc(100vh - var(--topbar-h));
   position: relative;
   display: flex;
   flex-direction: column;
@@ -686,38 +687,53 @@ html.dark body {
 
 .app-sidebar.collapsed .nav-sub-menu {
   display: none !important;
-  position: absolute;
-  left: 100%;
-  top: 0;
+  position: fixed;
+  left: 76px;
+  top: 68px;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
   margin: 0;
-  padding: 8px;
+  padding: 10px;
   background: #ffffff;
   border: 1px solid rgba(226, 232, 240, 0.9);
-  border-radius: 12px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 4px 10px -2px rgba(0, 0, 0, 0.05);
+  border-radius: 14px;
+  box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.15), 0 4px 12px -2px rgba(0, 0, 0, 0.08);
   z-index: 9999;
-  min-width: 190px;
+  min-width: 230px;
+  max-width: 280px;
   flex-direction: column;
   gap: 3px;
   border-left: none;
   animation: flyoutSlide 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.app-sidebar.collapsed .nav-sub-menu::-webkit-scrollbar {
+  width: 4px;
+}
+.app-sidebar.collapsed .nav-sub-menu::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.dark .app-sidebar.collapsed .nav-sub-menu::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
 .app-sidebar.collapsed .nav-sub-item {
   white-space: nowrap;
 }
 
-.app-sidebar.collapsed .nav-parent-wrapper:hover .nav-sub-menu {
+.app-sidebar.collapsed .nav-parent-wrapper:hover .nav-sub-menu,
+.app-sidebar.collapsed .nav-parent-wrapper.is-flyout-open .nav-sub-menu {
   display: flex !important;
 }
 
 .app-sidebar.collapsed .nav-parent-wrapper .nav-sub-menu::before {
   content: '';
-  position: absolute;
-  left: -12px;
-  top: 0;
-  bottom: 0;
+  position: fixed;
+  left: 68px;
+  top: 68px;
   width: 12px;
+  height: calc(100vh - 80px);
   background: transparent;
 }
 
