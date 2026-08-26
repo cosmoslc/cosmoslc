@@ -48,46 +48,48 @@ export const ALL_NAV_PAGES = [
   { id: "home", label: "Dashboard", icon: LayoutDashboard, group: "core" },
 
   // 2. Lidlar
-  { id: "leads", label: "Lidlar bo'limi", icon: UserCheck, group: "leads" },
-  { id: "leadsLost", label: "Ketgan lidlar", icon: AlertCircle, group: "leads" },
-  { id: "leadsAnalytics", label: "Lidlar analitikasi", icon: TrendingUp, group: "leads" },
-  { id: "leadsForm", label: "Lidlar formasi", icon: Sparkles, group: "leads" },
-  { id: "leadsSettings", label: "Lid formasi sozlamalari", icon: Sliders, group: "leads" },
+  { id: "leads", label: "Lidlar", icon: UserCheck, group: "leads" },
 
-  // 3. Analitika
-  { id: "analytics", label: "Markaz analitikasi", icon: BarChart3, group: "analytics" },
-  { id: "branchAnalytics", label: "Filiallar analitikasi", icon: TrendingUp, group: "analytics" },
-
-  // 4. Boshqaruv
-  { id: "branches", label: "Filiallar", icon: Building2, group: "management" },
-  { id: "managers", label: "Menejerlar", icon: Users, group: "management" },
-  { id: "employeeAttendance", label: "Xodimlar davomati", icon: UserCheck, group: "management" },
-  { id: "approvals", label: "Tasdiqlar (So'rovlar)", icon: CheckCheck, group: "management" },
-
-  // 5. O'quv jarayoni
+  // 3. Talabalar, Guruhlar, O'qituvchilar
+  { id: "students", label: "Talabalar", icon: GraduationCap, group: "academic" },
   { id: "groups", label: "Guruhlar", icon: ClipboardList, group: "academic" },
-  { id: "students", label: "O'quvchilar", icon: Users, group: "academic" },
-  { id: "teachers", label: "O'qituvchilar (HR)", icon: GraduationCap, group: "academic" },
-  { id: "attendance", label: "Davomat", icon: CalendarCheck, group: "academic" },
-  { id: "courses", label: "Kurslar", icon: BookOpen, group: "academic" },
-  { id: "rooms", label: "Xonalar", icon: Layers, group: "academic" },
+  { id: "teachers", label: "O'qituvchilar", icon: Users, group: "academic" },
 
-  // 6. Moliya & To'lovlar
+  // 4. Moliya (Submenus)
   { id: "payments", label: "To'lovlar", icon: CreditCard, group: "finance" },
-  { id: "debtors", label: "Qarzdorlar", icon: AlertCircle, group: "finance" },
-  { id: "paymentTypes", label: "To'lov turlari", icon: CreditCard, group: "finance" },
+  { id: "additionalIncome", label: "Qo'shimcha daromadlar", icon: DollarSign, group: "finance" },
+  { id: "salaries", label: "Ish haqi", icon: Banknote, group: "finance" },
   { id: "expenses", label: "Xarajatlar", icon: Wallet, group: "finance" },
-  { id: "finance", label: "Moliya balansi", icon: Wallet, group: "finance" },
-  { id: "breakEven", label: "Break-Even tahlili", icon: PieChart, group: "finance" },
-  { id: "coins", label: "Coin tizimi", icon: Coins, group: "finance" },
+  { id: "debtors", label: "Qarzdorlar", icon: AlertCircle, group: "finance" },
 
-  // 7. Ilovalar
-  { id: "holidays", label: "Dam olish kunlari", icon: PartyPopper, group: "apps" },
-  { id: "archive", label: "Tizim arxivi", icon: Archive, group: "apps" },
+  // 5. Sozlamalar & Ofis, O'quv, SMS, Formalar, Teglar, To'lov turlari
+  { id: "centerSettings", label: "Umumiy sozlamalar", icon: Settings, group: "settings" },
+  { id: "branches", label: "Ofislar (Filiallar)", icon: Building2, group: "office" },
+  { id: "positions", label: "Lavozimlar", icon: ShieldCheck, group: "office" },
+  { id: "managers", label: "Xodimlar", icon: Users, group: "office" },
+  { id: "rooms", label: "Xonalar", icon: Layers, group: "office" },
+  { id: "holidays", label: "Bayram kunlari", icon: PartyPopper, group: "office" },
+  { id: "receiptSettings", label: "Chek sozlamalari", icon: Receipt, group: "office" },
 
-  // 8. Sozlamalar
-  { id: "settings", label: "Markaz sozlamalari", icon: Settings, group: "settings" },
-  { id: "profile", label: "Mening profilim", icon: UserCircle2, group: "settings" },
+  { id: "courses", label: "Kurslar", icon: BookOpen, group: "education" },
+  { id: "reasons", label: "Sabablar", icon: FileText, group: "education" },
+  { id: "placementTest", label: "Daraja testi", icon: Sparkles, group: "education" },
+  { id: "points", label: "Ballar", icon: Coins, group: "education" },
+  { id: "examTemplates", label: "Imtihon shablonlari", icon: ClipboardList, group: "education" },
+
+  { id: "smsBuy", label: "SMS sotib olish", icon: Bot, group: "sms" },
+  { id: "autoSms", label: "Auto SMS", icon: Bot, group: "sms" },
+  { id: "smsTemplates", label: "SMS shablonlar", icon: FileText, group: "sms" },
+
+  { id: "leadForms", label: "Lidlar formalari", icon: Sparkles, group: "forms" },
+  { id: "simpleForm", label: "Oddiy forma", icon: Sparkles, group: "forms" },
+  { id: "teacherForm", label: "O'qituvchi forma", icon: Sparkles, group: "forms" },
+  { id: "staffForm", label: "Xodim formasi", icon: Sparkles, group: "forms" },
+  { id: "referralForm", label: "Referal forma", icon: Sparkles, group: "forms" },
+
+  { id: "tags", label: "Teglar", icon: Sliders, group: "settings" },
+  { id: "paymentTypes", label: "To'lov turlari", icon: CreditCard, group: "settings" },
+  { id: "profile", label: "Profil", icon: UserCircle2, group: "settings" },
   { id: "security", label: "Xavfsizlik", icon: ShieldCheck, group: "settings" },
   { id: "notifications", label: "Bildirishnomalar", icon: Bell, group: "settings" },
 ];

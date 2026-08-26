@@ -248,13 +248,12 @@ export function AppShell({
 
   // Accordion state for sub-menus
   const [openMenus, setOpenMenus] = useState({
-    leads: true,
-    analytics: true,
-    management: true,
-    academic: true,
     finance: true,
-    apps: false,
     settings: true,
+    office: true,
+    academic: true,
+    sms: false,
+    forms: false,
   });
 
   const toggleMenu = (key) => {
@@ -263,20 +262,19 @@ export function AppShell({
 
   // Auto-expand menu if active item is inside it
   useEffect(() => {
-    if (["leads", "leadsLost", "leadsAnalytics", "leadsForm", "leadsSettings", "leadsFormSettings"].includes(view)) {
-      setOpenMenus((prev) => ({ ...prev, leads: true }));
-    } else if (["analytics", "branchAnalytics"].includes(view)) {
-      setOpenMenus((prev) => ({ ...prev, analytics: true }));
-    } else if (["branches", "managers", "employeeAttendance", "approvals"].includes(view)) {
-      setOpenMenus((prev) => ({ ...prev, management: true }));
-    } else if (["groups", "students", "teachers", "attendance", "courses", "rooms"].includes(view)) {
-      setOpenMenus((prev) => ({ ...prev, academic: true }));
-    } else if (["payments", "debtors", "paymentTypes", "expenses", "finance", "breakEven", "coins"].includes(view)) {
+    if (["payments", "additionalIncome", "salaries", "expenses", "debtors"].includes(view)) {
       setOpenMenus((prev) => ({ ...prev, finance: true }));
-    } else if (["holidays", "archive"].includes(view)) {
-      setOpenMenus((prev) => ({ ...prev, apps: true }));
-    } else if (["settings", "centerSettings", "profile", "security", "notifications"].includes(view)) {
+    } else if (["centerSettings", "branches", "positions", "managers", "rooms", "holidays", "receiptSettings", "courses", "reasons", "placementTest", "points", "examTemplates", "smsBuy", "autoSms", "smsTemplates", "simpleForm", "teacherForm", "staffForm", "referralForm", "tags", "paymentTypes"].includes(view)) {
       setOpenMenus((prev) => ({ ...prev, settings: true }));
+      if (["branches", "positions", "managers", "rooms", "holidays", "receiptSettings"].includes(view)) {
+        setOpenMenus((prev) => ({ ...prev, office: true }));
+      } else if (["courses", "reasons", "placementTest", "points", "examTemplates"].includes(view)) {
+        setOpenMenus((prev) => ({ ...prev, academic: true }));
+      } else if (["smsBuy", "autoSms", "smsTemplates"].includes(view)) {
+        setOpenMenus((prev) => ({ ...prev, sms: true }));
+      } else if (["simpleForm", "teacherForm", "staffForm", "referralForm"].includes(view)) {
+        setOpenMenus((prev) => ({ ...prev, forms: true }));
+      }
     }
   }, [view]);
 
@@ -708,7 +706,7 @@ export function AppShell({
             )}
 
             {/* 2. MOLIYA BO'LIMI (SUBMENU) */}
-            {canShowGroup(["payments", "debtors", "paymentTypes", "expenses", "finance", "breakEven", "coins"]) && (
+            {canShowGroup(["payments", "additionalIncome", "salaries", "expenses", "debtors"]) && (
               <>
                 {!collapsed && (
                   <li className="nav-divider">
@@ -722,7 +720,7 @@ export function AppShell({
                     className={`nav-parent-item ${
                       openMenus.finance ? "is-open" : ""
                     } ${
-                      ["payments", "debtors", "paymentTypes", "expenses", "finance", "breakEven", "coins"].includes(view)
+                      ["payments", "additionalIncome", "salaries", "expenses", "debtors"].includes(view)
                         ? "has-active-child"
                         : ""
                     }`}
@@ -756,37 +754,37 @@ export function AppShell({
                           </button>
                         </li>
                       )}
-                      {isAllowed("debtors") && (
+                      {isAllowed("additionalIncome") && (
                         <li>
                           <button
-                            id="nav-sub-debtors"
+                            id="nav-sub-additionalIncome"
                             onClick={() => {
-                              goTo("debtors");
+                              goTo("additionalIncome");
                               setMobileOpen(false);
                             }}
                             className={`nav-sub-item ${
-                              view === "debtors" ? "active" : ""
+                              view === "additionalIncome" ? "active" : ""
                             }`}
                           >
                             <span className="sub-dot" />
-                            <span>Qarzdorlar</span>
+                            <span>Qo'shimcha daromadlar</span>
                           </button>
                         </li>
                       )}
-                      {isAllowed("paymentTypes") && (
+                      {isAllowed("salaries") && (
                         <li>
                           <button
-                            id="nav-sub-paymentTypes"
+                            id="nav-sub-salaries"
                             onClick={() => {
-                              goTo("paymentTypes");
+                              goTo("salaries");
                               setMobileOpen(false);
                             }}
                             className={`nav-sub-item ${
-                              view === "paymentTypes" ? "active" : ""
+                              view === "salaries" ? "active" : ""
                             }`}
                           >
                             <span className="sub-dot" />
-                            <span>To'lov turlari</span>
+                            <span>Ish haqi</span>
                           </button>
                         </li>
                       )}
@@ -807,54 +805,20 @@ export function AppShell({
                           </button>
                         </li>
                       )}
-                      {isAllowed("finance") && (
+                      {isAllowed("debtors") && (
                         <li>
                           <button
-                            id="nav-sub-finance"
+                            id="nav-sub-debtors"
                             onClick={() => {
-                              goTo("finance");
+                              goTo("debtors");
                               setMobileOpen(false);
                             }}
                             className={`nav-sub-item ${
-                              view === "finance" ? "active" : ""
+                              view === "debtors" ? "active" : ""
                             }`}
                           >
                             <span className="sub-dot" />
-                            <span>Moliya balansi</span>
-                          </button>
-                        </li>
-                      )}
-                      {isAllowed("breakEven") && (
-                        <li>
-                          <button
-                            id="nav-sub-breakEven"
-                            onClick={() => {
-                              goTo("breakEven");
-                              setMobileOpen(false);
-                            }}
-                            className={`nav-sub-item ${
-                              view === "breakEven" ? "active" : ""
-                            }`}
-                          >
-                            <span className="sub-dot" />
-                            <span>Break-even</span>
-                          </button>
-                        </li>
-                      )}
-                      {isAllowed("coins") && (
-                        <li>
-                          <button
-                            id="nav-sub-coins"
-                            onClick={() => {
-                              goTo("coins");
-                              setMobileOpen(false);
-                            }}
-                            className={`nav-sub-item ${
-                              view === "coins" ? "active" : ""
-                            }`}
-                          >
-                            <span className="sub-dot" />
-                            <span>Coin tizimi</span>
+                            <span>Qarzdorlar</span>
                           </button>
                         </li>
                       )}
@@ -864,377 +828,8 @@ export function AppShell({
               </>
             )}
 
-            {/* 3. HISOBOTLAR & ANALITIKA (SUBMENU) */}
-            {canShowGroup(["analytics", "branchAnalytics", "leadsAnalytics", "attendance"]) && (
-              <>
-                {!collapsed && (
-                  <li className="nav-divider">
-                    <span>Hisobotlar</span>
-                  </li>
-                )}
-                <li className="nav-parent-wrapper">
-                  <div
-                    id="nav-parent-analytics"
-                    onClick={() => toggleMenu("analytics")}
-                    className={`nav-parent-item ${
-                      openMenus.analytics ? "is-open" : ""
-                    } ${
-                      ["analytics", "branchAnalytics", "leadsAnalytics", "attendance"].includes(view)
-                        ? "has-active-child"
-                        : ""
-                    }`}
-                    title={collapsed ? "Hisobotlar" : undefined}
-                  >
-                    <span
-                      className="ic"
-                      style={{ color: NAV_ICON_COLORS.analytics }}
-                    >
-                      <BarChart3 size={18} />
-                    </span>
-                    <span className="label">Hisobotlar</span>
-                    <ChevronDown size={14} className="chev" />
-                  </div>
-                  {(openMenus.analytics || collapsed) && (
-                    <ul className="nav-sub-menu">
-                      {isAllowed("analytics") && (
-                        <li>
-                          <button
-                            id="nav-sub-analytics"
-                            onClick={() => {
-                              goTo("analytics");
-                              setMobileOpen(false);
-                            }}
-                            className={`nav-sub-item ${
-                              view === "analytics" ? "active" : ""
-                            }`}
-                          >
-                            <span className="sub-dot" />
-                            <span>Markaz analitikasi</span>
-                          </button>
-                        </li>
-                      )}
-                      {isAllowed("branchAnalytics") && (
-                        <li>
-                          <button
-                            id="nav-sub-branchAnalytics"
-                            onClick={() => {
-                              goTo("branchAnalytics");
-                              setMobileOpen(false);
-                            }}
-                            className={`nav-sub-item ${
-                              view === "branchAnalytics" ? "active" : ""
-                            }`}
-                          >
-                            <span className="sub-dot" />
-                            <span>Filiallar analitikasi</span>
-                          </button>
-                        </li>
-                      )}
-                      {isAllowed("leadsAnalytics") && (
-                        <li>
-                          <button
-                            id="nav-sub-leadsAnalytics"
-                            onClick={() => {
-                              goTo("leadsAnalytics");
-                              setMobileOpen(false);
-                            }}
-                            className={`nav-sub-item ${
-                              view === "leadsAnalytics" ? "active" : ""
-                            }`}
-                          >
-                            <span className="sub-dot" />
-                            <span>Lidlar analitikasi</span>
-                          </button>
-                        </li>
-                      )}
-                      {isAllowed("attendance") && (
-                        <li>
-                          <button
-                            id="nav-sub-attendance"
-                            onClick={() => {
-                              goTo("attendance");
-                              setMobileOpen(false);
-                            }}
-                            className={`nav-sub-item ${
-                              view === "attendance" ? "active" : ""
-                            }`}
-                          >
-                            <span className="sub-dot" />
-                            <span>Dars davomati</span>
-                          </button>
-                        </li>
-                      )}
-                    </ul>
-                  )}
-                </li>
-              </>
-            )}
-
-            {/* 4. BOSHQARUV (SUBMENU) */}
-            {canShowGroup(["branches", "managers", "employeeAttendance", "approvals", "courses", "rooms"]) && (
-              <>
-                {!collapsed && (
-                  <li className="nav-divider">
-                    <span>Boshqaruv</span>
-                  </li>
-                )}
-                <li className="nav-parent-wrapper">
-                  <div
-                    id="nav-parent-management"
-                    onClick={() => toggleMenu("management")}
-                    className={`nav-parent-item ${
-                      openMenus.management ? "is-open" : ""
-                    } ${
-                      ["branches", "managers", "employeeAttendance", "approvals", "courses", "rooms"].includes(view)
-                        ? "has-active-child"
-                        : ""
-                    }`}
-                    title={collapsed ? "Boshqaruv" : undefined}
-                  >
-                    <span
-                      className="ic"
-                      style={{ color: NAV_ICON_COLORS.branches }}
-                    >
-                      <Building2 size={18} />
-                    </span>
-                    <span className="label">Boshqaruv</span>
-                    <ChevronDown size={14} className="chev" />
-                  </div>
-                  {(openMenus.management || collapsed) && (
-                    <ul className="nav-sub-menu">
-                      {isAllowed("branches") && (
-                        <li>
-                          <button
-                            id="nav-sub-branches"
-                            onClick={() => {
-                              goTo("branches");
-                              setMobileOpen(false);
-                            }}
-                            className={`nav-sub-item ${
-                              view === "branches" ? "active" : ""
-                            }`}
-                          >
-                            <span className="sub-dot" />
-                            <span>Filiallar</span>
-                          </button>
-                        </li>
-                      )}
-                      {isAllowed("managers") && (
-                        <li>
-                          <button
-                            id="nav-sub-managers"
-                            onClick={() => {
-                              goTo("managers");
-                              setMobileOpen(false);
-                            }}
-                            className={`nav-sub-item ${
-                              view === "managers" ? "active" : ""
-                            }`}
-                          >
-                            <span className="sub-dot" />
-                            <span>Menejerlar</span>
-                          </button>
-                        </li>
-                      )}
-                      {isAllowed("employeeAttendance") && (
-                        <li>
-                          <button
-                            id="nav-sub-employeeAttendance"
-                            onClick={() => {
-                              goTo("employeeAttendance");
-                              setMobileOpen(false);
-                            }}
-                            className={`nav-sub-item ${
-                              view === "employeeAttendance" ? "active" : ""
-                            }`}
-                          >
-                            <span className="sub-dot" />
-                            <span>Xodimlar davomati</span>
-                          </button>
-                        </li>
-                      )}
-                      {isAllowed("approvals") && (
-                        <li>
-                          <button
-                            id="nav-sub-approvals"
-                            onClick={() => {
-                              goTo("approvals");
-                              setMobileOpen(false);
-                            }}
-                            className={`nav-sub-item ${
-                              view === "approvals" ? "active" : ""
-                            }`}
-                          >
-                            <span className="sub-dot" />
-                            <span>Tasdiqlar</span>
-                          </button>
-                        </li>
-                      )}
-                      {isAllowed("courses") && (
-                        <li>
-                          <button
-                            id="nav-sub-courses"
-                            onClick={() => {
-                              goTo("courses");
-                              setMobileOpen(false);
-                            }}
-                            className={`nav-sub-item ${
-                              view === "courses" ? "active" : ""
-                            }`}
-                          >
-                            <span className="sub-dot" />
-                            <span>Kurslar</span>
-                          </button>
-                        </li>
-                      )}
-                      {isAllowed("rooms") && (
-                        <li>
-                          <button
-                            id="nav-sub-rooms"
-                            onClick={() => {
-                              goTo("rooms");
-                              setMobileOpen(false);
-                            }}
-                            className={`nav-sub-item ${
-                              view === "rooms" ? "active" : ""
-                            }`}
-                          >
-                            <span className="sub-dot" />
-                            <span>Xonalar</span>
-                          </button>
-                        </li>
-                      )}
-                    </ul>
-                  )}
-                </li>
-              </>
-            )}
-
-            {/* 5. ILOVALAR (SUBMENU) */}
-            {canShowGroup(["leadsLost", "leadsForm", "holidays", "archive"]) && (
-              <>
-                {!collapsed && (
-                  <li className="nav-divider">
-                    <span>Ilovalar</span>
-                  </li>
-                )}
-                <li className="nav-parent-wrapper">
-                  <div
-                    id="nav-parent-apps"
-                    onClick={() => toggleMenu("apps")}
-                    className={`nav-parent-item ${
-                      openMenus.apps ? "is-open" : ""
-                    } ${
-                      ["leadsLost", "leadsForm", "holidays", "archive"].includes(view)
-                        ? "has-active-child"
-                        : ""
-                    }`}
-                    title={collapsed ? "Ilovalar" : undefined}
-                  >
-                    <span
-                      className="ic"
-                      style={{ color: NAV_ICON_COLORS.leadsLost }}
-                    >
-                      <Bot size={18} />
-                    </span>
-                    <span className="label">Ilovalar</span>
-                    <ChevronDown size={14} className="chev" />
-                  </div>
-                  {(openMenus.apps || collapsed) && (
-                    <ul className="nav-sub-menu">
-                      {isAllowed("leadsLost") && (
-                        <li>
-                          <button
-                            id="nav-sub-leadsLost"
-                            onClick={() => {
-                              goTo("leadsLost");
-                              setMobileOpen(false);
-                            }}
-                            className={`nav-sub-item ${
-                              view === "leadsLost" ? "active" : ""
-                            }`}
-                          >
-                            <span className="sub-dot" />
-                            <span>Ketgan lidlar</span>
-                          </button>
-                        </li>
-                      )}
-                      {isAllowed("leadsForm") && (
-                        <li>
-                          <button
-                            id="nav-sub-leadsForm"
-                            onClick={() => {
-                              goTo("leadsForm");
-                              setMobileOpen(false);
-                            }}
-                            className={`nav-sub-item ${
-                              view === "leadsForm" ? "active" : ""
-                            }`}
-                          >
-                            <span className="sub-dot" />
-                            <span>Lidlar formasi</span>
-                          </button>
-                        </li>
-                      )}
-                      {isAllowed("leadsSettings") && (
-                        <li>
-                          <button
-                            id="nav-sub-leadsSettings"
-                            onClick={() => {
-                              goTo("leadsSettings");
-                              setMobileOpen(false);
-                            }}
-                            className={`nav-sub-item ${
-                              view === "leadsSettings" || view === "leadsFormSettings" ? "active" : ""
-                            }`}
-                          >
-                            <span className="sub-dot" />
-                            <span>Forma sozlamalari</span>
-                          </button>
-                        </li>
-                      )}
-                      {isAllowed("holidays") && (
-                        <li>
-                          <button
-                            id="nav-sub-holidays"
-                            onClick={() => {
-                              goTo("holidays");
-                              setMobileOpen(false);
-                            }}
-                            className={`nav-sub-item ${
-                              view === "holidays" ? "active" : ""
-                            }`}
-                          >
-                            <span className="sub-dot" />
-                            <span>Dam olish kunlari</span>
-                          </button>
-                        </li>
-                      )}
-                      {isAllowed("archive") && (
-                        <li>
-                          <button
-                            id="nav-sub-archive"
-                            onClick={() => {
-                              goTo("archive");
-                              setMobileOpen(false);
-                            }}
-                            className={`nav-sub-item ${
-                              view === "archive" ? "active" : ""
-                            }`}
-                          >
-                            <span className="sub-dot" />
-                            <span>Tizim arxivi</span>
-                          </button>
-                        </li>
-                      )}
-                    </ul>
-                  )}
-                </li>
-              </>
-            )}
-
-            {/* 6. SOZLAMALAR (SUBMENU) */}
-            {canShowGroup(["settings", "centerSettings", "profile", "security", "notifications"]) && (
+            {/* 3. SOZLAMALAR BO'LIMI (SUBMENU) */}
+            {canShowGroup(["centerSettings", "branches", "positions", "managers", "rooms", "holidays", "receiptSettings", "courses", "reasons", "placementTest", "points", "examTemplates", "smsBuy", "autoSms", "smsTemplates", "simpleForm", "teacherForm", "staffForm", "referralForm", "tags", "paymentTypes"]) && (
               <>
                 {!collapsed && (
                   <li className="nav-divider">
@@ -1248,7 +843,7 @@ export function AppShell({
                     className={`nav-parent-item ${
                       openMenus.settings ? "is-open" : ""
                     } ${
-                      ["settings", "centerSettings", "profile", "security", "notifications"].includes(view)
+                      ["centerSettings", "branches", "positions", "managers", "rooms", "holidays", "receiptSettings", "courses", "reasons", "placementTest", "points", "examTemplates", "smsBuy", "autoSms", "smsTemplates", "simpleForm", "teacherForm", "staffForm", "referralForm", "tags", "paymentTypes"].includes(view)
                         ? "has-active-child"
                         : ""
                     }`}
@@ -1265,71 +860,281 @@ export function AppShell({
                   </div>
                   {(openMenus.settings || collapsed) && (
                     <ul className="nav-sub-menu">
-                      {(isAllowed("settings") || isAllowed("centerSettings")) && (
+                      {/* Umumiy sozlamalar */}
+                      {isAllowed("centerSettings") && (
                         <li>
                           <button
-                            id="nav-sub-settings"
+                            id="nav-sub-centerSettings"
                             onClick={() => {
-                              goTo(role === "director" ? "centerSettings" : "settings");
+                              goTo("centerSettings");
                               setMobileOpen(false);
                             }}
                             className={`nav-sub-item ${
-                              view === "settings" || view === "centerSettings" ? "active" : ""
+                              view === "centerSettings" || view === "settings" ? "active" : ""
                             }`}
                           >
                             <span className="sub-dot" />
-                            <span>Markaz sozlamalari</span>
+                            <span>Umumiy sozlamalar</span>
                           </button>
                         </li>
                       )}
-                      {isAllowed("profile") && (
+
+                      {/* Ofis Sub-menu */}
+                      <li className="nav-parent-wrapper pl-2 mt-1">
+                        <div
+                          onClick={() => toggleMenu("office")}
+                          className="flex items-center justify-between py-1.5 px-3 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-200"
+                        >
+                          <span>Ofis</span>
+                          <ChevronDown size={12} className={`transition-transform ${openMenus.office ? "rotate-180" : ""}`} />
+                        </div>
+                        {openMenus.office && (
+                          <ul className="pl-3 border-l border-slate-200 dark:border-slate-800 space-y-0.5 mt-1">
+                            <li>
+                              <button
+                                onClick={() => { goTo("branches"); setMobileOpen(false); }}
+                                className={`nav-sub-item ${view === "branches" ? "active" : ""}`}
+                              >
+                                <span className="sub-dot" />
+                                <span>Ofislar (Filiallar)</span>
+                              </button>
+                            </li>
+                            <li>
+                              <button
+                                onClick={() => { goTo("positions"); setMobileOpen(false); }}
+                                className={`nav-sub-item ${view === "positions" ? "active" : ""}`}
+                              >
+                                <span className="sub-dot" />
+                                <span>Lavozimlar</span>
+                              </button>
+                            </li>
+                            <li>
+                              <button
+                                onClick={() => { goTo("managers"); setMobileOpen(false); }}
+                                className={`nav-sub-item ${view === "managers" ? "active" : ""}`}
+                              >
+                                <span className="sub-dot" />
+                                <span>Xodimlar</span>
+                              </button>
+                            </li>
+                            <li>
+                              <button
+                                onClick={() => { goTo("rooms"); setMobileOpen(false); }}
+                                className={`nav-sub-item ${view === "rooms" ? "active" : ""}`}
+                              >
+                                <span className="sub-dot" />
+                                <span>Xonalar</span>
+                              </button>
+                            </li>
+                            <li>
+                              <button
+                                onClick={() => { goTo("holidays"); setMobileOpen(false); }}
+                                className={`nav-sub-item ${view === "holidays" ? "active" : ""}`}
+                              >
+                                <span className="sub-dot" />
+                                <span>Bayram kunlari</span>
+                              </button>
+                            </li>
+                            <li>
+                              <button
+                                onClick={() => { goTo("receiptSettings"); setMobileOpen(false); }}
+                                className={`nav-sub-item ${view === "receiptSettings" ? "active" : ""}`}
+                              >
+                                <span className="sub-dot" />
+                                <span>Chek sozlama</span>
+                              </button>
+                            </li>
+                          </ul>
+                        )}
+                      </li>
+
+                      {/* O'quv menusi Sub-menu */}
+                      <li className="nav-parent-wrapper pl-2 mt-1">
+                        <div
+                          onClick={() => toggleMenu("academic")}
+                          className="flex items-center justify-between py-1.5 px-3 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-200"
+                        >
+                          <span>O'quv menusi</span>
+                          <ChevronDown size={12} className={`transition-transform ${openMenus.academic ? "rotate-180" : ""}`} />
+                        </div>
+                        {openMenus.academic && (
+                          <ul className="pl-3 border-l border-slate-200 dark:border-slate-800 space-y-0.5 mt-1">
+                            <li>
+                              <button
+                                onClick={() => { goTo("courses"); setMobileOpen(false); }}
+                                className={`nav-sub-item ${view === "courses" ? "active" : ""}`}
+                              >
+                                <span className="sub-dot" />
+                                <span>Kurslar</span>
+                              </button>
+                            </li>
+                            <li>
+                              <button
+                                onClick={() => { goTo("reasons"); setMobileOpen(false); }}
+                                className={`nav-sub-item ${view === "reasons" ? "active" : ""}`}
+                              >
+                                <span className="sub-dot" />
+                                <span>Sabablar</span>
+                              </button>
+                            </li>
+                            <li>
+                              <button
+                                onClick={() => { goTo("placementTest"); setMobileOpen(false); }}
+                                className={`nav-sub-item ${view === "placementTest" ? "active" : ""}`}
+                              >
+                                <span className="sub-dot" />
+                                <span>Daraja testi</span>
+                              </button>
+                            </li>
+                            <li>
+                              <button
+                                onClick={() => { goTo("points"); setMobileOpen(false); }}
+                                className={`nav-sub-item ${view === "points" ? "active" : ""}`}
+                              >
+                                <span className="sub-dot" />
+                                <span>Ballar</span>
+                              </button>
+                            </li>
+                            <li>
+                              <button
+                                onClick={() => { goTo("examTemplates"); setMobileOpen(false); }}
+                                className={`nav-sub-item ${view === "examTemplates" ? "active" : ""}`}
+                              >
+                                <span className="sub-dot" />
+                                <span>Imtihon shablonlari</span>
+                              </button>
+                            </li>
+                          </ul>
+                        )}
+                      </li>
+
+                      {/* SMS-Auto menu Sub-menu */}
+                      <li className="nav-parent-wrapper pl-2 mt-1">
+                        <div
+                          onClick={() => toggleMenu("sms")}
+                          className="flex items-center justify-between py-1.5 px-3 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-200"
+                        >
+                          <span>SMS-Auto menu</span>
+                          <ChevronDown size={12} className={`transition-transform ${openMenus.sms ? "rotate-180" : ""}`} />
+                        </div>
+                        {openMenus.sms && (
+                          <ul className="pl-3 border-l border-slate-200 dark:border-slate-800 space-y-0.5 mt-1">
+                            <li>
+                              <button
+                                onClick={() => { goTo("smsBuy"); setMobileOpen(false); }}
+                                className={`nav-sub-item ${view === "smsBuy" ? "active" : ""}`}
+                              >
+                                <span className="sub-dot" />
+                                <span>Sms sotib olish</span>
+                              </button>
+                            </li>
+                            <li>
+                              <button
+                                onClick={() => { goTo("autoSms"); setMobileOpen(false); }}
+                                className={`nav-sub-item ${view === "autoSms" ? "active" : ""}`}
+                              >
+                                <span className="sub-dot" />
+                                <span>Auto sms</span>
+                              </button>
+                            </li>
+                            <li>
+                              <button
+                                onClick={() => { goTo("smsTemplates"); setMobileOpen(false); }}
+                                className={`nav-sub-item ${view === "smsTemplates" ? "active" : ""}`}
+                              >
+                                <span className="sub-dot" />
+                                <span>Auto sms shablonlar</span>
+                              </button>
+                            </li>
+                          </ul>
+                        )}
+                      </li>
+
+                      {/* Formalar menyusi Sub-menu */}
+                      <li className="nav-parent-wrapper pl-2 mt-1">
+                        <div
+                          onClick={() => toggleMenu("forms")}
+                          className="flex items-center justify-between py-1.5 px-3 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider cursor-pointer hover:text-slate-200"
+                        >
+                          <span>Formalar menyusi</span>
+                          <ChevronDown size={12} className={`transition-transform ${openMenus.forms ? "rotate-180" : ""}`} />
+                        </div>
+                        {openMenus.forms && (
+                          <ul className="pl-3 border-l border-slate-200 dark:border-slate-800 space-y-0.5 mt-1">
+                            <li>
+                              <button
+                                onClick={() => { goTo("simpleForm"); setMobileOpen(false); }}
+                                className={`nav-sub-item ${view === "simpleForm" ? "active" : ""}`}
+                              >
+                                <span className="sub-dot" />
+                                <span>Oddiy forma</span>
+                              </button>
+                            </li>
+                            <li>
+                              <button
+                                onClick={() => { goTo("teacherForm"); setMobileOpen(false); }}
+                                className={`nav-sub-item ${view === "teacherForm" ? "active" : ""}`}
+                              >
+                                <span className="sub-dot" />
+                                <span>O'qituvchi formasi</span>
+                              </button>
+                            </li>
+                            <li>
+                              <button
+                                onClick={() => { goTo("staffForm"); setMobileOpen(false); }}
+                                className={`nav-sub-item ${view === "staffForm" ? "active" : ""}`}
+                              >
+                                <span className="sub-dot" />
+                                <span>Xodim formasi</span>
+                              </button>
+                            </li>
+                            <li>
+                              <button
+                                onClick={() => { goTo("referralForm"); setMobileOpen(false); }}
+                                className={`nav-sub-item ${view === "referralForm" ? "active" : ""}`}
+                              >
+                                <span className="sub-dot" />
+                                <span>Referal forma</span>
+                              </button>
+                            </li>
+                          </ul>
+                        )}
+                      </li>
+
+                      {/* Teglar */}
+                      {isAllowed("tags") && (
                         <li>
                           <button
-                            id="nav-sub-profile"
+                            id="nav-sub-tags"
                             onClick={() => {
-                              goTo("profile");
+                              goTo("tags");
                               setMobileOpen(false);
                             }}
                             className={`nav-sub-item ${
-                              view === "profile" ? "active" : ""
+                              view === "tags" ? "active" : ""
                             }`}
                           >
                             <span className="sub-dot" />
-                            <span>Mening profilim</span>
+                            <span>Teglar</span>
                           </button>
                         </li>
                       )}
-                      {isAllowed("security") && (
+
+                      {/* To'lov turlari */}
+                      {isAllowed("paymentTypes") && (
                         <li>
                           <button
-                            id="nav-sub-security"
+                            id="nav-sub-paymentTypes"
                             onClick={() => {
-                              goTo("security");
+                              goTo("paymentTypes");
                               setMobileOpen(false);
                             }}
                             className={`nav-sub-item ${
-                              view === "security" ? "active" : ""
+                              view === "paymentTypes" ? "active" : ""
                             }`}
                           >
                             <span className="sub-dot" />
-                            <span>Xavfsizlik</span>
-                          </button>
-                        </li>
-                      )}
-                      {isAllowed("notifications") && (
-                        <li>
-                          <button
-                            id="nav-sub-notifications"
-                            onClick={() => {
-                              goTo("notifications");
-                              setMobileOpen(false);
-                            }}
-                            className={`nav-sub-item ${
-                              view === "notifications" ? "active" : ""
-                            }`}
-                          >
-                            <span className="sub-dot" />
-                            <span>Bildirishnomalar</span>
+                            <span>To'lov turlari</span>
                           </button>
                         </li>
                       )}

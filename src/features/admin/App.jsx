@@ -64,6 +64,21 @@ import { HolidaysPage } from "./pages/HolidaysPage";
 import { ProfileSettingsHub } from "./pages/ProfileSettingsHub";
 import { CenterSettingsPage } from "./pages/CenterSettingsPage";
 import { NotificationsPage } from "./pages/NotificationsPage";
+import {
+  AdditionalIncomePage,
+  SalariesPage,
+  PositionsPage,
+  ReceiptSettingsPage,
+  ReasonsPage,
+  PlacementTestPage,
+  PointsGradingPage,
+  ExamTemplatesPage,
+  SmsBuyPage,
+  AutoSmsPage,
+  SmsTemplatesPage,
+  FormsBuilderPage,
+  TagsPage,
+} from "./pages/SettingsSubPages";
 
 // Modals
 import { BranchFormModal } from "./modals/BranchFormModal";
@@ -1228,6 +1243,59 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
               onMarkRead={handleMarkNotifRead}
               onMarkAllRead={handleMarkAllNotifsRead}
             />
+          )}
+
+          {/* Qo'shimcha Moliya & Sozlama Sub-Sahifalari */}
+          {view === "additionalIncome" && (
+            <AdditionalIncomePage directorData={directorData} onRefresh={refreshData} />
+          )}
+
+          {view === "salaries" && (
+            <SalariesPage directorData={directorData} />
+          )}
+
+          {view === "positions" && (
+            <PositionsPage />
+          )}
+
+          {view === "receiptSettings" && (
+            <ReceiptSettingsPage />
+          )}
+
+          {view === "reasons" && (
+            <ReasonsPage />
+          )}
+
+          {view === "placementTest" && (
+            <PlacementTestPage />
+          )}
+
+          {view === "points" && (
+            <PointsGradingPage />
+          )}
+
+          {view === "examTemplates" && (
+            <ExamTemplatesPage />
+          )}
+
+          {view === "smsBuy" && (
+            <SmsBuyPage />
+          )}
+
+          {view === "autoSms" && (
+            <AutoSmsPage />
+          )}
+
+          {view === "smsTemplates" && (
+            <SmsTemplatesPage />
+          )}
+
+          {["simpleForm", "teacherForm", "staffForm", "referralForm"].includes(view) && (
+            <FormsBuilderPage formType={view} />
+          )}
+
+          {view === "tags" && (
+            <TagsPage />
           )}
         </ErrorBoundary>
       </AppShell>
