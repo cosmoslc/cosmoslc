@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { Modal, PhoneInput, BranchPicker } from "../components/primitives";
 import { INPUT_CLS, LABEL_CLS, PrimaryButton } from "../theme/tokens";
-import { hashPassword } from "../utils/helpers";
+import { hashPassword, formatMoneyInput, parseMoneyInput } from "../utils/helpers";
 import { INITIAL_ROLES } from "../pages/PositionsPage";
 import {
   getStaffCustomFields,
@@ -54,26 +54,52 @@ export function ManagerFormModal({ editing, branches = [], onSubmit, onClose }) 
   const [birthDate, setBirthDate] = useState(editing?.birthDate || "");
   const [address, setAddress] = useState(editing?.address || "");
 
-  // Role / Position
-  const [selectedRoleId, setSelectedRoleId] = useState(
-    editing?.roleId || editing?.role || availableRoles[1]?.id || "role-admin"
-  );
+  // Role / Position (Multi-selection support)
+  const initialRoleIds = useMemo(() => {
+    if (Array.isArray(editing?.roleIds) && editing.roleIds.length > 0) {
+      return editing.roleIds;
+    }
+    if (editing?.roleId) return [editing.roleId];
+    if (editing?.role) return [editing.role];
+    return [availableRoles[1]?.id || availableRoles[0]?.id || "role-admin"];
+  }, [editing, availableRoles]);
+
+  const [selectedRoleIds, setSelectedRoleIds] = useState(initialRoleIds);
+
+  const toggleRole = (roleId) => {
+    setSelectedRoleIds((prev) => {
+      if (prev.includes(roleId)) {
+        if (prev.length === 1) return prev; // Kamida 1 ta lavozim tanlangan bo'lishi kerak
+        return prev.filter((id) => id !== roleId);
+      }
+      return [...prev, roleId];
+    });
+  };
+
+  const selectedRoles = useMemo(() => {
+    return availableRoles.filter((r) => selectedRoleIds.includes(r.id));
+  }, [availableRoles, selectedRoleIds]);
+
+  const combinedPermissions = useMemo(() => {
+    const allPerms = selectedRoles.flatMap((r) => r.permissions || []);
+    return Array.from(new Set(allPerms));
+  }, [selectedRoles]);
 
   // Salary & Salary Type
   // types: 'fixed' (oylik oklad), 'hourly' (soatbay), 'lesson' (darsbay), 'percent' (foiz), 'kpi' (kpi/bonus)
   const [salaryType, setSalaryType] = useState(editing?.salaryType || "fixed");
   const [salaryAmount, setSalaryAmount] = useState(
     editing?.monthlySalary !== undefined
-      ? String(editing.monthlySalary)
+      ? formatMoneyInput(editing.monthlySalary)
       : editing?.salaryAmount !== undefined
-      ? String(editing.salaryAmount)
-      : "5000000"
+      ? formatMoneyInput(editing.salaryAmount)
+      : "5 000 000"
   );
   const [kpiStudentAmount, setKpiStudentAmount] = useState(
-    editing?.kpiStudentAmount !== undefined ? String(editing.kpiStudentAmount) : "50000"
+    editing?.kpiStudentAmount !== undefined ? formatMoneyInput(editing.kpiStudentAmount) : "50 000"
   );
   const [kpiContractBonus, setKpiContractBonus] = useState(
-    editing?.kpiContractBonus !== undefined ? String(editing.kpiContractBonus) : "100000"
+    editing?.kpiContractBonus !== undefined ? formatMoneyInput(editing.kpiContractBonus) : "100 000"
   );
 
   // Branches
@@ -96,10 +122,6 @@ export function ManagerFormModal({ editing, branches = [], onSubmit, onClose }) 
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // Selected role object
-  const selectedRole =
-    availableRoles.find((r) => r.id === selectedRoleId) || availableRoles[0];
-
   const handleCustomFieldChange = (fieldId, value) => {
     setCustomFormData((prev) => ({
       ...prev,
@@ -116,6 +138,10 @@ export function ManagerFormModal({ editing, branches = [], onSubmit, onClose }) 
       setError("Telefon raqamini kiriting.");
       return;
     }
+    if (selectedRoleIds.length === 0) {
+      setError("Kamida bitta lavozim (rol) tanlang.");
+      return;
+    }
     if (branchIds.length === 0) {
       setError("Kamida bitta ishlaydigan filialni tanlang.");
       return;
@@ -127,11 +153,15 @@ export function ManagerFormModal({ editing, branches = [], onSubmit, onClose }) 
 
     setBusy(true);
 
-    const parsedSalary = parseFloat(salaryAmount) || 0;
+    const parsedSalary = parseMoneyInput(salaryAmount) || 0;
+    const parsedKpiStudent = parseMoneyInput(kpiStudentAmount) || 0;
+    const parsedKpiBonus = parseMoneyInput(kpiContractBonus) || 0;
     const completion = getStaffFormCompletionStatus(
       { customFormData },
       customFields
     );
+
+    const primaryRole = selectedRoles[0] || availableRoles[0];
 
     const payload = {
       ...(editing || {}),
@@ -140,12 +170,16 @@ export function ManagerFormModal({ editing, branches = [], onSubmit, onClose }) 
       gender,
       birthDate: birthDate || null,
       address: address.trim(),
-      roleId: selectedRole?.id,
-      roleName: selectedRole?.name || "Xodim",
-      roleCode: selectedRole?.code,
-      roleColor: selectedRole?.color || "#6366f1",
-      permissions: selectedRole?.permissions || [],
-      allowedPages: selectedRole?.permissions || editing?.allowedPages || [
+      roleIds: selectedRoleIds,
+      roleId: selectedRoleIds[0] || null,
+      roleNames: selectedRoles.map((r) => r.name),
+      roleName: selectedRoles.map((r) => r.name).join(" • ") || primaryRole?.name || "Xodim",
+      roleCodes: selectedRoles.map((r) => r.code),
+      roleCode: primaryRole?.code || "rol",
+      roleColor: primaryRole?.color || "#6366f1",
+      roleColors: selectedRoles.map((r) => r.color),
+      permissions: combinedPermissions,
+      allowedPages: combinedPermissions.length > 0 ? combinedPermissions : editing?.allowedPages || [
         "home",
         "payments",
         "teachers",
@@ -157,12 +191,13 @@ export function ManagerFormModal({ editing, branches = [], onSubmit, onClose }) 
       salaryType,
       monthlySalary: parsedSalary,
       salaryAmount: parsedSalary,
-      kpiStudentAmount: salaryType === "kpi" ? parseFloat(kpiStudentAmount) || 0 : 0,
-      kpiContractBonus: salaryType === "kpi" ? parseFloat(kpiContractBonus) || 0 : 0,
+      kpiStudentAmount: salaryType === "kpi" ? parsedKpiStudent : 0,
+      kpiContractBonus: salaryType === "kpi" ? parsedKpiBonus : 0,
       branchIds,
       branchId: branchIds[0] || null,
       notes: notes.trim(),
       customFormData,
+      balance: editing?.balance,
       isFormCompleted: completion.isCompleted,
       formFillPercent: completion.percent,
     };
@@ -292,40 +327,83 @@ export function ManagerFormModal({ editing, branches = [], onSubmit, onClose }) 
           </div>
         </div>
 
-        {/* Lavozim tanlash (Positions dropdown) */}
+        {/* Lavozim tanlash (Ko'p tanlov / Multi-selection) */}
         <div>
-          <label className={LABEL_CLS}>
-            <Briefcase size={13} className="inline mr-1 text-indigo-600" />
-            Lavozimi (Roli) *
-          </label>
-          <div className="space-y-1.5">
-            <select
-              value={selectedRoleId}
-              onChange={(e) => setSelectedRoleId(e.target.value)}
-              className={INPUT_CLS}
-            >
-              {availableRoles.map((role) => (
-                <option key={role.id} value={role.id}>
-                  {role.name} ({role.code || "rol"})
-                </option>
-              ))}
-            </select>
-
-            {selectedRole && (
-              <div className="flex items-center gap-2 pt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                <span
-                  className="w-2.5 h-2.5 rounded-full shrink-0"
-                  style={{ backgroundColor: selectedRole.color || "#6366f1" }}
-                />
-                <span>
-                  Biriktiriladigan ruxsatlar soni:{" "}
-                  <strong className="text-slate-800 dark:text-slate-200">
-                    {selectedRole.permissions?.length || 0} ta modul
-                  </strong>
-                </span>
-              </div>
-            )}
+          <div className="flex items-center justify-between mb-1.5">
+            <label className={LABEL_CLS}>
+              <Briefcase size={13} className="inline mr-1 text-indigo-600" />
+              Lavozimi / Roli * <span className="text-[11px] font-normal text-slate-500">(bir nechta tanlash mumkin)</span>
+            </label>
+            <span className="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold">
+              {selectedRoleIds.length} ta tanlandi
+            </span>
           </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {availableRoles.map((role) => {
+              const isSelected = selectedRoleIds.includes(role.id);
+              return (
+                <button
+                  key={role.id}
+                  type="button"
+                  onClick={() => toggleRole(role.id)}
+                  className={`flex items-center justify-between p-2.5 rounded-xl border text-left text-xs transition-all cursor-pointer ${
+                    isSelected
+                      ? "bg-indigo-50/90 dark:bg-indigo-950/60 border-indigo-500 text-indigo-950 dark:text-indigo-100 shadow-2xs"
+                      : "bg-white dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0 pr-2">
+                    <span
+                      className="w-3 h-3 rounded-full shrink-0"
+                      style={{ backgroundColor: role.color || "#6366f1" }}
+                    />
+                    <div className="min-w-0">
+                      <p className="font-bold truncate text-slate-900 dark:text-white">
+                        {role.name}
+                      </p>
+                      <p className="text-[10px] text-slate-400 font-normal">
+                        {role.code || "rol"} • {role.permissions?.length || 0} ta ruxsat
+                      </p>
+                    </div>
+                  </div>
+                  <div
+                    className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 transition-all ${
+                      isSelected
+                        ? "bg-indigo-600 text-white shadow-2xs"
+                        : "border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900"
+                    }`}
+                  >
+                    {isSelected && <Check size={11} strokeWidth={3} />}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {selectedRoles.length > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 text-xs text-slate-500 dark:text-slate-400">
+              <div className="flex flex-wrap gap-1 items-center">
+                <span className="text-[11px]">Biriktirilgan:</span>
+                {selectedRoles.map((r) => (
+                  <span
+                    key={r.id}
+                    className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white inline-flex items-center gap-1"
+                    style={{ backgroundColor: r.color || "#6366f1" }}
+                  >
+                    <Briefcase size={9} />
+                    {r.name}
+                  </span>
+                ))}
+              </div>
+              <span className="text-[11px] font-medium shrink-0">
+                Jami ruxsatlar:{" "}
+                <strong className="text-slate-800 dark:text-slate-200">
+                  {combinedPermissions.length} ta modul
+                </strong>
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Ish haqi va Maosh turi (Fixed yoki KPI+Bonus) */}
@@ -342,7 +420,19 @@ export function ManagerFormModal({ editing, branches = [], onSubmit, onClose }) 
               </label>
               <select
                 value={salaryType}
-                onChange={(e) => setSalaryType(e.target.value)}
+                onChange={(e) => {
+                  const nextType = e.target.value;
+                  setSalaryType(nextType);
+                  if (nextType === "kpi") {
+                    if (!editing || editing.salaryType !== "kpi" || salaryAmount === "5000000") {
+                      setSalaryAmount("0");
+                    }
+                  } else if (nextType === "fixed") {
+                    if (salaryAmount === "0" || !salaryAmount) {
+                      setSalaryAmount("5000000");
+                    }
+                  }
+                }}
                 className={INPUT_CLS}
               >
                 <option value="fixed">Oylik belgilangan oklad (Fixed)</option>
@@ -354,15 +444,21 @@ export function ManagerFormModal({ editing, branches = [], onSubmit, onClose }) 
               <label className="text-[11px] font-semibold text-slate-500 mb-1 block">
                 {salaryType === "fixed"
                   ? "Oylik belgilangan oklad (so'm) *"
-                  : "Asosiy oklad (baza, so'm)"}
+                  : "Asosiy oklad / baza (so'm, 0 dan boshlash mumkin)"}
               </label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={salaryAmount}
-                onChange={(e) => setSalaryAmount(e.target.value)}
-                placeholder={salaryType === "fixed" ? "5000000" : "0 yoki baza oklad..."}
+                onChange={(e) => setSalaryAmount(formatMoneyInput(e.target.value))}
+                placeholder={salaryType === "fixed" ? "5 000 000" : "0"}
                 className={INPUT_CLS}
               />
+              {salaryType === "kpi" && (
+                <p className="text-[10px] text-indigo-600 dark:text-indigo-400 mt-1">
+                  💡 0 so'm qo'yilsa, xodimning maoshi o'quvchilar qo'shilishi bilan 0 dan boshlab o'sib boradi.
+                </p>
+              )}
             </div>
           </div>
 
@@ -379,10 +475,11 @@ export function ManagerFormModal({ editing, branches = [], onSubmit, onClose }) 
                     Har bir olib kelingan / biriktirilgan o'quvchi uchun (so'm) *
                   </label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     value={kpiStudentAmount}
-                    onChange={(e) => setKpiStudentAmount(e.target.value)}
-                    placeholder="Masalan: 50000"
+                    onChange={(e) => setKpiStudentAmount(formatMoneyInput(e.target.value))}
+                    placeholder="50 000"
                     className={INPUT_CLS}
                   />
                   <p className="text-[10px] text-slate-500 mt-1">
@@ -395,10 +492,11 @@ export function ManagerFormModal({ editing, branches = [], onSubmit, onClose }) 
                     1 oy o'qiganligi uchun bonus (so'm) *
                   </label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     value={kpiContractBonus}
-                    onChange={(e) => setKpiContractBonus(e.target.value)}
-                    placeholder="Masalan: 100000"
+                    onChange={(e) => setKpiContractBonus(formatMoneyInput(e.target.value))}
+                    placeholder="100 000"
                     className={INPUT_CLS}
                   />
                   <p className="text-[10px] text-slate-500 mt-1">

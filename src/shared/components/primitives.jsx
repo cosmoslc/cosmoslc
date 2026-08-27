@@ -13,8 +13,9 @@ import { initials, formatMoneyInput, parseMoneyInput } from "../utils/format";
 export function GlobalStyleTag() {
   return (
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,700&display=swap');
-      .font-display { font-family: 'Nunito', ui-sans-serif, system-ui, sans-serif; }
+      @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap');
+      .font-display { font-family: 'Quicksand', ui-sans-serif, system-ui, sans-serif; }
+      * { font-family: 'Quicksand', ui-sans-serif, system-ui, sans-serif; }
       @keyframes fadeIn { from{opacity:0; transform:translateY(-8px);} to{opacity:1; transform:translateY(0);} }
       ::-webkit-scrollbar { width: 6px; height: 6px; }
       ::-webkit-scrollbar-thumb { background: rgba(15,23,42,0.15); border-radius: 3px; }

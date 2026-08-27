@@ -10,19 +10,23 @@ export function initials(name) {
 /**
  * Formats a number or string with spaces every thousand (e.g. 10000 -> "10 000", 1000000 -> "1 000 000")
  */
-export function formatMoneyInput(value) {
+export function formatMoneyInput(value, allowNegative = false) {
   if (value === undefined || value === null || value === "") return "";
+  const isNegative = allowNegative && String(value).trim().startsWith("-");
   const raw = String(value).replace(/\s+/g, "").replace(/\D/g, "");
-  if (!raw) return "";
-  return raw.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  if (!raw) return isNegative ? "-" : "";
+  const formatted = raw.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  return isNegative ? `-${formatted}` : formatted;
 }
 
 /**
  * Parses a thousand-separated string back to raw number (or empty string if blank)
  */
-export function parseMoneyInput(value) {
+export function parseMoneyInput(value, allowNegative = false) {
   if (value === undefined || value === null || value === "") return "";
+  const isNegative = allowNegative && String(value).trim().startsWith("-");
   const raw = String(value).replace(/\s+/g, "").replace(/\D/g, "");
-  return raw ? Number(raw) : "";
+  if (!raw) return isNegative ? 0 : "";
+  return isNegative ? -Number(raw) : Number(raw);
 }
 

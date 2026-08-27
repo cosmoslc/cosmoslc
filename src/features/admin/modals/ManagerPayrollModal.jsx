@@ -1,81 +1,116 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   DollarSign,
-  Plus,
   Calendar,
-  CreditCard,
   Banknote,
-  Building,
   CheckCircle2,
   Receipt,
-  Gift,
-  Award,
+  User,
+  Briefcase,
+  Wallet,
+  Sparkles,
 } from "lucide-react";
-import { Modal } from "../components/primitives";
-import { GLASS_SOFT, INPUT_CLS, PrimaryButton } from "../theme/tokens";
+import { Modal, Avatar } from "../components/primitives";
+import { INPUT_CLS, PrimaryButton } from "../theme/tokens";
 import { getManagerPerformanceStats } from "../utils/dataHelpers";
-import { money, formatDate, todayISO, thisMonthKey } from "../utils/helpers";
+import { money, formatDate, todayISO, formatMoneyInput, parseMoneyInput } from "../utils/helpers";
 
 export function ManagerPayrollModal({
   manager,
   directorData,
   opData,
+  onSubmit,
   onAddPayment,
   onClose,
 }) {
-  const [month, setMonth] = useState(thisMonthKey());
-  const [paymentType, setPaymentType] = useState("salary"); // 'salary', 'advance', 'bonus'
+  const saveHandler = onSubmit || onAddPayment;
+  const [date, setDate] = useState(todayISO());
   const [method, setMethod] = useState("naqd"); // 'naqd', 'card', 'bank'
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
+  const [isNoteManual, setIsNoteManual] = useState(false);
   const [error, setError] = useState("");
 
-  const stats = getManagerPerformanceStats(
-    manager,
-    opData,
-    directorData,
-    month,
-  );
+  const stats = getManagerPerformanceStats(manager, opData, directorData);
+
+  const expectedSalary =
+    manager.salaryType === "kpi"
+      ? stats?.expectedPay || manager.salaryAmount || 0
+      : manager.monthlySalary || manager.salaryAmount || 0;
+
+  const managerBalance =
+    manager.balance !== undefined
+      ? Number(manager.balance)
+      : stats?.remaining ?? 0;
 
   const allHistory = (directorData?.managerPayments || [])
-    .filter((p) => p.managerId === manager.id)
+    .filter((p) => String(p.managerId) === String(manager?.id))
     .sort(
       (a, b) =>
         new Date(b.date || b.createdAt || 0) -
-        new Date(a.date || a.createdAt || 0),
+        new Date(a.date || a.createdAt || 0)
     );
 
-  // Set default amount when clicking quick remaining
-  function fillRemaining() {
-    if (stats?.remaining > 0) {
-      setAmount(stats.remaining.toString());
+  const numAmount = parseMoneyInput(amount);
+  const isExactSalary = expectedSalary > 0 && numAmount === expectedSalary;
+  const isAdvance = expectedSalary > 0 && numAmount > 0 && numAmount < expectedSalary;
+  const isOverSalary = expectedSalary > 0 && numAmount > expectedSalary;
+
+  // Handle amount change with thousand separator and smart automatic notes
+  function handleAmountChange(val) {
+    const formatted = formatMoneyInput(val);
+    setAmount(formatted);
+
+    const parsed = parseMoneyInput(formatted);
+
+    // If user hasn't manually edited the note, set smart notes
+    if (!isNoteManual) {
+      if (expectedSalary > 0 && parsed === expectedSalary) {
+        setNote("Oylik maosh");
+      } else if (expectedSalary > 0 && parsed > 0 && parsed < expectedSalary) {
+        setNote("Avans");
+      } else if (expectedSalary > 0 && parsed > expectedSalary) {
+        setNote("Oylik maosh va qo'shimcha to'lov");
+      } else if (!parsed) {
+        setNote("");
+      }
+    }
+  }
+
+  // Set default amount when clicking quick buttons
+  function fillExactSalary() {
+    if (expectedSalary > 0) {
+      setAmount(formatMoneyInput(expectedSalary));
+      if (!isNoteManual) setNote("Oylik maosh");
+    }
+  }
+
+  function fillBalance() {
+    if (managerBalance > 0) {
+      setAmount(formatMoneyInput(managerBalance));
+      if (!isNoteManual) setNote(managerBalance === expectedSalary ? "Oylik maosh" : "Qoldiq maosh to'lovi");
+    } else if (expectedSalary > 0) {
+      fillExactSalary();
     }
   }
 
   function submitPayment() {
-    const amt = parseFloat(amount);
+    const amt = parseMoneyInput(amount);
     if (!amt || amt <= 0) {
       setError("To'g'ri to'lov summasini kiriting.");
       return;
     }
 
-    onAddPayment({
-      managerId: manager.id,
-      type: paymentType,
-      method,
-      amount: amt,
-      month,
-      date: todayISO(),
-      note:
-        note.trim() ||
-        `${
-          paymentType === "salary"
-            ? "Oylik maosh"
-            : paymentType === "advance"
-              ? "Avans to'lovi"
-              : "KPI Bonus"
-        } (${manager.name})`,
-    });
+    if (saveHandler) {
+      saveHandler({
+        managerId: manager.id,
+        type: "salary",
+        method,
+        amount: amt,
+        date: date || todayISO(),
+        note: note.trim() || (isExactSalary ? "Oylik maosh" : `Maosh to'lovi (${manager?.name || ""})`),
+      });
+    }
 
     setAmount("");
     setNote("");
@@ -84,240 +119,224 @@ export function ManagerPayrollModal({
   }
 
   return (
-    <Modal title={`${manager.name} — Maosh berish`} onClose={onClose} wide>
-      <div className="space-y-4 text-slate-800">
-        {/* Month and Salary Model Info */}
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            <span
-              className={`text-xs px-2.5 py-1 rounded-xl font-bold ${
-                manager.salaryType === "kpi"
-                  ? "bg-indigo-100 text-indigo-800"
-                  : "bg-emerald-100 text-emerald-800"
-              }`}
-            >
-              {manager.salaryType === "kpi"
-                ? "KPI + BONUS modeli"
-                : "Belgilangan (Fixed) oylik"}
-            </span>
-            {manager.salaryType === "kpi" && (
-              <span className="text-[11px] text-slate-500">
-                (O'quvchiga: {money(manager.kpiStudentAmount || 0)} so'm + 1 oy o'qiganlik bonusi:{" "}
-                {money(manager.kpiContractBonus || 0)} so'm)
+    <Modal title="Maosh to'lash" onClose={onClose} wide>
+      <div className="space-y-3.5 text-slate-800 dark:text-slate-200">
+        {/* 1. Xodim (Auto-selected Name & Info) */}
+        <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <Avatar name={manager?.name || "Xodim"} size={40} />
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Xodim:
+                </span>
+                <p className="text-sm font-bold text-slate-900 dark:text-white">
+                  {manager?.name}
+                </p>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5">
+                <Briefcase size={12} className="text-indigo-500" />
+                <span>{manager?.roleName || "Xodim"}</span>
+                <span>•</span>
+                <span>{manager?.phone || "Telefon yo'q"}</span>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <div className="text-right px-3 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700">
+              <span className="text-[9px] uppercase font-bold text-slate-400 block">
+                Belgilangan Ish haqi
               </span>
-            )}
-          </div>
+              <span className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white">
+                {money(expectedSalary)} so'm
+              </span>
+            </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-500">Hisob oyi:</span>
-            <input
-              type="month"
-              value={month}
-              onChange={(e) => setMonth(e.target.value)}
-              className={`${INPUT_CLS} w-auto py-1 text-xs`}
-            />
-          </div>
-        </div>
-
-        {/* Calculated Stats Cards */}
-        <div
-          className={`${GLASS_SOFT} rounded-xl p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs`}
-        >
-          <div className="bg-white/80 rounded-xl p-3 border border-slate-200/80">
-            <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">
-              Hisoblangan jami haqi
-            </p>
-            <p className="text-base font-extrabold text-slate-900 mt-1">
-              {money(stats?.expectedPay || 0)}{" "}
-              <span className="text-xs font-semibold text-slate-500">so'm</span>
-            </p>
-          </div>
-
-          <div className="bg-white/80 rounded-xl p-3 border border-slate-200/80">
-            <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">
-              Shu oy to'langan
-            </p>
-            <p className="text-base font-extrabold text-sky-700 mt-1">
-              {money(stats?.totalPaid || 0)}{" "}
-              <span className="text-xs font-semibold text-slate-500">so'm</span>
-            </p>
-          </div>
-
-          <div className="bg-white/80 rounded-xl p-3 border border-slate-200/80">
-            <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">
-              Qolgan qoldiq
-            </p>
-            <p
-              className={`text-base font-extrabold mt-1 ${
-                stats?.remaining > 0 ? "text-rose-600" : "text-emerald-600"
-              }`}
-            >
-              {money(stats?.remaining || 0)}{" "}
-              <span className="text-xs font-semibold text-slate-500">so'm</span>
-            </p>
-          </div>
-
-          <div className="bg-white/80 rounded-xl p-3 border border-slate-200/80 flex flex-col justify-between">
-            <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">
-              O'quvchilar ko'rsatkichi
-            </p>
-            <p className="text-xs font-bold text-slate-800 mt-1">
-              {stats?.totalBrought || 0} ta o'quvchi • {stats?.oneMonthStudentsCount || 0} ta 1 oy o'qigan
-            </p>
+            <div className="text-right px-3 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700">
+              <span className="text-[9px] uppercase font-bold text-slate-400 block">
+                Joriy Balans
+              </span>
+              <span
+                className={`text-xs sm:text-sm font-extrabold ${
+                  managerBalance >= 0
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-rose-600 dark:text-rose-400"
+                }`}
+              >
+                {money(managerBalance)} so'm
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Payment Type Tabs */}
-        <div>
-          <label className="text-xs font-bold text-slate-900 block mb-1.5">
-            To'lov turi *
-          </label>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { id: "salary", label: "Oylik maosh", icon: DollarSign },
-              { id: "advance", label: "Avans to'lovi", icon: Receipt },
-              { id: "bonus", label: "KPI / Bonus", icon: Gift },
-            ].map((t) => {
-              const Icon = t.icon;
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setPaymentType(t.id)}
-                  className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                    paymentType === t.id
-                      ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
-                      : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+        {/* Form Inputs */}
+        <div className="space-y-3">
+          {/* Row 1: Narx (Summa) & Sana */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1">
+                  <DollarSign size={13} className="text-emerald-600" />
+                  To'lov summasi *
+                </label>
+                <div className="flex items-center gap-2">
+                  {expectedSalary > 0 && (
+                    <button
+                      type="button"
+                      onClick={fillExactSalary}
+                      className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                    >
+                      Oylik: {money(expectedSalary)}
+                    </button>
+                  )}
+                  {managerBalance > 0 && managerBalance !== expectedSalary && (
+                    <button
+                      type="button"
+                      onClick={fillBalance}
+                      className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                    >
+                      Balans: {money(managerBalance)}
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="relative">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={amount}
+                  onChange={(e) => handleAmountChange(e.target.value)}
+                  placeholder="0"
+                  className={`${INPUT_CLS} pr-14 text-sm font-semibold tracking-wide ${
+                    isExactSalary
+                      ? "border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/20 dark:bg-emerald-950/20"
+                      : ""
                   }`}
-                >
-                  <Icon size={14} />
-                  {t.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+                  autoFocus
+                />
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 pointer-events-none">
+                  so'm
+                </span>
+              </div>
 
-        {/* Payment Amount and Quick fill */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {/* Status helper / Smart feedback */}
+              {isExactSalary && (
+                <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
+                  <CheckCircle2 size={12} className="text-emerald-600" />
+                  Belgilangan oylik maosh qiymatiga to'liq teng (Oylik maosh)
+                </p>
+              )}
+              {isAdvance && (
+                <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                  <span>ℹ️</span> Qisman to'lov / Avans
+                </p>
+              )}
+              {isOverSalary && (
+                <p className="text-[11px] font-semibold text-sky-600 dark:text-sky-400 mt-1 flex items-center gap-1">
+                  <span>ℹ️</span> Oylikdan ortiqcha to'lov (qoldiq avansga hisoblanadi)
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-900 dark:text-white block mb-1">
+                <Calendar size={13} className="inline mr-1 text-sky-600" />
+                To'lov sanasi *
+              </label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className={INPUT_CLS}
+              />
+            </div>
+          </div>
+
+          {/* Row 2: Maosh berish turi (Dropdown: Naqd, Plastik, Bank o'tkazma) */}
+          <div>
+            <label className="text-xs font-bold text-slate-900 dark:text-white block mb-1">
+              <Banknote size={13} className="inline mr-1 text-emerald-600" />
+              To'lov usuli *
+            </label>
+            <select
+              value={method}
+              onChange={(e) => setMethod(e.target.value)}
+              className={INPUT_CLS}
+            >
+              <option value="naqd">💵 Naqd pul</option>
+              <option value="card">💳 Plastik karta</option>
+              <option value="bank">🏦 Bank o'tkazmasi</option>
+            </select>
+          </div>
+
+          {/* Row 3: Izoh */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-bold text-slate-900">
-                To'lov summasi (so'mda) *
+              <label className="text-xs font-bold text-slate-900 dark:text-white block">
+                Izoh (ixtiyoriy)
               </label>
-              {stats?.remaining > 0 && (
-                <button
-                  type="button"
-                  onClick={fillRemaining}
-                  className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 underline cursor-pointer"
-                >
-                  Qoldiqni kiritish ({money(stats.remaining)} so'm)
-                </button>
+              {isExactSalary && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                  ✓ Oylik maosh
+                </span>
               )}
             </div>
             <input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="Masalan: 2500000"
-              className={INPUT_CLS}
-              autoFocus
+              value={note}
+              onChange={(e) => {
+                setNote(e.target.value);
+                setIsNoteManual(true);
+              }}
+              placeholder="Masalan: Oylik maosh"
+              className={`${INPUT_CLS} ${
+                isExactSalary
+                  ? "bg-emerald-50/30 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-200 font-medium"
+                  : ""
+              }`}
             />
           </div>
-
-          <div>
-            <label className="text-xs font-bold text-slate-900 block mb-1">
-              To'lov usuli *
-            </label>
-            <div className="grid grid-cols-3 gap-1.5">
-              {[
-                { id: "naqd", label: "Naqd", icon: Banknote },
-                { id: "card", label: "Karta", icon: CreditCard },
-                { id: "bank", label: "O'tkazma", icon: Building },
-              ].map((m) => {
-                const Icon = m.icon;
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => setMethod(m.id)}
-                    className={`py-2.5 px-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                      method === m.id
-                        ? "bg-slate-900 text-white border-slate-900"
-                        : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
-                    }`}
-                  >
-                    <Icon size={13} />
-                    {m.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Note input */}
-        <div>
-          <label className="text-xs font-bold text-slate-900 block mb-1">
-            Izoh / Izohli xabar (ixtiyoriy)
-          </label>
-          <input
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Masalan: 2026-yil avgust oyi uchun to'liq maosh to'landi"
-            className={INPUT_CLS}
-          />
         </div>
 
         {error && (
-          <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+          <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-400 text-xs font-semibold">
             {error}
           </div>
         )}
 
-        <PrimaryButton onClick={submitPayment} className="w-full">
-          <CheckCircle2 size={16} /> To'lovni tasdiqlash va rasmiylashtirish
-        </PrimaryButton>
+        <div className="pt-1">
+          <PrimaryButton onClick={submitPayment} className="w-full py-2.5">
+            <CheckCircle2 size={15} /> To'lovni tasdiqlash
+          </PrimaryButton>
+        </div>
 
-        {/* Payment history list */}
+        {/* Previous payment history */}
         {allHistory.length > 0 && (
-          <div className="pt-3 border-t border-slate-100 space-y-2">
-            <p className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
+            <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
               Avvalgi to'lovlar tarixi ({allHistory.length} ta)
             </p>
-            <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
+            <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
               {allHistory.map((p, idx) => (
                 <div
                   key={p.id || idx}
-                  className="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 flex items-center justify-between text-xs"
+                  className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/70 rounded-xl p-2.5 flex items-center justify-between text-xs"
                 >
                   <div className="flex items-center gap-2">
-                    <span
-                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                        p.type === "advance"
-                          ? "bg-amber-100 text-amber-800"
-                          : p.type === "bonus"
-                            ? "bg-purple-100 text-purple-800"
-                            : "bg-blue-100 text-blue-800"
-                      }`}
-                    >
-                      {p.type === "advance"
-                        ? "Avans"
-                        : p.type === "bonus"
-                          ? "Bonus"
-                          : "Maosh"}
+                    <span className="w-6 h-6 rounded-lg bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold text-[11px]">
+                      💵
                     </span>
                     <div>
-                      <p className="font-bold text-slate-900">
+                      <p className="font-bold text-slate-900 dark:text-white text-xs">
                         {money(p.amount)} so'm
                       </p>
-                      <p className="text-[10px] text-slate-500">
-                        {p.month} oyi • {p.date || formatDate(p.createdAt)}
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                        {p.date || formatDate(p.createdAt)} • {p.method === "card" ? "Plastik" : p.method === "bank" ? "Bank o'tkazma" : "Naqd"}
                       </p>
                     </div>
                   </div>
                   {p.note && (
-                    <span className="text-[11px] text-slate-500 max-w-[180px] truncate text-right">
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 max-w-[180px] truncate text-right">
                       {p.note}
                     </span>
                   )}

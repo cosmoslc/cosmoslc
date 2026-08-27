@@ -15,17 +15,21 @@ export function GroupFormModal({
   onSubmit,
   onClose,
 }) {
+  const matchedInitialCourse = initialCourseId
+    ? courses.find((c) => String(c.id) === String(initialCourseId))
+    : null;
+
   const [name, setName] = useState(editing?.name || "");
   const [courseId, setCourseId] = useState(
-    editing?.courseId || initialCourseId || courses[0]?.id || "",
+    editing?.courseId || matchedInitialCourse?.id || initialCourseId || courses[0]?.id || "",
   );
   const [price, setPrice] = useState(
     editing?.price ??
-      (initialCourseId
-        ? courses.find((c) => c.id === initialCourseId)?.price ?? ""
-        : courses[0]?.price ?? ""),
+      (matchedInitialCourse?.price ?? courses[0]?.price ?? ""),
   );
-  const [duration, setDuration] = useState(editing?.durationMonths ?? "3");
+  const [duration, setDuration] = useState(
+    editing?.durationMonths ?? (matchedInitialCourse?.durationMonths ?? "3"),
+  );
 
   const [teacherId, setTeacherId] = useState(
     editing?.teacherHrId || editing?.teacherId || "",

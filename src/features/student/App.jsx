@@ -186,7 +186,7 @@ export default function App() {
       className="min-h-screen w-full text-slate-900 relative"
       style={{
         background: BG_GRADIENT,
-        fontFamily: "'Nunito', ui-sans-serif, system-ui, sans-serif",
+        fontFamily: "'Quicksand', ui-sans-serif, system-ui, sans-serif",
       }}
     >
       <GlobalStyleTag />

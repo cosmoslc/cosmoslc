@@ -332,9 +332,18 @@ export function CoursesPage({
                       </div>
                     </div>
 
-                    {/* Quick Edit & Delete Icons */}
+                    {/* Quick Action Icons */}
                     {canEdit && (
                       <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() =>
+                            openModal({ type: "groupForm", courseId: c.id })
+                          }
+                          title="Guruh ochish"
+                          className="p-1.5 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-xl transition-colors"
+                        >
+                          <Plus size={15} />
+                        </button>
                         <button
                           onClick={() =>
                             openModal({ type: "courseForm", editing: c })
@@ -495,31 +504,6 @@ export function CoursesPage({
                       </div>
                     )}
                   </div>
-                </div>
-
-                {/* Footer Action Buttons */}
-                <div className="p-3.5 pl-6 bg-slate-50/60 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2.5">
-                  {canEdit && (
-                    <button
-                      onClick={() =>
-                        openModal({ type: "groupForm", courseId: c.id })
-                      }
-                      className="flex-1 py-2.5 px-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:border-indigo-300 dark:hover:border-indigo-700 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
-                    >
-                      <Plus size={14} /> Guruh ochish
-                    </button>
-                  )}
-
-                  {canEdit && (
-                    <button
-                      onClick={() =>
-                        openModal({ type: "courseForm", editing: c })
-                      }
-                      className="py-2.5 px-3.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900/50 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors flex items-center gap-1"
-                    >
-                      <Pencil size={13} /> Tahrirlash
-                    </button>
-                  )}
                 </div>
               </div>
             );

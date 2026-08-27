@@ -464,6 +464,20 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
   const handleSaveManagerPayment = async (paymentData) => {
     try {
       await api.addManagerPayment(paymentData);
+      
+      // Also update manager's balance if manager exists
+      const targetManager = (directorData?.managers || []).find(
+        (m) => String(m.id) === String(paymentData.managerId)
+      );
+      if (targetManager && targetManager.balance !== undefined) {
+        const currentBal = Number(targetManager.balance) || 0;
+        const paidAmt = Number(paymentData.amount) || 0;
+        await api.updateManager(targetManager.id, {
+          ...targetManager,
+          balance: currentBal - paidAmt,
+        });
+      }
+
       addToast("Menejer to'lovi muvaffaqiyatli qayd etildi");
       await refreshData();
     } catch (e) {
@@ -1003,6 +1017,8 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
                 setModal({ type: "managerPayroll", manager })
               }
               onDeleteManager={handleDeleteManager}
+              onSaveManager={handleSaveManager}
+              onSaveManagerPayment={handleSaveManagerPayment}
             />
           )}
 
@@ -1427,6 +1443,7 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
         {modal?.type === "groupForm" && (
           <GroupFormModal
             editing={modal.group}
+            initialCourseId={modal.courseId}
             courses={directorData?.courses || []}
             teachers={directorData?.teachersHR || []}
             rooms={opData?.rooms || []}

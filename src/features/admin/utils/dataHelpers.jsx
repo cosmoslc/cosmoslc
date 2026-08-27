@@ -213,14 +213,14 @@ export function getManagerPerformanceStats(
     salaryType === "fixed" ? fixedBase : fixedBase + totalKpiBonus;
 
   const allPayments = (directorData?.managerPayments || []).filter(
-    (p) => p.managerId === manager.id && (!month || p.month === month),
+    (p) => String(p.managerId) === String(manager.id) && (!month || p.month === month),
   );
 
   const totalPaid = allPayments.reduce(
     (s, p) => s + Number(p.amount || 0),
     0,
   );
-  const remaining = Math.max(0, expectedPay - totalPaid);
+  const remaining = expectedPay - totalPaid;
 
   return {
     students,

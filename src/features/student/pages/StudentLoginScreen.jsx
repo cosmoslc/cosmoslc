@@ -59,7 +59,7 @@ export function StudentLoginScreen({ appData, onLoginStudent }) {
       className="min-h-screen w-full flex items-center justify-center text-slate-900 dark:text-slate-100 p-4 sm:p-6 lg:p-10 relative overflow-x-hidden"
       style={{
         background: "linear-gradient(135deg, #0b1329 0%, #030712 100%)",
-        fontFamily: "'Nunito', ui-sans-serif, system-ui, sans-serif",
+        fontFamily: "'Quicksand', ui-sans-serif, system-ui, sans-serif",
       }}
     >
       <GlobalStyleTag />
