@@ -103,13 +103,17 @@ import { BranchDetailModal } from "./modals/BranchDetailModal";
 import { ManagerFormModal } from "./modals/ManagerFormModal";
 import { ManagerPermissionsModal } from "./modals/ManagerPermissionsModal";
 import { TeacherHRFormModal } from "./modals/TeacherHRFormModal";
+import { SupportTeacherFormModal } from "./modals/SupportTeacherFormModal";
+import { ImportTeachersModal } from "./modals/ImportTeachersModal";
 import { TeacherPayrollModal } from "./modals/TeacherPayrollModal";
 import { ManagerPayrollModal } from "./modals/ManagerPayrollModal";
 import { CourseFormModal } from "./modals/CourseFormModal";
 import { GroupFormModal } from "./modals/GroupFormModal";
+import { ImportGroupsModal } from "./modals/ImportGroupsModal";
 import { GroupProfileModal } from "./modals/GroupProfileModal";
 import { RecordPaymentModal } from "./modals/RecordPaymentModal";
 import { AddStudentModal } from "./modals/AddStudentModal";
+import { ImportStudentsModal } from "./modals/ImportStudentsModal";
 import { SetStudentStatusModal } from "./modals/SetStudentStatusModal";
 import { AssignStudentToGroupModal } from "./modals/AssignStudentToGroupModal";
 import { StudentBulkMessageModal } from "./modals/StudentBulkMessageModal";
@@ -328,6 +332,7 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
   // Determine current role and permissions
   const role = session?.role || defaultRole;
   const isDirector = role === "director";
+  const canEdit = isDirector || session?.canEdit !== false;
   const allowedPages = useMemo(() => {
     if (isDirector) return ALL_PAGE_IDS;
     return session?.allowedPages || DEFAULT_MANAGER_PAGES;
@@ -1047,6 +1052,7 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
               opData={opData}
               scopeBranches={scopeBranches}
               scopeBranchIds={scopeBranchIds}
+              canEdit={canEdit}
               openModal={(m) => setModal(m)}
               openGroupModal={(group) =>
                 setModal({ type: "groupForm", group })
@@ -1414,16 +1420,39 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
 
         {modal?.type === "teacherHRForm" && (
           <TeacherHRFormModal
-            editing={modal.teacher}
+            editing={modal.teacher || modal.editing}
             branches={directorData?.branches || []}
             onSubmit={handleSaveTeacherHR}
             onClose={() => setModal(null)}
           />
         )}
 
+        {modal?.type === "supportTeacherForm" && (
+          <SupportTeacherFormModal
+            editing={modal.teacher || modal.editing}
+            teachers={(directorData?.teachersHR || []).filter(
+              (t) => !t.isAssistant && t.role !== "assistant" && !t.isSupport,
+            )}
+            branches={directorData?.branches || []}
+            onSubmit={handleSaveTeacherHR}
+            onClose={() => setModal(null)}
+          />
+        )}
+
+        {modal?.type === "importTeachers" && (
+          <ImportTeachersModal
+            directorData={directorData}
+            opData={opData}
+            scopeBranches={scopeBranches}
+            onImportSuccess={handleSaveTeacherHR}
+            onClose={() => setModal(null)}
+          />
+        )}
+
         {modal?.type === "teacherPayroll" && (
           <TeacherPayrollModal
-            teacher={modal.teacher}
+            teacher={modal.teacher || modal.editing}
+            teacherId={modal.teacherId}
             directorData={directorData}
             opData={opData}
             onSubmit={handleSaveTeacherPayment}
@@ -1445,10 +1474,20 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
             editing={modal.group}
             initialCourseId={modal.courseId}
             courses={directorData?.courses || []}
-            teachers={directorData?.teachersHR || []}
-            rooms={opData?.rooms || []}
+            teachers={directorData?.teachersHR || directorData?.teachers || opData?.teachers || []}
+            rooms={opData?.rooms || directorData?.rooms || []}
+            groups={opData?.groups || []}
             branches={directorData?.branches || []}
             onSubmit={handleSaveGroup}
+            onClose={() => setModal(null)}
+          />
+        )}
+
+        {modal?.type === "importGroups" && (
+          <ImportGroupsModal
+            opData={opData}
+            directorData={directorData}
+            onImportSuccess={handleSaveGroup}
             onClose={() => setModal(null)}
           />
         )}
@@ -1491,12 +1530,29 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
           />
         )}
 
-        {modal?.type === "addStudent" && (
+        {(modal?.type === "addStudent" || modal?.type === "addStudentFull") && (
           <AddStudentModal
+            full={modal?.type === "addStudentFull"}
             initialLead={modal.lead}
-            groups={opData?.groups || []}
+            scopeBranches={scopeBranches}
             branches={directorData?.branches || []}
+            directorData={directorData}
+            opData={opData}
+            groups={opData?.groups || []}
+            editing={modal.editing}
+            onAdd={handleSaveStudent}
+            onSave={handleSaveStudent}
             onSubmit={handleSaveStudent}
+            onClose={() => setModal(null)}
+          />
+        )}
+
+        {modal?.type === "importStudents" && (
+          <ImportStudentsModal
+            opData={opData}
+            directorData={directorData}
+            scopeBranches={scopeBranches}
+            onImportSuccess={handleSaveStudent}
             onClose={() => setModal(null)}
           />
         )}

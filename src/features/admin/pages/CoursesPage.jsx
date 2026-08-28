@@ -212,31 +212,31 @@ export function CoursesPage({
         </div>
       </div>
 
-      {/* Filter & Search Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
-        {/* Search */}
-        <div className="relative flex-1 w-full">
+      {/* Filter & Search Bar - Compact one row */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 bg-white dark:bg-slate-900 p-2 sm:p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+        {/* Search - Decreased width */}
+        <div className="relative w-56 sm:w-64 max-w-full">
           <Search
-            size={14}
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+            size={13}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
           />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Kurs nomi bo'yicha qidirish..."
-            className={`${INPUT_CLS} pl-9`}
+            placeholder="Kurs nomi..."
+            className={`${INPUT_CLS} pl-8 py-1.5 text-xs`}
           />
         </div>
 
         {/* Branch filter & Sort */}
-        <div className="flex items-center gap-2.5 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-2">
           {scopeBranches.length > 1 && (
-            <div className="relative flex-1 sm:flex-initial">
+            <div className="relative">
               <select
                 value={selectedBranchId}
                 onChange={(e) => setSelectedBranchId(e.target.value)}
-                className={INPUT_CLS}
+                className={`${INPUT_CLS} w-auto min-w-[120px] py-1.5 text-xs`}
               >
                 <option value="all">Barcha filiallar</option>
                 {scopeBranches.map((b) => (
@@ -248,11 +248,11 @@ export function CoursesPage({
             </div>
           )}
 
-          <div className="relative flex-1 sm:flex-initial">
+          <div className="relative">
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="w-full sm:w-auto pl-3 pr-8 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              className="w-auto min-w-[130px] pl-3 pr-8 py-1.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
             >
               <option value="default">Odatiy saralash</option>
               <option value="students">O'quvchilar soni bo'yicha</option>

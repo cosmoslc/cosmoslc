@@ -390,32 +390,8 @@ export function DayPicker({ value = [], onChange }) {
   }
 
   return (
-    <div className="space-y-2.5">
-      <div className="flex items-center gap-1.5 flex-wrap text-xs">
-        <button
-          type="button"
-          onClick={() => setPreset("even")}
-          className="px-2.5 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-semibold hover:bg-indigo-100 transition-all text-[11px]"
-        >
-          Juft kunlar (Dsh/Chsh/Jum)
-        </button>
-        <button
-          type="button"
-          onClick={() => setPreset("odd")}
-          className="px-2.5 py-1 rounded-xl bg-purple-50 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 font-semibold hover:bg-purple-100 transition-all text-[11px]"
-        >
-          Toq kunlar (Ssh/Psh/Shn)
-        </button>
-        <button
-          type="button"
-          onClick={() => setPreset("all")}
-          className="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-semibold hover:bg-slate-200 transition-all text-[11px]"
-        >
-          Har kuni (Dsh-Jum)
-        </button>
-      </div>
-
-      <div className="flex flex-wrap gap-2 pt-0.5">
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-1.5 pt-0.5">
         {WEEK_DAYS.map((d) => {
           const isSelected = value.includes(d);
           return (
@@ -423,10 +399,10 @@ export function DayPicker({ value = [], onChange }) {
               key={d}
               type="button"
               onClick={() => toggle(d)}
-              className={`px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 ${
                 isSelected
-                  ? "bg-indigo-600 text-white border-2 border-indigo-600 shadow-md shadow-indigo-500/30 scale-105 ring-2 ring-indigo-300 dark:ring-indigo-800"
-                  : "bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                  ? "bg-indigo-600 text-white border border-indigo-600 shadow-xs"
+                  : "bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600"
               }`}
             >
               {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}

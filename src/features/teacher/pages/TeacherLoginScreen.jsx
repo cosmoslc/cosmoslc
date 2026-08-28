@@ -224,6 +224,22 @@ export function TeacherLoginScreen({ teachersHR = [], onLoginTeacher }) {
               <p className="text-slate-400 text-xs text-center pt-2">
                 Hisobingiz yo'qmi? Markaz direktori yoki menejeridan sizni o'qituvchi sifatida qo'shishini so'rang.
               </p>
+
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-center gap-4 text-xs">
+                <a
+                  href="/admin.html"
+                  className="text-slate-400 hover:text-indigo-400 font-semibold transition-colors no-underline"
+                >
+                  ← Boshqaruv paneli
+                </a>
+                <span className="text-slate-600">•</span>
+                <a
+                  href="/student.html"
+                  className="text-slate-400 hover:text-amber-400 font-semibold transition-colors no-underline"
+                >
+                  O'quvchi portali →
+                </a>
+              </div>
             </div>
           </div>
         </div>

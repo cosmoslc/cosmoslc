@@ -94,6 +94,16 @@ export function getTeacherPayStats(
   branch,
   month,
 ) {
+  if (!teacher || !teacher.id) {
+    return {
+      expectedPay: 0,
+      advances: 0,
+      salaryPaid: 0,
+      totalPaid: 0,
+      remaining: 0,
+    };
+  }
+
   const tIdStr = String(teacher.id);
   const groups = (opData?.groups || []).filter(
     (g) => String(g.teacherHrId || g.teacherId) === tIdStr,

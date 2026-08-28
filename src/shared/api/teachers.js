@@ -1,22 +1,43 @@
 import { supabase } from './supabaseClient';
 
 function fromRow(t) {
+  let extraMeta = {};
+  if (t.note && typeof t.note === 'string' && t.note.startsWith('{') && t.note.endsWith('}')) {
+    try {
+      extraMeta = JSON.parse(t.note);
+    } catch {
+      // not JSON
+    }
+  }
+
   return {
     id: t.id,
     branchId: t.branch_id || t.branchId,
     name: t.name,
     phone: t.phone,
-    salaryType: t.salary_type || t.salaryType,
+    salaryType: t.salary_type || t.salaryType || extraMeta.salaryType || 'percent',
     revenueSharePercent: t.revenue_share_percent || t.revenueSharePercent || 0,
+    perStudentSalary: t.per_student_salary || t.perStudentSalary || extraMeta.perStudentSalary || 0,
     fixedSalary: t.fixed_salary || t.fixedSalary || 0,
     rating: t.rating || 0,
-    note: t.note || '',
+    note: extraMeta.userNote !== undefined ? extraMeta.userNote : (t.note || ''),
+    gender: t.gender || extraMeta.gender || 'male',
+    birthDate: t.birth_date || t.birthDate || extraMeta.birthDate || '',
+    isAssistant: t.is_assistant ?? t.isAssistant ?? extraMeta.isAssistant ?? false,
+    role: t.role || extraMeta.role || 'teacher',
+    type: t.type || extraMeta.type,
+    isSupport: t.is_support ?? t.isSupport ?? extraMeta.isSupport ?? false,
+    assignedTeacherId: t.assigned_teacher_id || t.assignedTeacherId || extraMeta.assignedTeacherId || null,
+    workingDays: t.working_days || t.workingDays || extraMeta.workingDays || [],
+    workingHours: t.working_hours || t.workingHours || extraMeta.workingHours || '',
+    startTime: t.start_time || t.startTime || extraMeta.startTime || '',
+    endTime: t.end_time || t.endTime || extraMeta.endTime || '',
     canCreateGroups: t.can_create_groups ?? t.canCreateGroups ?? true,
     canReceivePayments: t.can_receive_payments ?? t.canReceivePayments ?? true,
     passwordHash: t.password_hash || t.passwordHash,
     subject: t.subject,
     color: t.color || '#8b5cf6',
-    photo: t.photo,
+    photo: t.photo || extraMeta.photo || null,
   };
 }
 
@@ -30,27 +51,66 @@ export async function fetchTeachersHR() {
 }
 
 export async function addTeacherHR(payload) {
-  const { data, error } = await supabase.from('teachers_hr').insert({
+  // Store structured extra meta in note if needed to guarantee persistence across schema versions
+  const metaObj = {
+    userNote: payload.note || '',
+    gender: payload.gender,
+    birthDate: payload.birthDate,
+    perStudentSalary: payload.perStudentSalary,
+    isAssistant: payload.isAssistant,
+    role: payload.role,
+    type: payload.type,
+    isSupport: payload.isSupport,
+    assignedTeacherId: payload.assignedTeacherId,
+    workingDays: payload.workingDays,
+    workingHours: payload.workingHours,
+    startTime: payload.startTime,
+    endTime: payload.endTime,
+    photo: payload.photo,
+  };
+  const notePayload = JSON.stringify(metaObj);
+
+  const insertData = {
     branch_id: payload.branchId,
     name: payload.name,
     phone: payload.phone,
     salary_type: payload.salaryType,
     revenue_share_percent: payload.revenueSharePercent,
     fixed_salary: payload.fixedSalary,
-    rating: payload.rating,
-    note: payload.note,
+    rating: payload.rating || 0,
+    note: notePayload,
     can_create_groups: payload.canCreateGroups,
     can_receive_payments: payload.canReceivePayments,
     password_hash: payload.passwordHash || null,
     subject: payload.subject || null,
     color: payload.color || '#8b5cf6',
     photo: payload.photo || null,
-  }).select().single();
+  };
+
+  const { data, error } = await supabase.from('teachers_hr').insert(insertData).select().single();
   if (error) throw error;
   return fromRow(data);
 }
 
 export async function updateTeacherHR(id, payload) {
+  const metaObj = {
+    userNote: payload.note !== undefined ? payload.note : '',
+    gender: payload.gender,
+    birthDate: payload.birthDate,
+    perStudentSalary: payload.perStudentSalary,
+    isAssistant: payload.isAssistant,
+    role: payload.role,
+    type: payload.type,
+    isSupport: payload.isSupport,
+    assignedTeacherId: payload.assignedTeacherId,
+    workingDays: payload.workingDays,
+    workingHours: payload.workingHours,
+    startTime: payload.startTime,
+    endTime: payload.endTime,
+    photo: payload.photo,
+  };
+  const notePayload = JSON.stringify(metaObj);
+
   const patch = {
     branch_id: payload.branchId,
     name: payload.name,
@@ -59,7 +119,7 @@ export async function updateTeacherHR(id, payload) {
     revenue_share_percent: payload.revenueSharePercent,
     fixed_salary: payload.fixedSalary,
     rating: payload.rating,
-    note: payload.note,
+    note: notePayload,
     can_create_groups: payload.canCreateGroups,
     can_receive_payments: payload.canReceivePayments,
   };

@@ -1,5 +1,17 @@
 import { useMemo, useState, useRef, useEffect } from "react";
-import { GraduationCap, Plus } from "lucide-react";
+import {
+  GraduationCap,
+  Plus,
+  Users,
+  UserCheck,
+  Snowflake,
+  Search,
+  UserPlus,
+  Trash2,
+  Megaphone,
+  Pencil,
+  FileSpreadsheet,
+} from "lucide-react";
 import {
   BTN_GHOST,
   BTN_ICON,
@@ -8,7 +20,6 @@ import {
   LABEL_CLS,
   PrimaryButton,
 } from "../theme/tokens";
-import { Icon } from "../components/Icon";
 import {
   displayPhone,
   formatDate,
@@ -55,6 +66,7 @@ export function StudentsPage({
   canEdit,
   onAssignStudentToGroup,
   onBulkAssignStudentsToGroup,
+  onSaveStudent,
   onUpdateStudent,
   onDeleteStudent,
   onAddCoins,
@@ -234,112 +246,141 @@ export function StudentsPage({
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => openModal({ type: "importStudents" })}
+            className="px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 font-bold text-xs hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all flex items-center gap-2 shadow-xs cursor-pointer"
+          >
+            <FileSpreadsheet size={16} /> Excel'dan import
+          </button>
           <PrimaryButton onClick={() => openModal({ type: "addStudentFull" })}>
             <Plus size={16} /> Yangi o'quvchi
           </PrimaryButton>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3.5">
-        <SummaryCard
-          icon="users"
-          label="Jami o'quvchilar"
-          value={total}
-          color="#6D28D9"
-        />
-        <SummaryCard
-          icon="check-circle"
-          label="Faol"
-          value={active}
-          color="#16A34A"
-        />
-        <SummaryCard
-          icon="snowflake"
-          label="Muzlatilgan"
-          value={paused}
-          color="#60A5FA"
-        />
-        <SummaryCard
-          icon="user-x"
-          label="Ketgan"
-          value={left}
-          color="#EF4444"
-        />
-        <SummaryCard
-          icon="clipboard-list"
-          label="Guruhga qo'shilgan"
-          value={assigned}
-          color="#0EA5E9"
-        />
-        <SummaryCard
-          icon="users-slash"
-          label="Guruhga qo'shilmagan"
-          value={unassigned}
-          color="#64748B"
-        />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Card 1: Jami o'quvchilar */}
+        <div className={`${GLASS} p-4 rounded-2xl flex flex-col justify-between space-y-3`}>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              Jami o'quvchilar
+            </span>
+            <div className="p-2.5 rounded-xl bg-violet-50 dark:bg-violet-950/60 text-violet-600 dark:text-violet-400 border border-violet-200/60 dark:border-violet-800/60">
+              <Users size={18} />
+            </div>
+          </div>
+          <div className="text-2xl font-black text-slate-900 dark:text-white">
+            {total}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-slate-100 dark:border-slate-800">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-900/50">
+              Guruhli: {assigned}
+            </span>
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+              Guruhsiz: {unassigned}
+            </span>
+          </div>
+        </div>
+
+        {/* Card 2: Faol o'quvchilar */}
+        <div className={`${GLASS} p-4 rounded-2xl flex flex-col justify-between space-y-3`}>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              Faol o'quvchilar
+            </span>
+            <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60">
+              <UserCheck size={18} />
+            </div>
+          </div>
+          <div className="text-2xl font-black text-slate-900 dark:text-white">
+            {active}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-slate-100 dark:border-slate-800">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-900/50">
+              Faol: {active}
+            </span>
+          </div>
+        </div>
+
+        {/* Card 3: Muzlatilgan */}
+        <div className={`${GLASS} p-4 rounded-2xl flex flex-col justify-between space-y-3`}>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              Muzlatilgan
+            </span>
+            <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60">
+              <Snowflake size={18} />
+            </div>
+          </div>
+          <div className="text-2xl font-black text-slate-900 dark:text-white">
+            {paused}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-slate-100 dark:border-slate-800">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200/60 dark:border-amber-900/50">
+              Muzlatilgan: {paused}
+            </span>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-        <div className="md:col-span-2">
-          <label className={LABEL_CLS}>Qidiruv</label>
-          <div className="relative">
-            <Icon
-              name="search"
-              size={14}
+      {/* Search & Filters - Compact one row */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-2 sm:p-2.5 shadow-2xs">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="relative w-52 sm:w-60 max-w-full">
+            <Search
+              size={13}
               className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
             />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Ism, telefon, guruh"
-              className={`${INPUT_CLS} pl-9`}
+              placeholder="Ism, telefon..."
+              className={`${INPUT_CLS} pl-8 py-1.5 text-xs`}
             />
           </div>
-        </div>
 
-        <div>
-          <label className={LABEL_CLS}>Guruh</label>
-          <select
-            value={groupFilter}
-            onChange={(e) => setGroupFilter(e.target.value)}
-            className={INPUT_CLS}
-          >
-            <option value="all">Hammasi</option>
-            {groups.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
-              </option>
-            ))}
-          </select>
-        </div>
+          <div className="w-auto min-w-[130px]">
+            <select
+              value={groupFilter}
+              onChange={(e) => setGroupFilter(e.target.value)}
+              className={`${INPUT_CLS} py-1.5 text-xs`}
+            >
+              <option value="all">Barcha guruhlar</option>
+              {groups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <div>
-          <label className={LABEL_CLS}>Qarzdorlik</label>
-          <select
-            value={debtFilter}
-            onChange={(e) => setDebtFilter(e.target.value)}
-            className={INPUT_CLS}
-          >
-            <option value="all">Hammasi</option>
-            <option value="debtors">Qarzdorlar</option>
-            <option value="clear">Qarzi yo'q</option>
-          </select>
-        </div>
+          <div className="w-auto min-w-[120px]">
+            <select
+              value={debtFilter}
+              onChange={(e) => setDebtFilter(e.target.value)}
+              className={`${INPUT_CLS} py-1.5 text-xs`}
+            >
+              <option value="all">Qarzdorlik (Hammasi)</option>
+              <option value="debtors">Qarzdorlar</option>
+              <option value="clear">Qarzi yo'q</option>
+            </select>
+          </div>
 
-        <div>
-          <label className={LABEL_CLS}>Holat</label>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className={INPUT_CLS}
-          >
-            <option value="all">Hammasi</option>
-            <option value="active">Faol</option>
-            <option value="paused">Muzlatilgan</option>
-            <option value="left">Ketgan</option>
-            <option value="returned">Qaytib kelgan</option>
-            <option value="graduated">Bitirgan</option>
-          </select>
+          <div className="w-auto min-w-[120px]">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className={`${INPUT_CLS} py-1.5 text-xs`}
+            >
+              <option value="all">Holat (Hammasi)</option>
+              <option value="active">Faol</option>
+              <option value="paused">Muzlatilgan</option>
+              <option value="left">Ketgan</option>
+              <option value="returned">Qaytib kelgan</option>
+              <option value="graduated">Bitirgan</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -358,7 +399,7 @@ export function StudentsPage({
                 className={`${BTN_GHOST} gap-2`}
                 type="button"
               >
-                <Icon name="user-plus" size={15} /> Guruhga qo'shish
+                <UserPlus size={15} /> Guruhga qo'shish
               </button>
               {bulkAssignOpen && (
                 <div className="absolute right-0 z-20 mt-2 w-52 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-2 shadow-xl">
@@ -387,17 +428,17 @@ export function StudentsPage({
             </div>
             <button
               onClick={() => bulkAction("remove")}
-              className={`${BTN_GHOST}`}
+              className={`${BTN_GHOST} gap-2`}
               type="button"
             >
-              <Icon name="trash" size={15} /> Chiqarish
+              <Trash2 size={15} /> Chiqarish
             </button>
             <button
               onClick={() => bulkAction("message")}
-              className={`${BTN_GHOST}`}
+              className={`${BTN_GHOST} gap-2`}
               type="button"
             >
-              <Icon name="megaphone" size={15} /> Xabar yuborish
+              <Megaphone size={15} /> Xabar yuborish
             </button>
           </div>
         </div>
@@ -563,7 +604,7 @@ export function StudentsPage({
                               type="button"
                               title="Guruhdan chiqarish"
                             >
-                              <Icon name="trash" size={12} />
+                              <Trash2 size={12} />
                             </button>
                           </div>
                         );
@@ -628,7 +669,7 @@ export function StudentsPage({
                     title="Guruhga qo'shish"
                     aria-label="Add to group"
                   >
-                    <Icon name="user-plus" size={14} />
+                    <UserPlus size={14} />
                   </button>
                   <button
                     onClick={() =>
@@ -639,7 +680,7 @@ export function StudentsPage({
                     title="SMS yuborish"
                     aria-label="SMS yuborish"
                   >
-                    <Icon name="megaphone" size={14} />
+                    <Megaphone size={14} />
                   </button>
                   <button
                     onClick={() =>
@@ -650,7 +691,7 @@ export function StudentsPage({
                     title="Tahrirlash"
                     aria-label="Edit student"
                   >
-                    <Icon name="pen" size={14} />
+                    <Pencil size={14} />
                   </button>
                   <button
                     onClick={() =>
@@ -668,7 +709,7 @@ export function StudentsPage({
                     title="O'chirish"
                     aria-label="Delete student"
                   >
-                    <Icon name="trash" size={14} />
+                    <Trash2 size={14} />
                   </button>
                 </div>
               </div>
@@ -677,35 +718,6 @@ export function StudentsPage({
         </div>
       )}
     </div>
-  );
-}
-
-function SummaryCard({ icon, label, value, color }) {
-  return (
-    <div className="stat-card border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm hover:-translate-y-1 transition-all cursor-pointer">
-      <div className="flex items-center justify-between mb-2">
-        <div
-          className="icon-badge w-[34px] h-[34px] rounded-xl flex items-center justify-center shrink-0 shadow-md"
-          style={{ background: color ? `linear-gradient(135deg, ${color}, ${color}dd)` : undefined }}
-        >
-          <Icon name={icon} size={16} />
-        </div>
-      </div>
-      <div className="stat-value text-[19px] font-extrabold tracking-tight text-slate-900 dark:text-white mb-0.5">
-        {value}
-      </div>
-      <div className="stat-label text-xs font-bold text-slate-500 dark:text-slate-400">
-        {label}
-      </div>
-    </div>
-  );
-}
-
-function Badge({ icon, label }) {
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-1 text-[10px] font-medium text-slate-600 dark:text-slate-300">
-      <Icon name={icon} size={12} /> {label}
-    </span>
   );
 }
 

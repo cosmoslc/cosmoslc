@@ -1,27 +1,5 @@
 import { supabase } from "./supabaseClient";
 
-const GROUPS_CACHE_KEY = "cosmos_cache_groups_v1";
-
-const DEFAULT_GROUPS = [
-  {
-    id: "group_demo_1",
-    courseId: "course_1",
-    roomId: "room_1",
-    teacherHrId: null,
-    teacherId: null,
-    teacherSalaryType: "percent",
-    teacherSalaryPercent: 50,
-    teacherSalaryFixed: 0,
-    name: "General English - Group A",
-    price: 450000,
-    days: ["Dush", "Chor", "Juma"],
-    time: "14:00 - 16:00",
-    durationMonths: 6,
-    startDate: "2026-01-10",
-    color: "#8b5cf6",
-  },
-];
-
 function fromRow(g) {
   const tId = g.teacher_hr_id || g.teacherHrId || g.teacher_id || g.teacherId || null;
   return {
@@ -47,104 +25,46 @@ export async function fetchGroups() {
   try {
     const { data, error } = await supabase.from("groups").select("*");
     if (error) {
-      console.warn("Supabase fetchGroups warning (using cache/fallback):", error.message || error);
-      const cached = typeof localStorage !== "undefined" ? localStorage.getItem(GROUPS_CACHE_KEY) : null;
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-        } catch (e) {}
-      }
-      return DEFAULT_GROUPS;
+      console.error("Supabase fetchGroups error:", error.message || error);
+      return [];
     }
-    const result = (data || []).map(fromRow);
-    try {
-      if (result.length > 0 && typeof localStorage !== "undefined") {
-        localStorage.setItem(GROUPS_CACHE_KEY, JSON.stringify(result));
-      } else if (typeof localStorage !== "undefined") {
-        const cached = localStorage.getItem(GROUPS_CACHE_KEY);
-        if (cached) {
-          try {
-            const parsed = JSON.parse(cached);
-            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-          } catch (e) {}
-        }
-      }
-    } catch (e) {}
-    return result;
+    return (data || []).map(fromRow);
   } catch (err) {
-    console.warn("Supabase fetchGroups error (using cache/fallback):", err?.message || err);
-    const cached = typeof localStorage !== "undefined" ? localStorage.getItem(GROUPS_CACHE_KEY) : null;
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      } catch (e) {}
-    }
-    return DEFAULT_GROUPS;
+    console.error("Supabase fetchGroups exception:", err?.message || err);
+    return [];
   }
 }
 
 export async function addGroup(payload) {
   const tId = payload.teacherHrId ?? payload.teacherId ?? null;
-  let newGroup = null;
-  try {
-    const { data, error } = await supabase
-      .from("groups")
-      .insert({
-        course_id: payload.courseId,
-        room_id: payload.roomId,
-        teacher_hr_id: tId,
-        teacher_salary_type: payload.teacherSalaryType || "percent",
-        teacher_salary_percent: payload.teacherSalaryPercent || 0,
-        teacher_salary_fixed: payload.teacherSalaryFixed || 0,
-        name: payload.name,
-        price: payload.price,
-        days: payload.days,
-        time: payload.time,
-        duration_months: payload.durationMonths,
-        start_date: payload.startDate,
-        color: payload.color,
-      })
-      .select()
-      .single();
-    if (!error && data) {
-      newGroup = fromRow(data);
-    }
-  } catch (err) {
-    console.warn("Supabase addGroup insert note:", err?.message || err);
+  const insertData = {
+    course_id: payload.courseId,
+    room_id: payload.roomId,
+    teacher_hr_id: tId,
+    teacher_salary_type: payload.teacherSalaryType || "percent",
+    teacher_salary_percent: payload.teacherSalaryPercent || 0,
+    teacher_salary_fixed: payload.teacherSalaryFixed || 0,
+    name: payload.name,
+    price: payload.price,
+    days: payload.days,
+    time: payload.time,
+    duration_months: payload.durationMonths,
+    start_date: payload.startDate,
+    color: payload.color || "#8b5cf6",
+  };
+
+  const { data, error } = await supabase
+    .from("groups")
+    .insert(insertData)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Supabase addGroup error:", error.message || error);
+    throw error;
   }
 
-  if (!newGroup) {
-    newGroup = {
-      id: "group_" + Date.now(),
-      courseId: payload.courseId,
-      roomId: payload.roomId,
-      teacherHrId: tId,
-      teacherId: tId,
-      teacherSalaryType: payload.teacherSalaryType || "percent",
-      teacherSalaryPercent: payload.teacherSalaryPercent || 0,
-      teacherSalaryFixed: payload.teacherSalaryFixed || 0,
-      name: payload.name,
-      price: payload.price || 0,
-      days: payload.days || [],
-      time: payload.time || "",
-      durationMonths: payload.durationMonths || 6,
-      startDate: payload.startDate || new Date().toISOString().slice(0, 10),
-      color: payload.color || "#8b5cf6",
-    };
-  }
-
-  try {
-    if (typeof localStorage !== "undefined") {
-      const cached = localStorage.getItem(GROUPS_CACHE_KEY);
-      const current = cached ? JSON.parse(cached) : [];
-      const updated = [newGroup, ...current.filter((g) => g.id !== newGroup.id)];
-      localStorage.setItem(GROUPS_CACHE_KEY, JSON.stringify(updated));
-    }
-  } catch (e) {}
-
-  return newGroup;
+  return fromRow(data);
 }
 
 export async function updateGroup(id, payload) {
@@ -152,7 +72,7 @@ export async function updateGroup(id, payload) {
   const patch = {};
   if (payload.courseId !== undefined) patch.course_id = payload.courseId;
   if (payload.roomId !== undefined) patch.room_id = payload.roomId;
-  if (tId !== null) patch.teacher_hr_id = tId;
+  if (tId !== null && tId !== undefined) patch.teacher_hr_id = tId;
   if (payload.teacherSalaryType !== undefined) patch.teacher_salary_type = payload.teacherSalaryType;
   if (payload.teacherSalaryPercent !== undefined) patch.teacher_salary_percent = payload.teacherSalaryPercent;
   if (payload.teacherSalaryFixed !== undefined) patch.teacher_salary_fixed = payload.teacherSalaryFixed;
@@ -164,44 +84,21 @@ export async function updateGroup(id, payload) {
   if (payload.startDate !== undefined) patch.start_date = payload.startDate;
   if (payload.color !== undefined) patch.color = payload.color;
 
-  try {
-    const { error } = await supabase
-      .from("groups")
-      .update(patch)
-      .eq("id", id);
-    if (error) console.warn("Supabase updateGroup note:", error.message || error);
-  } catch (e) {
-    console.warn("Supabase updateGroup error:", e?.message || e);
-  }
+  const { error } = await supabase
+    .from("groups")
+    .update(patch)
+    .eq("id", id);
 
-  try {
-    if (typeof localStorage !== "undefined") {
-      const cached = localStorage.getItem(GROUPS_CACHE_KEY);
-      if (cached) {
-        const current = JSON.parse(cached);
-        const updated = current.map((g) => (g.id === id ? { ...g, ...payload } : g));
-        localStorage.setItem(GROUPS_CACHE_KEY, JSON.stringify(updated));
-      }
-    }
-  } catch (e) {}
+  if (error) {
+    console.error("Supabase updateGroup error:", error.message || error);
+    throw error;
+  }
 }
 
 export async function deleteGroup(id) {
-  try {
-    const { error } = await supabase.from("groups").delete().eq("id", id);
-    if (error) console.warn("Supabase deleteGroup note:", error.message || error);
-  } catch (e) {
-    console.warn("Supabase deleteGroup error:", e?.message || e);
+  const { error } = await supabase.from("groups").delete().eq("id", id);
+  if (error) {
+    console.error("Supabase deleteGroup error:", error.message || error);
+    throw error;
   }
-
-  try {
-    if (typeof localStorage !== "undefined") {
-      const cached = localStorage.getItem(GROUPS_CACHE_KEY);
-      if (cached) {
-        const current = JSON.parse(cached);
-        const updated = current.filter((g) => g.id !== id);
-        localStorage.setItem(GROUPS_CACHE_KEY, JSON.stringify(updated));
-      }
-    }
-  } catch (e) {}
 }

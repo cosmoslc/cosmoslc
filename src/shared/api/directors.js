@@ -1,63 +1,13 @@
 import { supabase } from './supabaseClient';
 
-const DEFAULT_DIRECTOR = {
-  id: "dir_default",
-  name: "COSMOS Director",
-  phone: "+998901234567",
-  passwordHash: "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
-  centerName: "COSMOS Academy",
-  address: "Toshkent sh., Yunusobod t.",
-  themeId: "cosmos",
-  logo: null,
-  customTheme: null,
-  twoFactorEnabled: false,
-};
-
-const DEFAULT_BRANCH = {
-  id: "branch_default",
-  directorId: "dir_default",
-  name: "Asosiy Filial",
-  address: "Toshkent sh., Markaz-1",
-  color: "#8b5cf6",
-};
-
 export async function fetchDirectors() {
   try {
     const { data, error } = await supabase.from('directors').select('*');
     if (error) {
-      console.warn('Supabase fetchDirectors error (using fallback):', error.message || error);
-      return [DEFAULT_DIRECTOR];
+      console.error('Supabase fetchDirectors error:', error.message || error);
+      return [];
     }
-    if (!data || data.length === 0) {
-      try {
-        const { data: inserted, error: insErr } = await supabase.from('directors').insert({
-          name: "COSMOS Director",
-          phone: "+998901234567",
-          password_hash: "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
-          center_name: "COSMOS Academy",
-          address: "Toshkent sh., Yunusobod t.",
-          theme_id: "cosmos",
-        }).select().single();
-        if (!insErr && inserted) {
-          return [{
-            id: inserted.id,
-            name: inserted.name,
-            phone: inserted.phone,
-            passwordHash: inserted.password_hash,
-            centerName: inserted.center_name,
-            logo: inserted.logo,
-            address: inserted.address,
-            themeId: inserted.theme_id,
-            customTheme: inserted.custom_theme,
-            twoFactorEnabled: inserted.two_factor_enabled,
-          }];
-        }
-      } catch (e) {
-        console.warn("Auto-seed director error:", e.message || e);
-      }
-      return [DEFAULT_DIRECTOR];
-    }
-    return data.map(d => ({
+    return (data || []).map(d => ({
       id: d.id,
       name: d.name,
       phone: d.phone,
@@ -70,8 +20,8 @@ export async function fetchDirectors() {
       twoFactorEnabled: d.two_factor_enabled,
     }));
   } catch (err) {
-    console.warn('Network / fetch error in fetchDirectors, returning fallback director:', err.message || err);
-    return [DEFAULT_DIRECTOR];
+    console.error('fetchDirectors error:', err.message || err);
+    return [];
   }
 }
 
@@ -89,9 +39,9 @@ export async function updateDirector(director) {
         center_name: director.centerName,
       })
       .eq('id', director.id);
-    if (error) console.warn('Supabase updateDirector error:', error.message || error);
+    if (error) console.error('Supabase updateDirector error:', error.message || error);
   } catch (err) {
-    console.warn('Network error in updateDirector:', err.message || err);
+    console.error('Network error in updateDirector:', err.message || err);
   }
 }
 
@@ -115,7 +65,7 @@ export async function addDirector(payload) {
       themeId: data.theme_id, customTheme: data.custom_theme, twoFactorEnabled: data.two_factor_enabled,
     };
   } catch (err) {
-    console.warn('Error in addDirector:', err.message || err);
+    console.error('Error in addDirector:', err.message || err);
     throw err;
   }
 }
@@ -128,31 +78,13 @@ export async function fetchBranches() {
   try {
     const { data, error } = await supabase.from('branches').select('*');
     if (error) {
-      console.warn('Supabase fetchBranches error (using fallback):', error.message || error);
-      return [DEFAULT_BRANCH];
+      console.error('Supabase fetchBranches error:', error.message || error);
+      return [];
     }
-    if (!data || data.length === 0) {
-      try {
-        const { data: dirs } = await supabase.from('directors').select('id').limit(1);
-        const dirId = dirs && dirs[0] ? dirs[0].id : DEFAULT_DIRECTOR.id;
-        if (dirId) {
-          const { data: insBranch } = await supabase.from('branches').insert({
-            director_id: dirId,
-            name: "Asosiy Filial",
-            address: "Toshkent sh., Markaz-1",
-            color: "#8b5cf6",
-          }).select().single();
-          if (insBranch) return [branchFromRow(insBranch)];
-        }
-      } catch (e) {
-        console.warn("Auto-seed branch error:", e.message || e);
-      }
-      return [DEFAULT_BRANCH];
-    }
-    return data.map(branchFromRow);
+    return (data || []).map(branchFromRow);
   } catch (err) {
-    console.warn('Network / fetch error in fetchBranches, returning fallback branch:', err.message || err);
-    return [DEFAULT_BRANCH];
+    console.error('fetchBranches error:', err.message || err);
+    return [];
   }
 }
 

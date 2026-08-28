@@ -5,20 +5,33 @@ import { formatDate, money, thisMonthKey, todayISO } from '../utils/helpers';
 import { getTeacherPayStats } from '../utils/dataHelpers';
 import { Modal, MoneyInput } from '../components/primitives';
 
-export function TeacherPayrollModal({ teacher, branch, directorData, opData, onAddPayment, onClose }) {
+export function TeacherPayrollModal({ teacher: propTeacher, teacherId, branch, directorData, opData, onAddPayment, onSubmit, onClose }) {
   const [month, setMonth] = useState(thisMonthKey());
   const [tab, setTab] = useState('advance');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
 
+  const handleSave = onSubmit || onAddPayment;
+  const teacher = propTeacher || (directorData?.teachersHR || []).find(t => String(t.id) === String(teacherId));
+
+  if (!teacher) {
+    return (
+      <Modal title="Maosh hisob-kitobi" onClose={onClose}>
+        <div className="p-4 text-center text-slate-500">O'qituvchi ma'lumotlari topilmadi.</div>
+      </Modal>
+    );
+  }
+
   const stats = getTeacherPayStats(directorData, opData, teacher, branch, month);
-  const allHistory = (directorData.teacherPayments || []).filter(p => p.teacherHRId === teacher.id).sort((a, b) => b.createdAt - a.createdAt);
+  const allHistory = (directorData?.teacherPayments || []).filter(p => p.teacherHRId === teacher.id).sort((a, b) => b.createdAt - a.createdAt);
 
   function submitPayment() {
     const amt = parseFloat(amount);
     if (!amt || amt <= 0) { setError("To'g'ri summa kiriting."); return; }
-    onAddPayment({ teacherHRId: teacher.id, type: tab, amount: amt, month, date: todayISO(), note: note.trim() });
+    if (handleSave) {
+      handleSave({ teacherHRId: teacher.id, type: tab, amount: amt, month, date: todayISO(), note: note.trim() });
+    }
     setAmount(''); setNote(''); setError('');
   }
 

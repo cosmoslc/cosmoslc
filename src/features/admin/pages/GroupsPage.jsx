@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import * as XLSX from "xlsx";
 import {
   Plus,
   BookOpen,
@@ -17,6 +18,8 @@ import {
   CheckCircle2,
   ArrowDownLeft,
   CircleDollarSign,
+  FileSpreadsheet,
+  Download,
 } from "lucide-react";
 import { BTN_GHOST, INPUT_CLS, PrimaryButton } from "../theme/tokens";
 import { money, thisMonthKey } from "../utils/helpers";
@@ -28,7 +31,7 @@ export function GroupsPage({
   opData,
   openModal = () => {},
   scopeBranchIds = [],
-  canEdit,
+  canEdit = true,
 }) {
   const currentMonth = thisMonthKey();
   const allGroups = opGroups(opData);
@@ -108,6 +111,28 @@ export function GroupsPage({
     });
   }, [rawRows, query, courseFilter, dayFilter]);
 
+  // Handle Excel Export
+  function handleExportExcel() {
+    if (!rows || rows.length === 0) return;
+
+    const exportData = rows.map((g) => ({
+      Name: g.name || "",
+      Course: g.course?.name || "",
+      Teacher: g.teacher?.name || "",
+      Days: Array.isArray(g.days) ? g.days.join(", ") : (g.days || ""),
+      Room: g.room?.name || "",
+      "Start Course": g.startDate || "",
+      Time: g.time || "",
+      Cost: g.price ? g.price.toLocaleString() : "0",
+      Status: g.status === "active" ? "Faol" : "Faolmas",
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Guruhlar");
+    XLSX.writeFile(workbook, `Guruhlar_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  }
+
   // Overall KPIs
   const totalGroups = rawRows.length;
   const totalStudents = rawRows.reduce((sum, g) => sum + g.count, 0);
@@ -135,10 +160,26 @@ export function GroupsPage({
             </p>
           </div>
         </div>
-        {canEdit && courses.length > 0 && (
-          <PrimaryButton onClick={() => openModal({ type: "groupForm" })}>
-            <Plus size={16} /> Yangi guruh ochish
-          </PrimaryButton>
+        {canEdit !== false && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center gap-2 border border-slate-200/80 dark:border-slate-700 cursor-pointer"
+            >
+              <Download size={15} /> Export (Excel)
+            </button>
+            <button
+              type="button"
+              onClick={() => openModal({ type: "importGroups" })}
+              className="px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 font-bold text-xs hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all flex items-center gap-2 shadow-xs cursor-pointer"
+            >
+              <FileSpreadsheet size={15} /> Import (Excel)
+            </button>
+            <PrimaryButton onClick={() => openModal({ type: "groupForm" })}>
+              <Plus size={16} /> Yangi guruh ochish
+            </PrimaryButton>
+          </div>
         )}
       </div>
 
@@ -215,28 +256,28 @@ export function GroupsPage({
         </div>
       </div>
 
-      {/* Search & Filters */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-4 shadow-sm">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="relative">
+      {/* Search & Filters - Compact one row */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-2 sm:p-2.5 shadow-2xs">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="relative w-56 sm:w-64 max-w-full">
             <Search
-              size={14}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+              size={13}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
             />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Guruh, kurs yoki ustoz nomi..."
-              className={`${INPUT_CLS} pl-9`}
+              placeholder="Guruh, kurs yoki ustoz..."
+              className={`${INPUT_CLS} pl-8 py-1.5 text-xs`}
             />
           </div>
 
-          <div>
+          <div className="w-auto min-w-[140px]">
             <select
               value={courseFilter}
               onChange={(e) => setCourseFilter(e.target.value)}
-              className={INPUT_CLS}
+              className={`${INPUT_CLS} py-1.5 text-xs`}
             >
               <option value="all">Barcha kurslar</option>
               {courses.map((c) => (
@@ -247,11 +288,11 @@ export function GroupsPage({
             </select>
           </div>
 
-          <div>
+          <div className="w-auto min-w-[150px]">
             <select
               value={dayFilter}
               onChange={(e) => setDayFilter(e.target.value)}
-              className={INPUT_CLS}
+              className={`${INPUT_CLS} py-1.5 text-xs`}
             >
               <option value="all">Barcha kunlar</option>
               <option value="odd">Toq kunlar (Du-Chor-Jum)</option>

@@ -39,41 +39,18 @@ const BTN_PRIMARY =
 const BTN_GHOST =
   "inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 rounded-xl transition-all";
 
-const MOCK_FALLBACK_ARCHIVES = {
-  leads: [
-    { id: "arch-l1", name: "Sardor Latipov", phone: "+998 90 345 67 89", targetCourse: "Python Fullstack", branchName: "Chilonzor", deletedAt: "2026-08-20T10:30:00", reason: "Mijoz rad etdi", deletedBy: "Direktor" },
-    { id: "arch-l2", name: "Nilufar Azimova", phone: "+998 94 888 77 66", targetCourse: "IELTS Intensive", branchName: "Yunusobod", deletedAt: "2026-08-18T14:15:00", reason: "Aloqaga chiqmadi", deletedBy: "Menejer" }
-  ],
-  students: [
-    { id: "arch-s1", name: "Jasur Rahmatov", phone: "+998 91 222 33 44", courseName: "Frontend React", groupName: "FE-104", deletedAt: "2026-08-15T09:00:00", reason: "Shaxsiy sabablar", deletedBy: "Administrator" }
-  ],
-  teachers: [
-    { id: "arch-t1", name: "Bobur Alimov", phone: "+998 93 111 22 33", subject: "Ingliz tili / IELTS", branchName: "Chilonzor", deletedAt: "2026-08-10T11:00:00", reason: "Shartnoma muddati tugadi", deletedBy: "Direktor" }
-  ],
-  staff: [
-    { id: "arch-st1", name: "Diyora Sobirova", phone: "+998 90 999 88 77", position: "Administrator", branchName: "Chilonzor", deletedAt: "2026-08-05T16:20:00", reason: "O'z xohishi bilan", deletedBy: "HR Menejer" }
-  ],
-  groups: [
-    { id: "arch-g1", name: "Python-09", courseName: "Python Basics", teacherName: "Anvar Saidov", roomName: "201-xona", studentCount: 12, deletedAt: "2026-08-12T15:00:00", reason: "Guruh bitirdi", deletedBy: "Direktor" }
-  ],
-  courses: [
-    { id: "arch-c1", name: "Android Kotlin", price: 900000, duration: "6 oy", branchName: "Chilonzor", deletedAt: "2026-08-01T12:00:00", reason: "Eski dastur", deletedBy: "Direktor" }
-  ],
-  payments: [
-    { id: "arch-p1", title: "Talaba to'lovi - Bekzod (FE-101)", amount: 800000, type: "Naqd", branchName: "Chilonzor", deletedAt: "2026-08-19T12:00:00", reason: "Xato kiritilgan to'lov", deletedBy: "Menejer" }
-  ],
-  salaries: [
-    { id: "arch-sal1", title: "O'qituvchi maoshi - Anvar Saidov", amount: 4500000, type: "Karta (UzCard)", branchName: "Chilonzor", deletedAt: "2026-08-14T10:00:00", reason: "Qayta hisob-kitob", deletedBy: "Buxgalter" }
-  ],
-  expenses: [
-    { id: "arch-ex1", title: "Ofis kantselyariya xarajatlari", amount: 240000, type: "Naqd", branchName: "Yunusobod", deletedAt: "2026-08-11T16:00:00", reason: "Bekor qilingan chek", deletedBy: "Menejer" }
-  ],
-  additionalIncome: [
-    { id: "arch-inc1", title: "O'quv qo'llanma kitoblar sotuvi", amount: 650000, type: "Naqd", branchName: "Chilonzor", deletedAt: "2026-08-08T17:30:00", reason: "Kitob qaytarildi", deletedBy: "Administrator" }
-  ],
-  bonuses: [
-    { id: "arch-bon1", title: "Oyning eng yaxshi sotuvchisi bonusi", amount: 500000, type: "Karta", branchName: "Chilonzor", deletedAt: "2026-08-01T09:30:00", reason: "Bonus qayta ajratildi", deletedBy: "Direktor" }
-  ]
+const EMPTY_ARCHIVES = {
+  leads: [],
+  students: [],
+  teachers: [],
+  staff: [],
+  groups: [],
+  courses: [],
+  payments: [],
+  salaries: [],
+  expenses: [],
+  additionalIncome: [],
+  bonuses: [],
 };
 
 export function ArchivePage({
@@ -87,7 +64,7 @@ export function ArchivePage({
   onRestoreCourse,
   addNotification = () => {},
 }) {
-  const [archives, setArchives] = useState(MOCK_FALLBACK_ARCHIVES);
+  const [archives, setArchives] = useState(EMPTY_ARCHIVES);
   const [activeTab, setActiveTab] = useState(initialTab || "leads");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedBranch, setSelectedBranch] = useState(currentBranchId || "all");
@@ -110,9 +87,9 @@ export function ArchivePage({
   const loadData = async () => {
     const data = await fetchArchives();
     const loaded = data || {};
-    const merged = {};
-    Object.keys(MOCK_FALLBACK_ARCHIVES).forEach((key) => {
-      merged[key] = loaded[key] && loaded[key].length > 0 ? loaded[key] : MOCK_FALLBACK_ARCHIVES[key];
+    const merged = { ...EMPTY_ARCHIVES };
+    Object.keys(EMPTY_ARCHIVES).forEach((key) => {
+      merged[key] = Array.isArray(loaded[key]) ? loaded[key] : [];
     });
     setArchives(merged);
   };
