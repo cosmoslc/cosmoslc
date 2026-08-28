@@ -19,9 +19,9 @@ const PRESET_COLORS = [
   { name: "Binafsha (Purple)", hex: "#a855f7" },
 ];
 
-export function CourseFormModal({ editing, branches = [], onSubmit, onClose }) {
+export function CourseFormModal({ editing, branches = [], defaultBranchId, onSubmit, onClose }) {
   const [branchId, setBranchId] = useState(
-    editing?.branchId || branches[0]?.id || "",
+    editing?.branchId || (defaultBranchId && defaultBranchId !== "all" ? defaultBranchId : "") || branches[0]?.id || "",
   );
   const [name, setName] = useState(editing?.name || "");
   const [price, setPrice] = useState(editing?.price ?? "");

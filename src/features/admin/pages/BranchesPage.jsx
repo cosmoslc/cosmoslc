@@ -73,14 +73,6 @@ export function BranchesPage({
       openBranchModal(modalPayload.editing || modalPayload.branch);
       return;
     }
-    if (
-      modalPayload.type === "confirm" &&
-      modalPayload.action?.kind === "deleteBranch" &&
-      onDeleteBranch
-    ) {
-      onDeleteBranch(modalPayload.action.branchId);
-      return;
-    }
     openModal(modalPayload);
   };
 

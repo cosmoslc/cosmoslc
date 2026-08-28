@@ -19,11 +19,12 @@ export function SupportTeacherFormModal({
   editing,
   teachers = [],
   branches = [],
+  defaultBranchId,
   onSubmit,
   onClose,
 }) {
   const [branchId, setBranchId] = useState(
-    editing?.branchId || branches[0]?.id || "",
+    editing?.branchId || (defaultBranchId && defaultBranchId !== "all" ? defaultBranchId : "") || branches[0]?.id || "",
   );
   const effectiveBranchId = branchId || editing?.branchId || branches[0]?.id || "";
   // Assigned Main Teacher ID

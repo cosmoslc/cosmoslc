@@ -4,7 +4,7 @@ import { ATTENDANCE_STATUSES, MONTHS_UZ } from '../utils/constants';
 import { Icon } from '../components/Icon';
 import { BTN_ICON, GLASS, INPUT_CLS } from '../theme/tokens';
 import { formatDate } from '../utils/helpers';
-import { attendanceStatus, attendanceReason, opAttendance, opGroups, opStudentsInGroups } from '../utils/dataHelpers';
+import { attendanceStatus, attendanceReason, filterGroupsByBranch, opAttendance, opGroups, opStudentsInGroups } from '../utils/dataHelpers';
 import { getLessonTimeInfo } from '../utils/helpers';
 import { EmptyState } from '../components/primitives';
 
@@ -14,10 +14,7 @@ export function AttendancePage({ directorData, opData, scopeBranchIds = [], open
   const [groupFilter, setGroupFilter] = useState('all');
 
   const allCourses = directorData?.courses || [];
-  const courseIds = (scopeBranchIds && scopeBranchIds.length > 0)
-    ? allCourses.filter(c => scopeBranchIds.includes(c.branchId)).map(c => c.id)
-    : allCourses.map(c => c.id);
-  const groups = opGroups(opData).filter(g => courseIds.includes(g.courseId));
+  const groups = filterGroupsByBranch(opGroups(opData), scopeBranchIds, allCourses);
   const records = opAttendance(opData)
     .filter(a => groups.some(g => g.id === a.groupId))
     .filter(a => groupFilter === 'all' || a.groupId === groupFilter)

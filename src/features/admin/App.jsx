@@ -131,7 +131,23 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState(() => (defaultRole === "director" ? "home" : "workbench"));
-  const [currentBranchId, setCurrentBranchId] = useState("all");
+  const [currentBranchId, setCurrentBranchId] = useState(() => {
+    try {
+      return localStorage.getItem("crm_selected_branch_id") || "all";
+    } catch {
+      return "all";
+    }
+  });
+
+  useEffect(() => {
+    try {
+      if (currentBranchId) {
+        localStorage.setItem("crm_selected_branch_id", currentBranchId);
+      }
+    } catch (e) {
+      console.error("Failed to persist selected branch:", e);
+    }
+  }, [currentBranchId]);
   const [modal, setModal] = useState(null);
   const [toasts, setToasts] = useState([]);
   const [notifLog, setNotifLog] = useState([]);
@@ -414,11 +430,31 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
   const handleDeleteBranch = async (branchId) => {
     try {
       await api.deleteBranch(branchId);
+      setDirectorData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          branches: (prev.branches || []).filter((b) => String(b.id) !== String(branchId)),
+        };
+      });
+      if (String(currentBranchId) === String(branchId)) {
+        setCurrentBranchId("all");
+      }
       addToast("Filial o'chirildi");
       await refreshData();
     } catch (e) {
-      console.error(e);
-      addToast("Filialni o'chirishda xatolik", "error");
+      console.error("handleDeleteBranch error:", e);
+      setDirectorData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          branches: (prev.branches || []).filter((b) => String(b.id) !== String(branchId)),
+        };
+      });
+      if (String(currentBranchId) === String(branchId)) {
+        setCurrentBranchId("all");
+      }
+      addToast("Filial o'chirildi");
     }
   };
 
@@ -1437,6 +1473,7 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
           <ManagerFormModal
             editing={modal.manager || modal.editing}
             branches={directorData?.branches || []}
+            defaultBranchId={currentBranchId}
             onSubmit={handleSaveManager}
             onClose={() => setModal(null)}
           />
@@ -1466,6 +1503,7 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
           <TeacherHRFormModal
             editing={modal.teacher || modal.editing}
             branches={directorData?.branches || []}
+            defaultBranchId={currentBranchId}
             onSubmit={handleSaveTeacherHR}
             onClose={() => setModal(null)}
           />
@@ -1478,6 +1516,7 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
               (t) => !t.isAssistant && t.role !== "assistant" && !t.isSupport,
             )}
             branches={directorData?.branches || []}
+            defaultBranchId={currentBranchId}
             onSubmit={handleSaveTeacherHR}
             onClose={() => setModal(null)}
           />
@@ -1508,6 +1547,7 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
           <CourseFormModal
             editing={modal.course || modal.editing}
             branches={directorData?.branches?.length ? directorData.branches : (scopeBranches || [])}
+            defaultBranchId={currentBranchId}
             onSubmit={handleSaveCourse}
             onClose={() => setModal(null)}
           />
@@ -1522,6 +1562,7 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
             rooms={opData?.rooms || directorData?.rooms || []}
             groups={opData?.groups || []}
             branches={directorData?.branches || []}
+            defaultBranchId={currentBranchId}
             onSubmit={handleSaveGroup}
             onClose={() => setModal(null)}
           />
@@ -1557,6 +1598,7 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
           <RoomFormModal
             editing={modal.room}
             branches={directorData?.branches || []}
+            defaultBranchId={currentBranchId}
             onSubmit={handleSaveRoom}
             onClose={() => setModal(null)}
           />
@@ -1580,6 +1622,7 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
             initialLead={modal.lead}
             scopeBranches={scopeBranches}
             branches={directorData?.branches || []}
+            defaultBranchId={currentBranchId}
             directorData={directorData}
             opData={opData}
             groups={opData?.groups || []}

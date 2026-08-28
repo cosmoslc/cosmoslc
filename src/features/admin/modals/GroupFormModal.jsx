@@ -33,6 +33,8 @@ export function GroupFormModal({
   groups = [],
   rooms = [],
   teachers = [],
+  branches = [],
+  defaultBranchId,
   onSubmit,
   onClose,
 }) {
@@ -40,6 +42,14 @@ export function GroupFormModal({
     ? courses.find((c) => String(c.id) === String(initialCourseId))
     : null;
 
+  const defaultBranch =
+    editing?.branchId ||
+    matchedInitialCourse?.branchId ||
+    (defaultBranchId && defaultBranchId !== "all" ? defaultBranchId : "") ||
+    branches[0]?.id ||
+    "";
+
+  const [branchId, setBranchId] = useState(defaultBranch);
   const [name, setName] = useState(editing?.name || "");
   const [format, setFormat] = useState(editing?.format || "offline"); // 'offline' | 'online'
   const [courseId, setCourseId] = useState(
@@ -136,11 +146,14 @@ export function GroupFormModal({
       return;
     }
     const calculatedDuration = computeDurationMinutes(time, endTime);
+    const selectedCourse = courses.find((c) => String(c.id) === String(courseId));
+    const finalBranchId = branchId || selectedCourse?.branchId || editing?.branchId || null;
     onSubmit({
       ...(editing?.id ? { id: editing.id } : {}),
       name: name.trim(),
       format,
       courseId,
+      branchId: finalBranchId,
       price: price === "" ? 0 : parseFloat(price) || 0,
       durationMonths: parseFloat(duration) || 0,
       teacherHrId: teacherId,
@@ -197,6 +210,25 @@ export function GroupFormModal({
             ))}
           </select>
         </div>
+
+        {/* Filial tanlang */}
+        {branches.length > 0 && (
+          <div>
+            <label className={LABEL_CLS}>Filial</label>
+            <select
+              value={branchId}
+              onChange={(e) => setBranchId(e.target.value)}
+              className={INPUT_CLS}
+            >
+              <option value="">Filialni tanlang</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Guruh narxi va davomiyligi */}
         <div className="grid grid-cols-2 gap-3">

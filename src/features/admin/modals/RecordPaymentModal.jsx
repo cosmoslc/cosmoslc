@@ -9,13 +9,9 @@ import {
   Search,
   CheckCircle2,
   X,
-  User,
   BookOpen,
-  Info,
-  Clock,
-  Sparkles,
   Wallet,
-  ArrowRight,
+  Sparkles,
   Plus,
 } from "lucide-react";
 import { Modal, Avatar, MoneyInput } from "../components/primitives";
@@ -26,54 +22,60 @@ import {
   normalizePhone,
   todayISO,
   thisMonthKey,
-  getPaymentTotal,
 } from "../utils/helpers";
 import { calculateProratedFee } from "../../../shared/utils/prorata";
 
 // Default and stored payment methods
 function getStoredPaymentMethods(customTypes = []) {
   const defaultMethods = [
-    { id: "cash", label: "Naqd pul", icon: "💵" },
-    { id: "card", label: "Plastik karta", icon: "💳" },
-    { id: "payme", label: "Payme", icon: "🟢" },
-    { id: "click", label: "Click", icon: "🔵" },
-    { id: "uzum", label: "Uzum / Anor", icon: "🟣" },
-    { id: "bank", label: "Bank o'tkazmasi", icon: "🏛️" },
-    { id: "balance", label: "Faqat balansdan", icon: "💰" },
+    { id: "cash", label: "Naqd pul" },
+    { id: "card", label: "Plastik karta" },
+    { id: "click", label: "Click / Payme / Uzum" },
+    { id: "bank", label: "Bank o'tkazmasi" },
   ];
 
-  let list = [...defaultMethods];
+  let list = [];
 
-  if (Array.isArray(customTypes) && customTypes.length > 0) {
-    customTypes.forEach((pt) => {
-      const ptLabel = typeof pt === "string" ? pt : pt.name || pt.title || pt.label || "";
-      const ptId = typeof pt === "string" ? pt.toLowerCase().replace(/\s+/g, "_") : pt.id || ptLabel.toLowerCase().replace(/\s+/g, "_");
-      if (ptId && !list.some((m) => m.id === ptId)) {
-        list.push({
-          id: ptId,
-          label: ptLabel,
-          icon: typeof pt === "object" && pt.icon ? pt.icon : "💳",
-        });
-      }
-    });
-  }
-
+  // 1. Check localStorage for payment types created on PaymentTypesPage
   try {
     const raw = localStorage.getItem("cosmos_payment_methods_v1") || localStorage.getItem("cosmos_payment_types");
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
+      if (Array.isArray(parsed) && parsed.length > 0) {
         parsed.forEach((item) => {
-          const itemLabel = typeof item === "string" ? item : item.name || item.label || item.title;
-          const itemId = typeof item === "string" ? item.toLowerCase().replace(/\s+/g, "_") : item.id || (itemLabel ? itemLabel.toLowerCase().replace(/\s+/g, "_") : "");
-          if (itemId && !list.some((m) => m.id === itemId)) {
-            list.push({ id: itemId, label: itemLabel, icon: "💳" });
+          if (item.status === "inactive") return;
+          const label = typeof item === "string" ? item : item.name || item.label || item.title || "";
+          const id = typeof item === "string" ? item.toLowerCase().replace(/\s+/g, "_") : item.id || (label ? label.toLowerCase().replace(/\s+/g, "_") : "");
+          if (label && id && !list.some((m) => m.id === id || m.label.toLowerCase() === label.toLowerCase())) {
+            list.push({ id, label });
           }
         });
       }
     }
   } catch (e) {
     console.error("Payment methods read error:", e);
+  }
+
+  // 2. Check props / directorData custom types
+  if (Array.isArray(customTypes) && customTypes.length > 0) {
+    customTypes.forEach((pt) => {
+      if (pt.status === "inactive") return;
+      const label = typeof pt === "string" ? pt : pt.name || pt.title || pt.label || "";
+      const id = typeof pt === "string" ? pt.toLowerCase().replace(/\s+/g, "_") : pt.id || (label ? label.toLowerCase().replace(/\s+/g, "_") : "");
+      if (label && id && !list.some((m) => m.id === id || m.label.toLowerCase() === label.toLowerCase())) {
+        list.push({ id, label });
+      }
+    });
+  }
+
+  // 3. Fallback to default methods if list is empty
+  if (list.length === 0) {
+    list = [...defaultMethods];
+  }
+
+  // 4. Ensure "balance" is included if needed
+  if (!list.some((m) => m.id === "balance")) {
+    list.push({ id: "balance", label: "Balansdan" });
   }
 
   return list;
@@ -90,7 +92,6 @@ const DEFAULT_PRESET_TAGS = [
 ];
 
 export function RecordPaymentModal({
-  // Accept all possible prop naming aliases across the app
   initialStudentId,
   preselectedStudent,
   student,
@@ -117,7 +118,6 @@ export function RecordPaymentModal({
   onSubmit,
   onClose,
 }) {
-  // Resolved props
   const resolvedStudent = preselectedStudent || student;
   const resolvedGroup = preselectedGroup || group;
   const targetStudentId = initialStudentId || propStudentId || resolvedStudent?.id || "";
@@ -133,19 +133,15 @@ export function RecordPaymentModal({
   const [paymentDate, setPaymentDate] = useState(todayISO());
   const [selectedMonth, setSelectedMonth] = useState(targetMonth);
 
-  // Balance usage state
   const [useBalance, setUseBalance] = useState(true);
 
-  // Tags state for filtering
   const [tags, setTags] = useState([]);
   const [customTagInput, setCustomTagInput] = useState("");
 
-  // Discount & Debt states
   const [hasDiscount, setHasDiscount] = useState(false);
   const [discountAmount, setDiscountAmount] = useState("");
   const [discountReason, setDiscountReason] = useState("");
 
-  // Default debt due date: 10 days from today
   const tenDaysLater = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 10);
@@ -191,7 +187,6 @@ export function RecordPaymentModal({
   const selectedStudent = allStudents.find((s) => s.id === studentId) || resolvedStudent;
   const studentBalance = Math.max(0, Number(selectedStudent?.balance || 0));
 
-  // Available groups for selected student or all groups if student not specified
   const studentGids = (selectedStudent?.groupIds || []).map(String);
   const studentGroupOptions = selectedStudent && studentGids.length > 0
     ? groups
@@ -208,7 +203,6 @@ export function RecordPaymentModal({
   const selectedGroupObj = groups.find((g) => g.id === groupId) || resolvedGroup;
   const baseGroupPrice = selectedGroupObj ? Number(selectedGroupObj.price) || 0 : 0;
 
-  // Calculate prorated fee if student joined mid-month
   const prorataInfo = useMemo(() => {
     if (!selectedGroupObj || !baseGroupPrice) {
       return { calculatedFee: baseGroupPrice, isProrated: false, totalLessons: 0, attendedLessons: 0, pricePerLesson: 0, reason: "" };
@@ -222,10 +216,8 @@ export function RecordPaymentModal({
     });
   }, [selectedGroupObj, baseGroupPrice, selectedStudent, selectedMonth]);
 
-  // Effective fee for this month (prorated if joined mid-month, otherwise full)
   const groupPrice = prorataInfo.calculatedFee;
 
-  // Payments already made for this student + group + selectedMonth
   const alreadyPaidThisMonth = useMemo(() => {
     if (!studentId || !groupId || !selectedMonth) return 0;
     return allPayments
@@ -250,40 +242,23 @@ export function RecordPaymentModal({
       .reduce((sum, p) => sum + (Number(p.discount) || 0), 0);
   }, [allPayments, studentId, groupId, selectedMonth]);
 
-  // Real remaining due for this selected month before any new discounts in this form
   const remainingDueForMonth = Math.max(
     0,
     groupPrice - alreadyPaidThisMonth - alreadyDiscountThisMonth,
   );
 
-  // Calculations for current form submission
   const discountVal = hasDiscount ? parseFloat(discountAmount) || 0 : 0;
   const netDueNow = Math.max(0, remainingDueForMonth - discountVal);
 
-  // How much of the student's balance can be used for this payment
   const applicableBalance =
     useBalance && studentBalance > 0 ? Math.min(studentBalance, netDueNow) : 0;
 
-  // Cash/card payment remaining after applying available balance
   const remainingCashDue = Math.max(0, netDueNow - applicableBalance);
-
-  // Current amount entered in the input field
   const paidVal = parseFloat(amount) || 0;
-
-  // Total value covering the tuition (cash + applied balance)
   const totalCovering = paidVal + applicableBalance;
-
-  // If student pays more than the net due, the excess is surplus that adds to balance
   const surplusToBalance = Math.max(0, totalCovering - netDueNow);
-
-  // If total payment is less than net due, there is remaining debt
   const qarz = Math.max(0, netDueNow - totalCovering);
 
-  // Student balance after this transaction
-  const newStudentBalance =
-    studentBalance - applicableBalance + surplusToBalance;
-
-  // Smart calculation of default amount
   const calcDefaultAmount = useCallback(
     (sId, gId, mth, shouldUseBal = useBalance) => {
       if (!gId) return "";
@@ -315,7 +290,7 @@ export function RecordPaymentModal({
         .reduce((sum, p) => sum + (Number(p.discount) || 0), 0);
 
       const rem = Math.max(0, price - paid - disc);
-      if (rem === 0 && paid > 0) return ""; // already fully paid for this month
+      if (rem === 0 && paid > 0) return "";
 
       const bal = Math.max(0, Number(st?.balance || 0));
       const appBal = shouldUseBal ? Math.min(bal, rem) : 0;
@@ -326,14 +301,12 @@ export function RecordPaymentModal({
     [groups, allPayments, allStudents, useBalance, resolvedStudent],
   );
 
-  // Handle group change
   function handleGroupChange(newGroupId) {
     setGroupId(newGroupId);
     const def = calcDefaultAmount(studentId, newGroupId, selectedMonth, useBalance);
     setAmount(def);
   }
 
-  // Handle month change
   function handleMonthChange(newMonth) {
     setSelectedMonth(newMonth);
     if (studentId && groupId) {
@@ -342,7 +315,6 @@ export function RecordPaymentModal({
     }
   }
 
-  // Auto-set student and group when props change
   useEffect(() => {
     const activeMonth = targetMonth || selectedMonth || thisMonthKey();
     if (targetMonth && targetMonth !== selectedMonth) {
@@ -403,7 +375,6 @@ export function RecordPaymentModal({
     }
   }
 
-  // Tag helper actions
   function toggleTag(tag) {
     if (tags.includes(tag)) {
       setTags(tags.filter((t) => t !== tag));
@@ -442,7 +413,6 @@ export function RecordPaymentModal({
 
     const effectiveTotalAmount = Math.min(netDueNow, totalCovering);
 
-    // Format tags into note for complete search and filter support
     const tagSuffix = tags.length > 0 ? ` [Teglar: ${tags.join(", ")}]` : "";
     const finalNote = ((note || "") + tagSuffix).trim() ||
       (applicableBalance > 0
@@ -476,38 +446,37 @@ export function RecordPaymentModal({
   return (
     <Modal title="To'lov qabul qilish" onClose={onClose}>
       <form onSubmit={submit} className="space-y-4">
-        {/* 1. O'QUVCHI ISMI (Ismi) */}
+        {/* 1. O'QUVCHI */}
         <div>
           <label className={LABEL_CLS}>
-            O'quvchi (Ismi) <span className="text-rose-500">*</span>
+            O'quvchi <span className="text-rose-500">*</span>
           </label>
           {selectedStudent ? (
-            <div className="flex items-center justify-between p-3 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60">
+            <div className="flex items-center justify-between py-1.5 px-3 rounded-xl bg-slate-50/60 dark:bg-slate-800/40">
               <div className="flex items-center gap-3 min-w-0">
-                <Avatar name={selectedStudent.name} size={38} />
+                <Avatar name={selectedStudent.name} size={34} />
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="font-bold text-sm text-slate-900 dark:text-white truncate">
                       {selectedStudent.name}
                     </p>
                     {studentBalance > 0 && (
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[10px] font-black border border-emerald-300 dark:border-emerald-700 flex items-center gap-1">
-                        <Wallet size={11} /> Haqdorlik: +{money(studentBalance)} so'm
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold">
+                        Balans: +{money(studentBalance)}
                       </span>
                     )}
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                    {selectedStudent.phone || "Telefon kiritilmagan"}
+                    {selectedStudent.phone || "Telefon yo'q"}
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={clearSelectedStudent}
-                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                title="Boshqa o'quvchi tanlash"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors"
               >
-                <X size={16} />
+                <X size={15} />
               </button>
             </div>
           ) : (
@@ -524,23 +493,23 @@ export function RecordPaymentModal({
                     setSearch(e.target.value);
                     setStudentId("");
                   }}
-                  placeholder="Ism yoki telefon raqami bo'yicha qidiring..."
+                  placeholder="Ism yoki telefon qidirish..."
                   className={`${INPUT_CLS} pl-10`}
                   autoFocus
                 />
               </div>
 
               {matches.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1.5 z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl max-h-56 overflow-y-auto p-1.5 space-y-1">
+                <div className="absolute top-full left-0 right-0 mt-1 z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg max-h-52 overflow-y-auto p-1 divide-y divide-slate-100 dark:divide-slate-800">
                   {matches.map((s) => (
                     <button
                       key={s.id}
                       type="button"
                       onClick={() => selectStudent(s)}
-                      className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-left cursor-pointer"
+                      className="w-full flex items-center justify-between p-2 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors text-left rounded-lg"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <Avatar name={s.name} size={30} />
+                        <Avatar name={s.name} size={28} />
                         <div className="min-w-0">
                           <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
                             {s.name}
@@ -549,14 +518,14 @@ export function RecordPaymentModal({
                             {s.phone || "Telefon yo'q"}{" "}
                             {Number(s.balance || 0) > 0 && (
                               <span className="text-emerald-600 font-bold">
-                                • Haqdorlik (Balans): +{money(s.balance)}
+                                • +{money(s.balance)}
                               </span>
                             )}
                           </p>
                         </div>
                       </div>
-                      <span className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold shrink-0">
-                        Tanlash →
+                      <span className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">
+                        Tanlash
                       </span>
                     </button>
                   ))}
@@ -566,115 +535,71 @@ export function RecordPaymentModal({
           )}
         </div>
 
-        {/* 2. GURUHI (Guruh) */}
-        <div>
-          <label className={LABEL_CLS}>
-            Guruhi <span className="text-rose-500">*</span>
-          </label>
-          <select
-            value={groupId}
-            onChange={(e) => handleGroupChange(e.target.value)}
-            className={`${INPUT_CLS} font-medium`}
-            required
-          >
-            <option value="">-- Guruhni tanlang --</option>
-            {studentGroupOptions.map(({ group: g, course }) => (
-              <option key={g.id} value={g.id}>
-                {g.name} {course ? `• ${course.name}` : ""} ({money(g.price || 0)} so'm)
-              </option>
-            ))}
-          </select>
+        {/* 2. GURUH VA NARX */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className={LABEL_CLS}>
+              Guruh <span className="text-rose-500">*</span>
+            </label>
+            <select
+              value={groupId}
+              onChange={(e) => handleGroupChange(e.target.value)}
+              className={`${INPUT_CLS} font-medium`}
+              required
+            >
+              <option value="">Guruhni tanlang</option>
+              {studentGroupOptions.map(({ group: g, course }) => (
+                <option key={g.id} value={g.id}>
+                  {g.name} {course ? `• ${course.name}` : ""} ({money(g.price || 0)})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className={LABEL_CLS}>Guruh narxi</label>
+            <div className="h-10 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <span className="text-xs text-slate-600 dark:text-slate-400 truncate">
+                {selectedGroupObj ? selectedGroupObj.name : "Tanlanmagan"}
+              </span>
+              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
+                {selectedGroupObj ? `${money(baseGroupPrice)} so'm` : "0 so'm"}
+              </span>
+            </div>
+          </div>
         </div>
 
-        {/* 3. GURUH NARXI (YASHIL RANGDA) */}
-        {selectedGroupObj && (
-          <div className="p-3.5 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
-                <BookOpen size={18} />
-              </div>
-              <div>
-                <span className="text-xs font-bold text-slate-600 dark:text-slate-300 block">
-                  Guruh narxi:
-                </span>
-                <span className="text-xs text-slate-500 dark:text-slate-400">
-                  {selectedGroupObj.name}
-                </span>
-              </div>
+        {/* 3. BALANS VA SUMMA */}
+        {studentId && studentBalance > 0 && remainingDueForMonth > 0 && (
+          <div className="flex items-center justify-between py-2 px-3 rounded-xl bg-slate-50/60 dark:bg-slate-800/40 text-xs">
+            <div className="flex items-center gap-2">
+              <Wallet size={15} className="text-emerald-600 dark:text-emerald-400" />
+              <span className="text-slate-700 dark:text-slate-300">
+                Balansdan yechish: <strong>{money(applicableBalance)} so'm</strong>
+              </span>
             </div>
-
-            <div className="text-right">
-              {/* Green Price Highlight */}
-              <div className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400">
-                {money(baseGroupPrice)} <span className="text-xs font-semibold text-emerald-700/80 dark:text-emerald-300/80">so'm/oy</span>
-              </div>
-              {prorataInfo.isProrated && (
-                <div className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-200/60 dark:bg-emerald-900/60 px-2 py-0.5 rounded-xl inline-block mt-0.5">
-                  Pro-rata bo'yicha: {money(prorataInfo.calculatedFee)} so'm
-                </div>
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={toggleUseBalance}
+              className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+            >
+              {useBalance ? "Balansni ishlatmaslik" : "Balansni ishlatish"}
+            </button>
           </div>
         )}
 
-        {/* 4. TALABA HAQDORLIGI, YA'NI BALANSI */}
-        <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Wallet size={16} className="text-emerald-600 dark:text-emerald-400" />
-              <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200">
-                Talaba haqdorligi (Balansi):
-              </span>
-            </div>
-
-            <span
-              className={`text-sm font-black px-2.5 py-0.5 rounded-xl ${
-                studentBalance > 0
-                  ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
-                  : "bg-slate-200/80 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
-              }`}
-            >
-              {studentBalance > 0 ? `+${money(studentBalance)} so'm` : "0 so'm"}
-            </span>
-          </div>
-
-          {studentId && studentBalance > 0 && remainingDueForMonth > 0 && (
-            <div className="flex items-center justify-between pt-1 border-t border-slate-200 dark:border-slate-700 text-xs">
-              <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                To'lov uchun yechiladi: <strong>{money(applicableBalance)} so'm</strong>
-              </span>
-
-              <button
-                type="button"
-                onClick={toggleUseBalance}
-                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  useBalance
-                    ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
-                    : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300"
-                }`}
-              >
-                {useBalance ? "✓ Balans ishlatilsin" : "Balansni ishlatmaslik"}
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* 5. SUMMANI KIRITISH (Kiritilishi kerak bo'lgan summa / To'lov summasi) */}
         <div>
           <div className="flex items-center justify-between mb-1">
             <label className={LABEL_CLS}>
-              {useBalance && applicableBalance > 0
-                ? "Qo'shimcha to'lanayotgan naqd/karta summasi (so'm)"
-                : "Summani kiritish (so'm)"}{" "}
-              <span className="text-rose-500">*</span>
+              To'lov summasi <span className="text-rose-500">*</span>
             </label>
             {remainingCashDue > 0 ? (
               <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                Kiritilishi kerak: {money(remainingCashDue)} so'm
+                Qoldiq: {money(remainingCashDue)} so'm
               </span>
             ) : applicableBalance >= netDueNow && netDueNow > 0 ? (
               <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                Balansdan to'liq qoplanadi (0 so'm)
+                Balansdan qoplanadi
               </span>
             ) : null}
           </div>
@@ -683,52 +608,11 @@ export function RecordPaymentModal({
             value={amount}
             onChange={(val) => setAmount(val)}
             placeholder="0"
-            className={`${INPUT_CLS} font-bold text-base`}
+            className={`${INPUT_CLS} font-bold text-sm`}
           />
-
-          {groupPrice > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 mt-2">
-              {useBalance && applicableBalance >= netDueNow && netDueNow > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setAmount("0")}
-                  className="px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
-                >
-                  <Sparkles size={13} />
-                  <span>Balansdan to'liq to'lash (0 so'm)</span>
-                </button>
-              )}
-
-              {remainingCashDue > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setAmount(String(remainingCashDue))}
-                  className="px-2.5 py-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
-                >
-                  <Sparkles size={13} />
-                  <span>To'liq qoldiq ({money(remainingCashDue)})</span>
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={() => setAmount(String(groupPrice))}
-                className="px-2.5 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold border border-indigo-200 dark:border-indigo-800 transition-colors cursor-pointer"
-              >
-                100% ({money(groupPrice)})
-              </button>
-              <button
-                type="button"
-                onClick={() => setAmount(String(Math.round(groupPrice / 2)))}
-                className="px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition-colors cursor-pointer"
-              >
-                50% ({money(Math.round(groupPrice / 2))})
-              </button>
-            </div>
-          )}
         </div>
 
-        {/* 6. TO'LOV TURI DROPDOWN (From To'lov turlari settings/page) */}
+        {/* 4. TO'LOV TURI */}
         <div>
           <label className={LABEL_CLS}>
             To'lov turi <span className="text-rose-500">*</span>
@@ -736,7 +620,8 @@ export function RecordPaymentModal({
           <select
             value={method}
             onChange={(e) => setMethod(e.target.value)}
-            className={`${INPUT_CLS} font-bold text-xs`}
+            className={`${INPUT_CLS} font-medium`}
+            required
           >
             {availablePaymentMethods
               .filter((m) =>
@@ -746,35 +631,13 @@ export function RecordPaymentModal({
               )
               .map((m) => (
                 <option key={m.id} value={m.id}>
-                  {m.icon} {m.label}
+                  {m.label}
                 </option>
               ))}
           </select>
-
-          {/* Quick Method Buttons */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mt-2">
-            {availablePaymentMethods
-              .filter((m) => m.id !== "balance")
-              .slice(0, 4)
-              .map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setMethod(m.id)}
-                  className={`flex items-center justify-center gap-1.5 text-xs py-2.5 px-2.5 rounded-xl border font-bold transition-all cursor-pointer ${
-                    method === m.id
-                      ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
-                      : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50"
-                  }`}
-                >
-                  <span>{m.icon}</span>
-                  <span className="truncate">{m.label}</span>
-                </button>
-              ))}
-          </div>
         </div>
 
-        {/* 7. SANA & QAYSI OY UCHUN (Oddiy sana) */}
+        {/* 5. SANA VA OY */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={LABEL_CLS}>To'lov sanasi</label>
@@ -782,7 +645,7 @@ export function RecordPaymentModal({
               type="date"
               value={paymentDate}
               onChange={(e) => setPaymentDate(e.target.value)}
-              className={`${INPUT_CLS} text-xs font-semibold`}
+              className={`${INPUT_CLS} text-xs font-medium`}
             />
           </div>
           <div>
@@ -791,34 +654,27 @@ export function RecordPaymentModal({
               type="month"
               value={selectedMonth}
               onChange={(e) => handleMonthChange(e.target.value)}
-              className={`${INPUT_CLS} text-xs font-extrabold text-indigo-600 dark:text-indigo-400`}
+              className={`${INPUT_CLS} text-xs font-bold text-indigo-600 dark:text-indigo-400`}
             />
           </div>
         </div>
 
-        {/* 8. TEGLAR (For Filter: e.g., "Aprel yangi") */}
-        <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 space-y-2.5">
-          <label className={LABEL_CLS + " flex items-center justify-between"}>
-            <span className="flex items-center gap-1.5">
-              <Tag size={14} className="text-indigo-600 dark:text-indigo-400" />
-              Teglar (Filterlash uchun)
-            </span>
-            <span className="text-[10px] text-slate-400">masalan: "Aprel yangi"</span>
-          </label>
+        {/* 6. TEGLAR */}
+        <div className="space-y-1.5">
+          <label className={LABEL_CLS}>Teglar</label>
 
-          {/* Selected Tags Chips */}
           {tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5 pb-1">
               {tags.map((t) => (
                 <span
                   key={t}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 text-xs font-extrabold border border-indigo-200 dark:border-indigo-800 shadow-2xs"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 text-xs font-bold"
                 >
-                  🏷️ {t}
+                  {t}
                   <button
                     type="button"
                     onClick={() => toggleTag(t)}
-                    className="hover:text-rose-600 transition-colors cursor-pointer ml-0.5"
+                    className="hover:text-rose-600 transition-colors"
                   >
                     <X size={12} />
                   </button>
@@ -827,89 +683,60 @@ export function RecordPaymentModal({
             </div>
           )}
 
-          {/* Preset Tag Pills */}
           <div className="flex flex-wrap items-center gap-1.5">
-            {DEFAULT_PRESET_TAGS.map((t) => {
+            {DEFAULT_PRESET_TAGS.slice(0, 5).map((t) => {
               const active = tags.includes(t);
               return (
                 <button
                   key={t}
                   type="button"
                   onClick={() => toggleTag(t)}
-                  className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                  className={`px-2 py-0.5 rounded-lg text-xs font-medium transition-all ${
                     active
-                      ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
-                      : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100"
+                      ? "bg-indigo-600 text-white"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
                   }`}
                 >
-                  {active ? "✓ " : "+ "}{t}
+                  {t}
                 </button>
               );
             })}
           </div>
-
-          {/* Custom Tag Input */}
-          <div className="flex items-center gap-2 pt-1">
-            <input
-              type="text"
-              value={customTagInput}
-              onChange={(e) => setCustomTagInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  addCustomTag();
-                }
-              }}
-              placeholder="Yangi teg kiriting (masalan: Aprel yangi)..."
-              className={`${INPUT_CLS} text-xs py-1.5`}
-            />
-            <button
-              type="button"
-              onClick={addCustomTag}
-              className="px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-bold text-xs shrink-0 cursor-pointer hover:bg-indigo-100"
-            >
-              <Plus size={14} className="inline mr-1" /> Qo'shish
-            </button>
-          </div>
         </div>
 
-        {/* 9. CHEGIRMA (Discount) OPTION */}
-        <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 space-y-3">
-          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer select-none">
+        {/* 7. CHEGIRMA */}
+        <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+          <label className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer">
             <input
               type="checkbox"
               checked={hasDiscount}
               onChange={(e) => setHasDiscount(e.target.checked)}
-              className="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+              className="rounded border-slate-300 text-indigo-600 w-3.5 h-3.5"
             />
-            <Percent size={14} className="text-amber-500" /> Chegirma berish
+            <span>Chegirma berish</span>
           </label>
 
           {hasDiscount && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
-                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                  Chegirma summasi (so'm)
-                </label>
+                <label className={LABEL_CLS}>Chegirma summasi</label>
                 <input
                   type="number"
                   min="0"
                   step="1000"
                   value={discountAmount}
                   onChange={(e) => setDiscountAmount(e.target.value)}
-                  placeholder="Masalan: 50000"
-                  className={`${INPUT_CLS} text-xs font-semibold`}
+                  placeholder="0"
+                  className={`${INPUT_CLS} text-xs`}
                 />
               </div>
               <div>
-                <label className="text-[11px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                  Chegirma sababi
-                </label>
+                <label className={LABEL_CLS}>Chegirma sababi</label>
                 <input
                   type="text"
                   value={discountReason}
                   onChange={(e) => setDiscountReason(e.target.value)}
-                  placeholder="Masalan: 2 ta farzand, aksiya..."
+                  placeholder="Sabab..."
                   className={`${INPUT_CLS} text-xs`}
                 />
               </div>
@@ -917,128 +744,74 @@ export function RecordPaymentModal({
           )}
         </div>
 
-        {/* 10. IZOH */}
+        {/* 8. IZOH */}
         <div>
-          <label className={LABEL_CLS}>Izoh yoki chek raqami (ixtiyoriy)</label>
+          <label className={LABEL_CLS}>Izoh</label>
           <input
             type="text"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Masalan: Chek #12345, ota-onasi to'ladi"
+            placeholder="Izoh kiriting..."
             className={`${INPUT_CLS} text-xs`}
           />
         </div>
 
-        {/* Calculation Summary Card */}
+        {/* 9. XULOSA VA QARZ SANA */}
         {groupId && (
-          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
-            <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-              <span>Guruh oylik to'lovi ({selectedMonth}):</span>
-              <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1 text-xs">
+            <div className="flex justify-between items-center text-slate-500">
+              <span>Oylik to'lov:</span>
+              <span className="font-bold text-slate-900 dark:text-white">
                 {money(groupPrice)} so'm
               </span>
             </div>
 
             {alreadyPaidThisMonth > 0 && (
-              <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400">
-                <span>Ushbu oy uchun avval to'langan:</span>
+              <div className="flex justify-between items-center text-emerald-600">
+                <span>Avval to'langan:</span>
                 <span className="font-bold">+{money(alreadyPaidThisMonth)} so'm</span>
               </div>
             )}
 
-            {hasDiscount && discountVal > 0 && (
-              <div className="flex justify-between items-center text-amber-600 dark:text-amber-400">
-                <span>Chegirma:</span>
-                <span className="font-semibold">-{money(discountVal)} so'm</span>
+            {qarz > 0 ? (
+              <div className="flex justify-between items-center text-rose-600 font-bold pt-1">
+                <span>Qoldiq qarz:</span>
+                <span>{money(qarz)} so'm</span>
+              </div>
+            ) : (
+              <div className="flex justify-between items-center text-emerald-600 font-bold pt-1">
+                <span>Holat:</span>
+                <span>To'liq to'landi</span>
               </div>
             )}
-
-            <div className="flex justify-between items-center text-slate-700 dark:text-slate-300 pt-1 border-t border-slate-200 dark:border-slate-700/60 font-bold">
-              <span>To'lanishi kerak bo'lgan summa:</span>
-              <span className="font-black text-slate-900 dark:text-white">
-                {money(netDueNow)} so'm
-              </span>
-            </div>
-
-            {applicableBalance > 0 && (
-              <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-semibold">
-                <span>⚡ Talaba balansidan yechilmoqda:</span>
-                <span className="font-bold">-{money(applicableBalance)} so'm</span>
-              </div>
-            )}
-
-            <div className="flex justify-between items-center text-indigo-600 dark:text-indigo-400 font-bold">
-              <span>Hozir kiritilayotgan to'lov:</span>
-              <span className="font-black text-sm">{money(paidVal)} so'm</span>
-            </div>
-
-            {/* Surplus (Ortiqcha to'lov) Banner */}
-            {surplusToBalance > 0 && (
-              <div className="p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-900 dark:text-indigo-200 space-y-1">
-                <div className="flex items-center justify-between font-bold">
-                  <span className="flex items-center gap-1.5 text-indigo-700 dark:text-indigo-300">
-                    <Sparkles size={14} className="text-amber-500" /> Ortiqcha to'lov (Depozit):
-                  </span>
-                  <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">
-                    +{money(surplusToBalance)} so'm
-                  </span>
-                </div>
-                <p className="text-[11px] text-indigo-700/80 dark:text-indigo-300/80 leading-relaxed">
-                  Ushbu ortiqcha summa o'quvchining <strong>balansiga</strong> saqlanadi.
-                </p>
-              </div>
-            )}
-
-            {/* Debt status */}
-            <div className="flex justify-between items-center pt-1 border-t border-slate-200 dark:border-slate-700/60">
-              {qarz > 0 ? (
-                <>
-                  <span className="font-extrabold text-rose-600 dark:text-rose-400">
-                    To'lovdan keyingi qoldiq qarz:
-                  </span>
-                  <span className="font-black text-rose-600 dark:text-rose-400 text-sm">
-                    {money(qarz)} so'm
-                  </span>
-                </>
-              ) : (
-                <div className="w-full flex items-center justify-between py-0.5 text-emerald-600 dark:text-emerald-400 font-bold">
-                  <span className="flex items-center gap-1.5">
-                    <CheckCircle2 size={16} /> Bu oy uchun to'liq to'landi
-                  </span>
-                </div>
-              )}
-            </div>
           </div>
         )}
 
-        {/* Debt Due Date if Debt > 0 */}
         {qarz > 0 && (
-          <div className="p-3 rounded-xl bg-rose-50/60 dark:bg-rose-950/30 border border-rose-200/80 dark:border-rose-900/40 space-y-1.5">
-            <label className="text-xs font-bold text-rose-700 dark:text-rose-300 flex items-center gap-1.5">
-              <Calendar size={14} /> Qoldiq qarzni to'lash muddati (Due Date)
-            </label>
+          <div>
+            <label className={LABEL_CLS}>Qarzni to'lash muddati</label>
             <input
               type="date"
               value={debtDueDate}
               onChange={(e) => setDebtDueDate(e.target.value)}
-              className={`${INPUT_CLS} text-xs font-semibold`}
+              className={`${INPUT_CLS} text-xs font-medium`}
             />
           </div>
         )}
 
         {/* Error message */}
         {error && (
-          <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 text-xs font-bold flex items-center gap-2">
+          <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 text-xs font-bold flex items-center gap-2">
             <AlertCircle size={15} /> {error}
           </div>
         )}
 
         {/* Actions */}
-        <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
+        <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+            className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 transition-colors"
           >
             Bekor qilish
           </button>

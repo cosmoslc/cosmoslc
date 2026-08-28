@@ -19,6 +19,7 @@ import {
   INPUT_CLS,
   LABEL_CLS,
   PrimaryButton,
+  ExcelButton,
 } from "../theme/tokens";
 import {
   displayPhone,
@@ -28,7 +29,7 @@ import {
 } from "../utils/helpers";
 import { getPaymentStatus, getPaymentTotal, thisMonthKey } from "../utils/helpers";
 import { calculateProratedFee } from "../../../shared/utils/prorata";
-import { opGroups } from "../utils/dataHelpers";
+import { filterGroupsByBranch, opGroups } from "../utils/dataHelpers";
 import { StudentProfilePage } from "./StudentProfilePage";
 
 const STATUS_META = {
@@ -73,10 +74,8 @@ export function StudentsPage({
   onRecordPayment,
   onRemoveFromGroup,
 }) {
-  const groups = opGroups(opData).filter((g) => {
-    const course = directorData.courses.find((c) => c.id === g.courseId);
-    return course && scopeBranches.some((b) => b.id === course.branchId);
-  });
+  const scopeBranchIds = (scopeBranches || []).map((b) => b.id);
+  const groups = filterGroupsByBranch(opGroups(opData), scopeBranchIds, directorData?.courses || []);
   const teachers = directorData?.teachersHR || directorData?.teachers || opData?.teachers || [];
   const allowedGroupIds = new Set(groups.map((g) => g.id));
   const month = thisMonthKey();
@@ -640,7 +639,7 @@ export function StudentsPage({
                         saveFn({ ...student, status: newStatus });
                       }
                     }}
-                    className={`rounded-full px-2.5 py-1 text-xs font-semibold cursor-pointer border focus:outline-none transition-all ${
+                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold cursor-pointer border focus:outline-none transition-all ${
                       STATUS_META[status]?.cls || "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
                     }`}
                   >

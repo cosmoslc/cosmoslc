@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { BTN_GHOST, INPUT_CLS, PrimaryButton } from "../theme/tokens";
 import { money, thisMonthKey } from "../utils/helpers";
-import { opGroupStudentCount, opGroups, opRooms } from "../utils/dataHelpers";
+import { filterGroupsByBranch, opGroupStudentCount, opGroups, opRooms } from "../utils/dataHelpers";
 import { EmptyState } from "../components/primitives";
 
 export function GroupsPage({
@@ -37,7 +37,7 @@ export function GroupsPage({
   const allGroups = opGroups(opData);
   const allCourses = directorData?.courses || [];
   const courses = (scopeBranchIds && scopeBranchIds.length > 0)
-    ? allCourses.filter((c) => scopeBranchIds.includes(c.branchId))
+    ? allCourses.filter((c) => !c.branchId || c.branchId === "all" || scopeBranchIds.includes(c.branchId))
     : allCourses;
   const courseIds = courses.map((c) => c.id);
   const teachers = directorData?.teachersHR || directorData?.teachers || opData?.teachers || [];
@@ -48,12 +48,7 @@ export function GroupsPage({
   const [courseFilter, setCourseFilter] = useState("all");
   const [dayFilter, setDayFilter] = useState("all");
 
-  const groups = allGroups.filter((g) => {
-    if (scopeBranchIds && scopeBranchIds.length > 0) {
-      return !g.courseId || courses.some((c) => String(c.id) === String(g.courseId));
-    }
-    return true;
-  });
+  const groups = filterGroupsByBranch(allGroups, scopeBranchIds, allCourses);
 
   const rawRows = groups
     .map((g) => {

@@ -10,6 +10,7 @@ export function AddStudentModal({
   full,
   scopeBranches = [],
   branches = [],
+  defaultBranchId,
   directorData = { courses: [] },
   opData = {},
   groups: propGroups,
@@ -20,7 +21,10 @@ export function AddStudentModal({
   onSubmit,
   onClose,
 }) {
-  const safeScopeBranches = scopeBranches.length > 0 ? scopeBranches : branches;
+  const allBranchesList = branches.length > 0 ? branches : scopeBranches;
+  const safeScopeBranches = (defaultBranchId && defaultBranchId !== "all")
+    ? allBranchesList.filter((b) => String(b.id) === String(defaultBranchId))
+    : (scopeBranches.length > 0 ? scopeBranches : branches);
   const safeDirectorData = directorData || { courses: [] };
   const safeCourses = safeDirectorData.courses || [];
   const branchIds = safeScopeBranches.map((b) => b.id);

@@ -5,7 +5,10 @@ import { Modal } from "../components/primitives";
 
 const QUICK_CAPACITIES = [12, 15, 20, 25, 30, 40];
 
-export function RoomFormModal({ editing, onSubmit, onClose }) {
+export function RoomFormModal({ editing, branches = [], defaultBranchId, onSubmit, onClose }) {
+  const [branchId, setBranchId] = useState(
+    editing?.branchId || (defaultBranchId && defaultBranchId !== "all" ? defaultBranchId : "") || branches[0]?.id || "",
+  );
   const [name, setName] = useState(editing?.name || "");
   const [capacity, setCapacity] = useState(editing?.capacity ?? "20");
   const [error, setError] = useState("");
@@ -24,6 +27,7 @@ export function RoomFormModal({ editing, onSubmit, onClose }) {
       ...editing,
       name: name.trim(),
       capacity: capNum,
+      branchId: branchId || null,
     });
     onClose();
   }
@@ -34,6 +38,26 @@ export function RoomFormModal({ editing, onSubmit, onClose }) {
       onClose={onClose}
     >
       <div className="space-y-4 text-slate-800 dark:text-slate-200">
+        {branches.length > 0 && (
+          <div>
+            <label className={`${LABEL_CLS} flex items-center gap-1.5`}>
+              Filial
+            </label>
+            <select
+              value={branchId}
+              onChange={(e) => setBranchId(e.target.value)}
+              className={INPUT_CLS}
+            >
+              <option value="">Filialni tanlang</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div>
           <label className={`${LABEL_CLS} flex items-center gap-1.5`}>
             <DoorOpen size={14} className="text-orange-500" />

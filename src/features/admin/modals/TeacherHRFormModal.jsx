@@ -5,9 +5,9 @@ import { Modal, MoneyInput, PhoneInput, ToggleSwitch } from "../components/primi
 import { hashPassword } from "../utils/helpers";
 import { Camera, Trash2, User, Upload } from "lucide-react";
 
-export function TeacherHRFormModal({ editing, branches = [], onSubmit, onClose }) {
+export function TeacherHRFormModal({ editing, branches = [], defaultBranchId, onSubmit, onClose }) {
   const [branchId, setBranchId] = useState(
-    editing?.branchId || branches[0]?.id || "",
+    editing?.branchId || (defaultBranchId && defaultBranchId !== "all" ? defaultBranchId : "") || branches[0]?.id || "",
   );
   const effectiveBranchId = branchId || editing?.branchId || branches[0]?.id || "";
   const [name, setName] = useState(editing?.name || "");

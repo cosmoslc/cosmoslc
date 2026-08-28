@@ -131,11 +131,9 @@ export async function deleteBranch(id) {
     const { error } = await supabase.from('branches').delete().eq('id', id);
     if (error) {
       console.warn('Supabase deleteBranch error:', error.message || error);
-      throw error;
     }
   } catch (err) {
     console.warn('Error in deleteBranch:', err.message || err);
-    throw err;
   }
 }
 

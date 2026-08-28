@@ -9,6 +9,28 @@ export function opFrozenStudents(opData) {
 export function opGroups(opData) {
   return opData?.groups || [];
 }
+export function filterGroupsByBranch(allGroups, scopeBranchIds, allCourses = []) {
+  if (!allGroups || !Array.isArray(allGroups)) return [];
+  if (!scopeBranchIds || scopeBranchIds.length === 0) return allGroups;
+
+  const stringBranchIds = scopeBranchIds.map(String);
+
+  return allGroups.filter((g) => {
+    // 1. Direct branchId on group
+    if (g.branchId && g.branchId !== "all") {
+      return stringBranchIds.includes(String(g.branchId));
+    }
+    // 2. Course branchId
+    if (g.courseId) {
+      const course = allCourses.find((c) => String(c.id) === String(g.courseId));
+      if (course && course.branchId && course.branchId !== "all") {
+        return stringBranchIds.includes(String(course.branchId));
+      }
+    }
+    // 3. If neither group nor course is locked to a specific branch, include it
+    return true;
+  });
+}
 export function opRooms(opData) {
   return opData?.rooms || [];
 }

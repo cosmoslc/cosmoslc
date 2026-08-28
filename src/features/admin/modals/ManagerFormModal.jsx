@@ -30,7 +30,7 @@ import {
   getStaffFormCompletionStatus,
 } from "../utils/staffFormFields";
 
-export function ManagerFormModal({ editing, branches = [], onSubmit, onClose }) {
+export function ManagerFormModal({ editing, branches = [], defaultBranchId, onSubmit, onClose }) {
   // Load roles/positions
   const availableRoles = useMemo(() => {
     try {
@@ -104,7 +104,7 @@ export function ManagerFormModal({ editing, branches = [], onSubmit, onClose }) 
 
   // Branches
   const [branchIds, setBranchIds] = useState(
-    editing?.branchIds || (editing?.branchId ? [editing.branchId] : [])
+    editing?.branchIds || (editing?.branchId ? [editing.branchId] : (defaultBranchId && defaultBranchId !== "all" ? [defaultBranchId] : []))
   );
 
   // Note / Comment

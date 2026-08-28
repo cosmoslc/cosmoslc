@@ -23,7 +23,7 @@ import {
   Edit3,
 } from "lucide-react";
 import { money, thisMonthKey, todayISO, formatDate } from "../utils/helpers";
-import { opGroups, opStudentsInGroups, opAttendance, attendanceStatus } from "../utils/dataHelpers";
+import { filterGroupsByBranch, opGroups, opStudentsInGroups, opAttendance, attendanceStatus } from "../utils/dataHelpers";
 import { GLASS, GLASS_SOFT, INPUT_CLS, BTN_PRIMARY_BASE, BTN_GHOST } from "../theme/tokens";
 import { MONTHS_UZ, JS_DAY_NAMES } from "../utils/constants";
 
@@ -66,20 +66,10 @@ export function TodayWorkbench({
 
   // 1. Scoped groups and courses
   const allGroups = opGroups(opData);
-  const scopedCourses = useMemo(() => {
-    const courses = directorData?.courses || [];
-    if (!scopeBranchIds || scopeBranchIds.length === 0) return courses;
-    return courses.filter((c) => scopeBranchIds.includes(c.branchId));
-  }, [directorData?.courses, scopeBranchIds]);
-
-  const scopedCourseIds = useMemo(
-    () => scopedCourses.map((c) => c.id),
-    [scopedCourses]
-  );
-
+  const allCourses = directorData?.courses || [];
   const groups = useMemo(() => {
-    return allGroups.filter((g) => g.courseId && scopedCourseIds.includes(g.courseId));
-  }, [allGroups, scopedCourseIds]);
+    return filterGroupsByBranch(allGroups, scopeBranchIds, allCourses);
+  }, [allGroups, scopeBranchIds, allCourses]);
 
   const students = opData?.students || [];
   const payments = directorData?.payments || [];
