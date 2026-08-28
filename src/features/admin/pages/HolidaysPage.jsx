@@ -19,7 +19,7 @@ import {
   INPUT_CLS,
   LABEL_CLS,
 } from "../theme/tokens";
-import { EmptyState } from "../components/primitives";
+import { EmptyState, ConfirmModal } from "../components/primitives";
 import { formatDate, todayISO } from "../utils/helpers";
 
 function addDaysISO(dateStr, daysCount) {
@@ -51,6 +51,7 @@ export function HolidaysPage({
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [deletingHoliday, setDeletingHoliday] = useState(null);
 
   const branchesList =
     scopeBranches && scopeBranches.length > 0
@@ -193,17 +194,18 @@ export function HolidaysPage({
   };
 
   const handleDelete = (id, name) => {
-    if (
-      window.confirm(
-        `Rostdan ham "${name || "ushbu bayram"}" dam olish kunini o'chirmoqchimisiz?`
-      )
-    ) {
-      const updated = holidays.filter((h) => h.id !== id);
-      setHolidays(updated);
-      onSave?.({ holidays: updated });
-      onRefresh?.();
-      onToast?.("Bayram o'chirildi", "info");
-    }
+    setDeletingHoliday({ id, name });
+  };
+
+  const confirmDeleteHolidayAction = () => {
+    if (!deletingHoliday) return;
+    const { id } = deletingHoliday;
+    const updated = holidays.filter((h) => h.id !== id);
+    setHolidays(updated);
+    onSave?.({ holidays: updated });
+    onRefresh?.();
+    onToast?.("Bayram o'chirildi", "info");
+    setDeletingHoliday(null);
   };
 
   return (
@@ -582,6 +584,18 @@ export function HolidaysPage({
             </form>
           </div>
         </div>
+      )}
+
+      {deletingHoliday && (
+        <ConfirmModal
+          title="Dam olish kunini o'chirish"
+          message={`Rostdan ham "${deletingHoliday.name || "ushbu bayram"}" dam olish kunini o'chirmoqchimisiz?`}
+          confirmText="Ha, o'chirish"
+          cancelText="Bekor qilish"
+          danger={true}
+          onConfirm={confirmDeleteHolidayAction}
+          onCancel={() => setDeletingHoliday(null)}
+        />
       )}
     </div>
   );

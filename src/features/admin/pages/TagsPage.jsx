@@ -26,6 +26,7 @@ import {
   BTN_SECONDARY,
   BTN_DANGER,
 } from "../theme/tokens";
+import { ConfirmModal } from "../components/primitives";
 
 // Available sections as specified by the user
 export const TAG_CATEGORIES = [
@@ -70,6 +71,7 @@ export function TagsPage() {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTag, setEditingTag] = useState(null);
+  const [deletingTagId, setDeletingTagId] = useState(null);
 
   // Form State
   const [tagName, setTagName] = useState("");
@@ -130,8 +132,13 @@ export function TagsPage() {
 
   // Delete tag
   const handleDeleteTag = (id) => {
-    if (window.confirm("Rostdan ham ushbu tegni o'chirib tashlamoqchimisiz?")) {
-      setTags((prev) => prev.filter((t) => t.id !== id));
+    setDeletingTagId(id);
+  };
+
+  const confirmDeleteTag = () => {
+    if (deletingTagId) {
+      setTags((prev) => prev.filter((t) => t.id !== deletingTagId));
+      setDeletingTagId(null);
     }
   };
 
@@ -429,6 +436,18 @@ export function TagsPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {deletingTagId && (
+        <ConfirmModal
+          title="Tegni o'chirish"
+          message="Rostdan ham ushbu tegni o'chirib tashlamoqchimisiz?"
+          confirmText="Ha, o'chirish"
+          cancelText="Bekor qilish"
+          danger={true}
+          onConfirm={confirmDeleteTag}
+          onCancel={() => setDeletingTagId(null)}
+        />
       )}
     </div>
   );

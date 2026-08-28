@@ -29,7 +29,7 @@ import {
   BTN_SECONDARY,
   BTN_DANGER,
 } from "../theme/tokens";
-import { EmptyState } from "../components/primitives";
+import { EmptyState, ConfirmModal } from "../components/primitives";
 import { formatDate, todayISO } from "../utils/helpers";
 
 const TABS = [
@@ -162,6 +162,7 @@ export function ReasonsPage() {
   // Modal State
   const [showModal, setShowModal] = useState(false);
   const [editingReason, setEditingReason] = useState(null);
+  const [deletingReason, setDeletingReason] = useState(null);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -247,11 +248,15 @@ export function ReasonsPage() {
   };
 
   const handleDelete = (id, title) => {
-    if (window.confirm(`Rostdan ham "${title}" sababini o'chirmoqchimisiz?`)) {
-      const currentList = reasonsMap[activeTab] || [];
-      const updated = currentList.filter((item) => item.id !== id);
-      setReasonsMap((prev) => ({ ...prev, [activeTab]: updated }));
-    }
+    setDeletingReason({ id, title });
+  };
+
+  const confirmDeleteReason = () => {
+    if (!deletingReason) return;
+    const currentList = reasonsMap[activeTab] || [];
+    const updated = currentList.filter((item) => item.id !== deletingReason.id);
+    setReasonsMap((prev) => ({ ...prev, [activeTab]: updated }));
+    setDeletingReason(null);
   };
 
   const activeTabMeta = TABS.find((t) => t.id === activeTab);
@@ -777,6 +782,18 @@ export function ReasonsPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {deletingReason && (
+        <ConfirmModal
+          title="Sababni o'chirish"
+          message={`Rostdan ham "${deletingReason.title}" sababini o'chirmoqchimisiz?`}
+          confirmText="Ha, o'chirish"
+          cancelText="Bekor qilish"
+          danger={true}
+          onConfirm={confirmDeleteReason}
+          onCancel={() => setDeletingReason(null)}
+        />
       )}
     </div>
   );

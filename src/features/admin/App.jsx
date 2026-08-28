@@ -751,6 +751,17 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
     }
   };
 
+  const handleDeleteAttendance = async (attendanceId) => {
+    try {
+      await api.deleteAttendanceRecord(attendanceId);
+      addToast("Davomat yozuvi o'chirildi");
+      await refreshData();
+    } catch (e) {
+      console.error(e);
+      addToast("Davomatni o'chirishda xatolik", "error");
+    }
+  };
+
   const handleSaveEmployeeAttendance = async (rec) => {
     try {
       if (rec.id) {
@@ -1117,6 +1128,7 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
               scopeBranchIds={scopeBranchIds}
               openModal={(m) => setModal(m)}
               onSaveAttendance={handleSaveAttendance}
+              onDeleteAttendance={handleDeleteAttendance}
               openEditAttendanceModal={(group, date) =>
                 setModal({ type: "editAttendance", group, date })
               }
@@ -1566,8 +1578,81 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
             openPaymentModal={(student, group) =>
               setModal({ type: "recordPayment", student, group })
             }
+            onUpdate={handleSaveStudent}
             onSaveStudent={handleSaveStudent}
+            onDelete={handleDeleteStudent}
             onDeleteStudent={handleDeleteStudent}
+            openModal={(m) => setModal(m)}
+          />
+        )}
+
+        {modal?.type === "confirm" && (
+          <ConfirmModal
+            title={modal.title || "O'chirishni tasdiqlash"}
+            message={modal.message || "Haqiqatan ham ushbu ma'lumotni o'chirmoqchimisiz?"}
+            confirmText={modal.confirmText || "Ha, o'chirish"}
+            cancelText={modal.cancelText || "Bekor qilish"}
+            danger={modal.danger !== false}
+            onConfirm={async () => {
+              const currentModal = modal;
+              setModal(null);
+              try {
+                if (typeof currentModal.onConfirm === "function") {
+                  await currentModal.onConfirm();
+                  return;
+                }
+                if (currentModal.action) {
+                  const { kind, ...params } = currentModal.action;
+                  switch (kind) {
+                    case "deleteBranch":
+                      await handleDeleteBranch(params.branchId);
+                      break;
+                    case "deleteManager":
+                      await handleDeleteManager(params.managerId);
+                      break;
+                    case "deleteTeacher":
+                    case "deleteTeacherHR":
+                      await handleDeleteTeacherHR(params.teacherId);
+                      break;
+                    case "deleteCourse":
+                      await handleDeleteCourse(params.courseId);
+                      break;
+                    case "deleteGroup":
+                      await handleDeleteGroup(params.groupId);
+                      break;
+                    case "deleteRoom":
+                      await handleDeleteRoom(params.roomId);
+                      break;
+                    case "deleteStudent":
+                      await handleDeleteStudent(params.studentId);
+                      break;
+                    case "deletePayment":
+                      await handleDeletePayment(params.paymentId);
+                      break;
+                    case "deleteAttendance":
+                      await handleDeleteAttendance(params.recordId);
+                      break;
+                    case "deleteLead":
+                      await handleDeleteLead(params.leadId);
+                      break;
+                    case "deleteExpense":
+                    case "deleteFinance":
+                      await handleDeleteFinanceRecord(params.financeId || params.expenseId);
+                      break;
+                    default:
+                      console.warn("Noma'lum confirm action turi:", kind);
+                  }
+                }
+              } catch (err) {
+                console.error("Confirm action execution failed:", err);
+              }
+            }}
+            onCancel={() => {
+              if (typeof modal.onCancel === "function") {
+                modal.onCancel();
+              }
+              setModal(null);
+            }}
           />
         )}
 

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
+import { ConfirmModal } from "../components/primitives";
 import {
   ShieldCheck,
   Plus,
@@ -415,6 +416,7 @@ export function PositionsPage() {
   const [modalPermSearch, setModalPermSearch] = useState("");
   const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
   const [feedbackToast, setFeedbackToast] = useState(null);
+  const [roleToDeleteConfirm, setRoleToDeleteConfirm] = useState(null);
 
   useEffect(() => {
     try {
@@ -502,13 +504,18 @@ export function PositionsPage() {
       showToast("Tizim lavozimlarini o'chirib bo'lmaydi!", "error");
       return;
     }
-    if (window.confirm(`"${roleToDelete.name}" lavozimini o'chirishni tasdiqlaysizmi?`)) {
-      setRoles((prev) => prev.filter((r) => r.id !== roleToDelete.id));
-      if (selectedRoleId === roleToDelete.id) {
-        setSelectedRoleId(roles[0]?.id || "");
-      }
-      showToast(`"${roleToDelete.name}" lavozimi o'chirildi!`, "info");
+    setRoleToDeleteConfirm(roleToDelete);
+  };
+
+  const confirmDeleteRoleAction = () => {
+    if (!roleToDeleteConfirm) return;
+    const role = roleToDeleteConfirm;
+    setRoles((prev) => prev.filter((r) => r.id !== role.id));
+    if (selectedRoleId === role.id) {
+      setSelectedRoleId(roles[0]?.id || "");
     }
+    showToast(`"${role.name}" lavozimi o'chirildi!`, "info");
+    setRoleToDeleteConfirm(null);
   };
 
   const handleSaveModal = () => {
@@ -1111,6 +1118,18 @@ export function PositionsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {roleToDeleteConfirm && (
+        <ConfirmModal
+          title="Lavozimni o'chirish"
+          message={`"${roleToDeleteConfirm.name}" lavozimini o'chirishni tasdiqlaysizmi?`}
+          confirmText="Ha, o'chirish"
+          cancelText="Bekor qilish"
+          danger={true}
+          onConfirm={confirmDeleteRoleAction}
+          onCancel={() => setRoleToDeleteConfirm(null)}
+        />
       )}
     </div>
   );

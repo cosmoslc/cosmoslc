@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { LEAD_STATUSES } from "../../../shared/constants/finance";
 import { INPUT_CLS, LABEL_CLS, PrimaryButton } from "../theme/tokens";
+import { ConfirmModal } from "../components/primitives";
 import { addStudent, updateStudent } from "../../../shared/api";
 import { SearchableGroupSelect } from "../../../shared/components/SearchableGroupSelect";
 import { SearchableCourseSelect } from "../../../shared/components/SearchableCourseSelect";
@@ -128,6 +129,7 @@ export function LeadProfilePage({
   const [saveSuccessMsg, setSaveSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [copiedPhone, setCopiedPhone] = useState("");
+  const [confirmDeleteLeadModal, setConfirmDeleteLeadModal] = useState(false);
 
   // Inline Editing active key tracker
   const [editingKey, setEditingKey] = useState(null);
@@ -1194,12 +1196,7 @@ export function LeadProfilePage({
               <div className="pt-3 flex justify-end">
                 <button
                   type="button"
-                  onClick={() => {
-                    if (window.confirm("Haqiqatan ham bu lidni o'chirmoqchimisiz?")) {
-                      onDeleteLead(lead.id);
-                      onBack();
-                    }
-                  }}
+                  onClick={() => setConfirmDeleteLeadModal(true)}
                   className="text-xs font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400 flex items-center gap-1.5 p-1 transition-colors cursor-pointer"
                 >
                   <Trash2 size={13} />
@@ -1753,6 +1750,22 @@ export function LeadProfilePage({
         </div>
 
       </div>
+
+      {confirmDeleteLeadModal && (
+        <ConfirmModal
+          title="Lidni o'chirish"
+          message="Haqiqatan ham bu lidni o'chirmoqchimisiz?"
+          confirmText="Ha, o'chirish"
+          cancelText="Bekor qilish"
+          danger={true}
+          onConfirm={() => {
+            setConfirmDeleteLeadModal(false);
+            onDeleteLead(lead.id);
+            onBack();
+          }}
+          onCancel={() => setConfirmDeleteLeadModal(false)}
+        />
+      )}
     </div>
   );
 }

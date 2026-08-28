@@ -1,5 +1,5 @@
 import { isValidElement } from "react";
-import { Loader2, X, Bell, Star } from "lucide-react";
+import { Loader2, X, Bell, Star, Trash2, AlertTriangle } from "lucide-react";
 import { useTheme } from "../theme/ThemeContext";
 import {
   GLASS,
@@ -265,26 +265,62 @@ export function Modal({ title, onClose, children, wide }) {
   );
 }
 
-export function ConfirmModal({ message, onConfirm, onCancel }) {
+export function ConfirmModal({
+  title = "Tasdiqlash",
+  message = "Haqiqatan ham ushbu amalni bajarmoqchimisiz?",
+  confirmText = "Ha, o'chirish",
+  cancelText = "Bekor qilish",
+  danger = true,
+  onConfirm,
+  onCancel,
+}) {
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-150"
       onClick={onCancel}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`${GLASS} rounded-xl p-6 w-full max-w-sm`}
+        className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4 animate-in zoom-in-95 duration-150"
       >
-        <p className="text-slate-900 dark:text-white mb-5">{message}</p>
-        <div className="flex gap-3">
-          <button onClick={onCancel} className={`${BTN_GHOST} flex-1`}>
-            Yo'q, bekor
+        <div className="flex items-start gap-3.5">
+          <div
+            className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+              danger
+                ? "bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50"
+                : "bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50"
+            }`}
+          >
+            {danger ? <Trash2 size={20} /> : <AlertTriangle size={20} />}
+          </div>
+          <div className="space-y-1">
+            <h3 className="font-bold text-base text-slate-900 dark:text-white">
+              {title}
+            </h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              {message}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 pt-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer"
+          >
+            {cancelText}
           </button>
           <button
+            type="button"
             onClick={onConfirm}
-            className="flex-1 bg-rose-500 hover:bg-rose-600 text-white rounded-xl px-4 py-2.5 text-sm transition-all"
+            className={`flex-1 px-4 py-2.5 rounded-xl text-white text-xs font-bold transition-all shadow-sm cursor-pointer ${
+              danger
+                ? "bg-rose-600 hover:bg-rose-700 active:bg-rose-800 shadow-rose-600/20"
+                : "bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 shadow-indigo-600/20"
+            }`}
           >
-            Ha, tasdiqlash
+            {confirmText}
           </button>
         </div>
       </div>

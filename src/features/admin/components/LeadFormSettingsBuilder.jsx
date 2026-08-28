@@ -35,6 +35,7 @@ import {
   Send,
 } from "lucide-react";
 import { GLASS } from "../theme/tokens";
+import { ConfirmModal } from "./primitives";
 import { SearchableGroupSelect } from "../../../shared/components/SearchableGroupSelect";
 import { SearchableCourseSelect } from "../../../shared/components/SearchableCourseSelect";
 
@@ -351,6 +352,7 @@ export function LeadFormSettingsBuilder({
   // Live test interactive form state
   const [liveFormData, setLiveFormData] = useState({});
   const [liveSubmitSuccess, setLiveSubmitSuccess] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   // Sync / Persist changes
   const handlePersist = (updatedFields) => {
@@ -494,17 +496,20 @@ export function LeadFormSettingsBuilder({
 
   // Reset to default
   const resetToDefault = () => {
-    if (window.confirm("Barcha maydonlarni va sarlavhani standart boshlang'ich holatga qaytarmoqchimisiz?")) {
-      handlePersist(DEFAULT_LEAD_FORM_FIELDS);
-      const defaultHead = {
-        title: "O'quv kurslariga qabul",
-        subtitle: "Quyidagi formani to'ldiring, ma'muriyatimiz siz bilan 15 daqiqa ichida bog'lanadi!",
-      };
-      setFormHeader(defaultHead);
-      try {
-        localStorage.setItem("edu_crm_lead_form_header_v2", JSON.stringify(defaultHead));
-      } catch {}
-    }
+    setShowResetConfirm(true);
+  };
+
+  const confirmResetAction = () => {
+    handlePersist(DEFAULT_LEAD_FORM_FIELDS);
+    const defaultHead = {
+      title: "O'quv kurslariga qabul",
+      subtitle: "Quyidagi formani to'ldiring, ma'muriyatimiz siz bilan 15 daqiqa ichida bog'lanadi!",
+    };
+    setFormHeader(defaultHead);
+    try {
+      localStorage.setItem("edu_crm_lead_form_header_v2", JSON.stringify(defaultHead));
+    } catch {}
+    setShowResetConfirm(false);
   };
 
   // Live test form submit
@@ -1323,6 +1328,18 @@ export function LeadFormSettingsBuilder({
           </div>
         </div>
       </div>
+
+      {showResetConfirm && (
+        <ConfirmModal
+          title="Boshlang'ich holatga qaytarish"
+          message="Barcha maydonlarni va sarlavhani standart boshlang'ich holatga qaytarmoqchimisiz?"
+          confirmText="Ha, qaytarish"
+          cancelText="Bekor qilish"
+          danger={false}
+          onConfirm={confirmResetAction}
+          onCancel={() => setShowResetConfirm(false)}
+        />
+      )}
     </div>
   );
 }

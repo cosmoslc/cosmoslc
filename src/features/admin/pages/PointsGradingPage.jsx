@@ -23,6 +23,7 @@ import {
   BTN_SECONDARY,
   BTN_DANGER,
 } from "../theme/tokens";
+import { ConfirmModal } from "../components/primitives";
 
 export function PointsGradingPage() {
   // Left Block State: Grading system min & max ball
@@ -49,6 +50,7 @@ export function PointsGradingPage() {
 
   // Group Rating System Toggle State
   const [useGroupRating, setUseGroupRating] = useState(true);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   // Handle Save for Left Block (Baholash Tizimi)
   const handleSaveGradingSystem = (e) => {
@@ -97,14 +99,17 @@ export function PointsGradingPage() {
 
   // Handle Reset/Clear for Below Block
   const handleResetAttendance = () => {
-    if (window.confirm("Davomat tangalari sozlamalarini boshlang'ich qiymatga qaytarmoqchimisiz?")) {
-      setOnTimeCoins(10);
-      setLateCoins(5);
-      setAbsentCoins(0);
-      setUseGroupRating(true);
-      setAttendanceSavedMsg("Sozlamalar dastlabki holatga qaytarildi.");
-      setTimeout(() => setAttendanceSavedMsg(""), 3000);
-    }
+    setShowResetConfirm(true);
+  };
+
+  const confirmResetAttendanceAction = () => {
+    setOnTimeCoins(10);
+    setLateCoins(5);
+    setAbsentCoins(0);
+    setUseGroupRating(true);
+    setAttendanceSavedMsg("Sozlamalar dastlabki holatga qaytarildi.");
+    setTimeout(() => setAttendanceSavedMsg(""), 3000);
+    setShowResetConfirm(false);
   };
 
   // Generate array of grades from minBall to maxBall
@@ -452,6 +457,18 @@ export function PointsGradingPage() {
           </div>
         </form>
       </div>
+
+      {showResetConfirm && (
+        <ConfirmModal
+          title="Boshlang'ich holatga qaytarish"
+          message="Davomat tangalari sozlamalarini boshlang'ich qiymatga qaytarmoqchimisiz?"
+          confirmText="Ha, qaytarish"
+          cancelText="Bekor qilish"
+          danger={false}
+          onConfirm={confirmResetAttendanceAction}
+          onCancel={() => setShowResetConfirm(false)}
+        />
+      )}
     </div>
   );
 }

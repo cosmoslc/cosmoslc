@@ -43,6 +43,7 @@ import {
   INPUT_CLS,
   LABEL_CLS,
 } from "../theme/tokens";
+import { ConfirmModal } from "../components/primitives";
 import { calculateProratedFee } from "../../../shared/utils/prorata";
 import {
   displayPhone,
@@ -137,6 +138,7 @@ export function StudentProfilePage({
   const [copiedPhone, setCopiedPhone] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [confirmModalState, setConfirmModalState] = useState(null);
 
   // Edit form state
   const [formData, setFormData] = useState({
@@ -454,10 +456,14 @@ export function StudentProfilePage({
       icon: <Trash2 size={16} className="text-rose-600" />,
       onClick: () => {
         setShowActionsMenu(false);
-        if (window.confirm(`${student?.name || "O'quvchi"}ni o'chirish/arxivlashni tasdiqlaysizmi?`)) {
-          onDeleteStudent?.(student?.id);
-          onBack?.();
-        }
+        setConfirmModalState({
+          title: "O'quvchini arxivlash / o'chirish",
+          message: `${student?.name || "O'quvchi"}ni o'chirish/arxivlashni tasdiqlaysizmi?`,
+          onConfirm: () => {
+            onDeleteStudent?.(student?.id);
+            onBack?.();
+          },
+        });
       },
     },
     {
@@ -476,15 +482,19 @@ export function StudentProfilePage({
       icon: <ArrowLeftRight size={16} className="text-purple-600" />,
       onClick: async () => {
         setShowActionsMenu(false);
-        if (window.confirm(`${student?.name || "O'quvchi"}ni qayta lidlar ro'yxatiga o'tkazasizmi?`)) {
-          try {
-            await onUpdateStudent?.(student?.id, { status: "lead" });
-            setSaveSuccessMsg("O'quvchi lidga qaytarildi");
-            setTimeout(() => setSaveSuccessMsg(""), 2500);
-          } catch (e) {
-            console.error(e);
-          }
-        }
+        setConfirmModalState({
+          title: "Lidga qaytarish",
+          message: `${student?.name || "O'quvchi"}ni qayta lidlar ro'yxatiga o'tkazasizmi?`,
+          onConfirm: async () => {
+            try {
+              await onUpdateStudent?.(student?.id, { status: "lead" });
+              setSaveSuccessMsg("O'quvchi lidga qaytarildi");
+              setTimeout(() => setSaveSuccessMsg(""), 2500);
+            } catch (e) {
+              console.error(e);
+            }
+          },
+        });
       },
     },
     {
@@ -622,18 +632,23 @@ export function StudentProfilePage({
   };
 
   const handleDeleteNote = async (noteId) => {
-    if (!window.confirm("Ushbu izohni o'chirmoqchimisiz?")) return;
-    try {
-      const updatedNotes = notesList.filter((n) => n.id !== noteId);
-      if (onUpdateStudent) {
-        await onUpdateStudent(student.id, { notes: updatedNotes });
-      }
-      setSaveSuccessMsg("Izoh o'chirildi");
-      setTimeout(() => setSaveSuccessMsg(""), 2500);
-    } catch (err) {
-      console.error(err);
-      setErrorMsg("Izohni o'chirishda xatolik");
-    }
+    setConfirmModalState({
+      title: "Izohni o'chirish",
+      message: "Ushbu izohni o'chirmoqchimisiz?",
+      onConfirm: async () => {
+        try {
+          const updatedNotes = notesList.filter((n) => n.id !== noteId);
+          if (onUpdateStudent) {
+            await onUpdateStudent(student.id, { notes: updatedNotes });
+          }
+          setSaveSuccessMsg("Izoh o'chirildi");
+          setTimeout(() => setSaveSuccessMsg(""), 2500);
+        } catch (err) {
+          console.error(err);
+          setErrorMsg("Izohni o'chirishda xatolik");
+        }
+      },
+    });
   };
 
   const handleCoinSubmit = async (e) => {
@@ -701,21 +716,26 @@ export function StudentProfilePage({
   };
 
   const handleRemoveGroup = async (groupId) => {
-    if (!window.confirm("Haqiqatan ham o'quvchini ushbu guruhdan chiqarmoqchimisiz?")) return;
-    try {
-      if (onRemoveFromGroup) {
-        onRemoveFromGroup(student.id, groupId);
-      } else if (onUpdateStudent) {
-        const targetGid = String(groupId);
-        const remaining = (student.groupIds || []).filter((id) => String(id) !== targetGid);
-        await onUpdateStudent(student.id, { groupIds: remaining });
-      }
-      setSaveSuccessMsg("O'quvchi guruhdan chiqarildi");
-      setTimeout(() => setSaveSuccessMsg(""), 2500);
-    } catch (err) {
-      console.error(err);
-      setErrorMsg("Guruhdan chiqarishda xatolik");
-    }
+    setConfirmModalState({
+      title: "Guruhdan chiqarish",
+      message: "Haqiqatan ham o'quvchini ushbu guruhdan chiqarmoqchimisiz?",
+      onConfirm: async () => {
+        try {
+          if (onRemoveFromGroup) {
+            onRemoveFromGroup(student.id, groupId);
+          } else if (onUpdateStudent) {
+            const targetGid = String(groupId);
+            const remaining = (student.groupIds || []).filter((id) => String(id) !== targetGid);
+            await onUpdateStudent(student.id, { groupIds: remaining });
+          }
+          setSaveSuccessMsg("O'quvchi guruhdan chiqarildi");
+          setTimeout(() => setSaveSuccessMsg(""), 2500);
+        } catch (err) {
+          console.error(err);
+          setErrorMsg("Guruhdan chiqarishda xatolik");
+        }
+      },
+    });
   };
 
   return (
@@ -787,10 +807,14 @@ export function StudentProfilePage({
             <button
               type="button"
               onClick={() => {
-                if (window.confirm(`${student?.name || "O'quvchi"}ni o'chirish/arxivlashni tasdiqlaysizmi?`)) {
-                  if (student?.id) onDeleteStudent(student.id);
-                  onBack?.();
-                }
+                setConfirmModalState({
+                  title: "O'quvchini arxivlash / o'chirish",
+                  message: `${student?.name || "O'quvchi"}ni o'chirish/arxivlashni tasdiqlaysizmi?`,
+                  onConfirm: () => {
+                    if (student?.id) onDeleteStudent(student.id);
+                    onBack?.();
+                  },
+                });
               }}
               className="p-2 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 rounded-xl border border-rose-200 dark:border-rose-900/50 transition-colors cursor-pointer"
               title="O'quvchini arxivlash / o'chirish"
@@ -1992,6 +2016,22 @@ export function StudentProfilePage({
 
         </div>
       </div>
+
+      {confirmModalState && (
+        <ConfirmModal
+          title={confirmModalState.title || "Tasdiqlash"}
+          message={confirmModalState.message}
+          confirmText={confirmModalState.confirmText || "Ha, tasdiqlash"}
+          cancelText={confirmModalState.cancelText || "Bekor qilish"}
+          danger={confirmModalState.danger !== false}
+          onConfirm={async () => {
+            const fn = confirmModalState.onConfirm;
+            setConfirmModalState(null);
+            if (fn) await fn();
+          }}
+          onCancel={() => setConfirmModalState(null)}
+        />
+      )}
     </div>
   );
 }
