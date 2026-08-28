@@ -236,7 +236,7 @@ export function SearchableGroupSelect({
                 <span className="w-4 h-4 rounded-full border border-slate-300 dark:border-slate-600 flex items-center justify-center text-[10px]">
                   {!value ? "✓" : ""}
                 </span>
-                <span>-- Guruh biriktirilmasin (Ixtiyoriy) --</span>
+                <span>-- Guruhsiz --</span>
               </button>
             )}
 

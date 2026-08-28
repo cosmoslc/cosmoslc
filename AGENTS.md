@@ -7,3 +7,11 @@
   - Form boshqaruv elementlari (input, rang tanlash, qidiruv) va sarlavhalar alohida-alohida qutilarga bo'linmasdan, bitta toza qatorda ixcham joylashtirilsin.
   - Ko'p elementli ro'yxatlar (masalan ruxsatlar, parametrlar) butun ekranni vertikal egallab ketmasligi uchun ustunli to'r (`grid-cols-2` yoki `grid-cols-3`) shaklida tartiblansin.
   - Mini switchlar va checkboxlar ixcham, ortiqcha paddinglarsiz ko'rinsin.
+
+## 2. Ixcham Labellar va Qavsli Eslatmalarni Taqiqlash (Clean Labels & No Unsolicited Help Text)
+- **Asosiy qoida:** Form va interfeys elementlarida faqatgina qisqa va asosiy so'zlar yozilsin.
+- **Qo'llash usuli:**
+  - Label, option va placeholderlarda qavs ichidagi ortiqcha eslatmalar (masalan: `(Dropdown)`, `(Qidirish va tanlash)`, `(Keyinroq biriktirish)`, `(Ixtiyoriy)`) mutlaqo ishlatilmasin.
+  - Inputlar hamda form elementlari ostiga qo'shimcha tushuntirish matnlari, yordamchi `<p>` yoki `<span>` izohlari va eslatmalar yozilmasin.
+  - Yordamchi izohlar yoki qavs ichidagi eslatmalar faqat foydalanuvchi ularni aniq so'ragan taqdirdagina qo'shiladi.
+  - Qoshimcha inputlar yonidan support inputlar qoshish faqatgina user sorasa qoshiladi

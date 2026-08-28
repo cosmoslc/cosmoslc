@@ -228,7 +228,7 @@ export function TeachersHR({
   // All scoped teachers
   const allScopedTeachers = useMemo(() => {
     return (directorData.teachersHR || []).filter((t) =>
-      scopeIds.length === 0 ? true : scopeIds.includes(t.branchId),
+      scopeIds.length === 0 || !t.branchId ? true : scopeIds.includes(t.branchId),
     );
   }, [directorData.teachersHR, scopeIds]);
 
@@ -260,7 +260,7 @@ export function TeachersHR({
     return tabTeachers.filter((t) => {
       // Branch filter
       const matchesBranch =
-        selectedBranchId === "all" || t.branchId === selectedBranchId;
+        selectedBranchId === "all" || !t.branchId || t.branchId === selectedBranchId;
 
       // Search filter (name or phone)
       const matchesSearch =
@@ -273,6 +273,7 @@ export function TeachersHR({
         salaryTypeFilter === "all" ||
         (salaryTypeFilter === "percent" &&
           (t.salaryType === "percent" || !t.salaryType)) ||
+        (salaryTypeFilter === "per_student" && t.salaryType === "per_student") ||
         (salaryTypeFilter === "fixed" && t.salaryType === "fixed");
 
       // Group filter
@@ -408,9 +409,6 @@ export function TeachersHR({
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-2">
               Ustozlar boshqaruvi
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              O'qituvchilar va assistentlar ro'yxati, guruhlar birlashmasi va ish haqi statistikasi
-            </p>
           </div>
 
           {/* Top Sub-Menu Tabs: O'qituvchilar & Support o'qituvchilar */}
@@ -612,6 +610,7 @@ export function TeachersHR({
           >
             <option value="all">Maosh turi (Barchasi)</option>
             <option value="percent">Foizli ulush (%)</option>
+            <option value="per_student">Har bir o'quvchi uchun</option>
             <option value="fixed">Belgilangan (Fixed)</option>
           </select>
 
@@ -669,7 +668,7 @@ export function TeachersHR({
         />
       ) : (
         <div className="space-y-4">
-          <div className="overflow-x-auto rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+          <div className="overflow-x-auto rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs min-h-[260px]">
             <table className="w-full text-left text-sm border-collapse">
               <thead className="bg-slate-50/80 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 font-semibold text-xs border-b border-slate-200 dark:border-slate-800">
                 {activeTab === "assistants" ? (
@@ -732,10 +731,14 @@ export function TeachersHR({
                     sun: "Yak",
                   };
 
+                  const isMenuOpen = openActionMenuId === t.id;
+
                   return (
                     <tr
                       key={t.id}
-                      className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors"
+                      className={`hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors ${
+                        isMenuOpen ? "relative z-30" : ""
+                      }`}
                     >
                       {/* Ism-Familiya */}
                       <td className="py-3 px-4">
@@ -897,13 +900,13 @@ export function TeachersHR({
                       </td>
 
                       {/* Amallar (3 dots) */}
-                      <td className="py-3 px-4 text-right relative">
+                      <td className={`py-3 px-4 text-right relative ${isMenuOpen ? "z-40" : ""}`}>
                         <div className="inline-block text-left">
                           <button
                             type="button"
                             onClick={() =>
                               setOpenActionMenuId(
-                                openActionMenuId === t.id ? null : t.id,
+                                isMenuOpen ? null : t.id,
                               )
                             }
                             className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all cursor-pointer"
@@ -913,13 +916,13 @@ export function TeachersHR({
                           </button>
 
                           {/* Action Dropdown Menu */}
-                          {openActionMenuId === t.id && (
+                          {isMenuOpen && (
                             <>
                               <div
-                                className="fixed inset-0 z-10"
+                                className="fixed inset-0 z-40"
                                 onClick={() => setOpenActionMenuId(null)}
                               />
-                              <div className="absolute right-4 top-10 z-20 w-44 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-lg p-1 space-y-0.5 text-xs text-left">
+                              <div className="absolute right-4 top-10 z-[100] w-44 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl p-1 space-y-0.5 text-xs text-left">
                                 {canEdit && (
                                   <button
                                     onClick={() => {

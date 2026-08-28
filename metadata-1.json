@@ -1,0 +1,6 @@
+{
+  "name": "COSMOS AI",
+  "description": "Educational center management system with director, manager, teacher, and student portals.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

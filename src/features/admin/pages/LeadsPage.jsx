@@ -753,9 +753,6 @@ export function LeadsPage({
                 </span>
               )}
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              {currentTabMeta.subtitle}
-            </p>
           </div>
         </div>
 
@@ -2578,7 +2575,7 @@ export function LeadsPage({
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
                     <GraduationCap size={12} className="text-emerald-500" />
-                    Guruhga biriktirish (Qidirish va tanlash)
+                    Guruhga biriktirish
                   </label>
                   <SearchableGroupSelect
                     groups={groups}

@@ -549,6 +549,34 @@ html.dark body {
   }
 }
 
+@keyframes slideInRight {
+  from {
+    opacity: 0.8;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes backdropFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-backdrop-fade {
+  animation: backdropFade 0.2s ease-out forwards;
+}
+
 .nav-sub-item {
   display: flex;
   align-items: center;
@@ -1620,15 +1648,19 @@ html.dark body {
   right: 0;
   background: #fff;
   border-radius: 12px;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.04);
-  width: 230px;
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.12), 0 8px 10px -6px rgba(0,0,0,0.08);
+  border: 1px solid #e2e8f0;
+  width: 250px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
   padding: 6px 0;
-  z-index: 20;
+  z-index: 50;
   display: none;
 }
 .dark .dropdown {
   background: #1e293b;
   border: 1px solid #334155;
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5), 0 8px 10px -6px rgba(0,0,0,0.4);
 }
 .dropdown.open { display: block; }
 .dropdown button {

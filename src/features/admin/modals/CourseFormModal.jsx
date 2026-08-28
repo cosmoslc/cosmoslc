@@ -19,7 +19,7 @@ const PRESET_COLORS = [
   { name: "Binafsha (Purple)", hex: "#a855f7" },
 ];
 
-export function CourseFormModal({ editing, branches, onSubmit, onClose }) {
+export function CourseFormModal({ editing, branches = [], onSubmit, onClose }) {
   const [branchId, setBranchId] = useState(
     editing?.branchId || branches[0]?.id || "",
   );
@@ -31,13 +31,20 @@ export function CourseFormModal({ editing, branches, onSubmit, onClose }) {
   const [color, setColor] = useState(editing?.color || "#6366f1");
   const [error, setError] = useState("");
 
+  const effectiveBranchId = branchId || editing?.branchId || branches[0]?.id || "";
+
   function submit() {
-    if (!name.trim() || !branchId) {
-      setError("Kurs nomi va filialni kiriting.");
+    if (!name.trim()) {
+      setError("Kurs nomini kiriting.");
+      return;
+    }
+    if (branches.length > 0 && !effectiveBranchId) {
+      setError("Filialni tanlang.");
       return;
     }
     onSubmit({
-      branchId,
+      ...(editing?.id ? { id: editing.id } : {}),
+      branchId: effectiveBranchId || null,
       name: name.trim(),
       price: parseFloat(price) || 0,
       durationMonths: parseFloat(durationMonths) || 0,
@@ -56,7 +63,7 @@ export function CourseFormModal({ editing, branches, onSubmit, onClose }) {
           <div>
             <label className={LABEL_CLS}>Filial</label>
             <select
-              value={branchId}
+              value={effectiveBranchId}
               onChange={(e) => setBranchId(e.target.value)}
               className={INPUT_CLS}
             >
@@ -80,7 +87,7 @@ export function CourseFormModal({ editing, branches, onSubmit, onClose }) {
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={LABEL_CLS}>Baza narxi (so'm / oy)</label>
+            <label className={LABEL_CLS}>Baza narxi</label>
             <MoneyInput
               value={price}
               onChange={(val) => setPrice(val)}
@@ -89,7 +96,7 @@ export function CourseFormModal({ editing, branches, onSubmit, onClose }) {
             />
           </div>
           <div>
-            <label className={LABEL_CLS}>Davomiyligi (oy)</label>
+            <label className={LABEL_CLS}>Davomiyligi</label>
             <input
               type="number"
               value={durationMonths}
@@ -107,11 +114,8 @@ export function CourseFormModal({ editing, branches, onSubmit, onClose }) {
           <div className="flex items-center justify-between mb-2">
             <label className={`${LABEL_CLS} !mb-0 flex items-center gap-1.5`}>
               <Palette size={14} className="text-slate-500 dark:text-slate-400" />
-              Kurs identifikator rangi (Left Border)
+              Kurs rangi
             </label>
-            <span className="text-[11px] font-mono font-medium px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-              {color}
-            </span>
           </div>
 
           {/* Preset Swatches Palette */}
@@ -137,23 +141,13 @@ export function CourseFormModal({ editing, branches, onSubmit, onClose }) {
             })}
           </div>
 
-          {/* Custom Color Input and Hex */}
-          <div className="flex items-center gap-2 mb-3">
-            <div className="relative flex items-center">
-              <input
-                type="color"
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-                className="w-9 h-9 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer bg-transparent"
-              />
-            </div>
+          {/* Custom Color Input Full Width */}
+          <div className="mb-3">
             <input
-              type="text"
+              type="color"
               value={color}
               onChange={(e) => setColor(e.target.value)}
-              placeholder="#6366f1"
-              maxLength={7}
-              className={`${INPUT_CLS} !py-1.5 text-xs font-mono`}
+              className="w-full h-10 p-1 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer bg-transparent"
             />
           </div>
 
@@ -165,18 +159,13 @@ export function CourseFormModal({ editing, branches, onSubmit, onClose }) {
               borderLeftWidth: "4px",
             }}
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span
-                  className="w-2.5 h-2.5 rounded-full inline-block"
-                  style={{ backgroundColor: color || "#6366f1" }}
-                />
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                  {name.trim() || "Kurs nomi ko'rinishi"}
-                </span>
-              </div>
-              <span className="text-[10px] font-semibold text-slate-400">
-                Left border: 4px rangli chiziq
+            <div className="flex items-center gap-2">
+              <span
+                className="w-2.5 h-2.5 rounded-full inline-block"
+                style={{ backgroundColor: color || "#6366f1" }}
+              />
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                {name.trim() || "Kurs ko'rinishi"}
               </span>
             </div>
           </div>

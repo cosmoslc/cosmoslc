@@ -49,7 +49,7 @@ export function CoursesPage({
   
   const allScopedCourses = useMemo(() => {
     return (directorData.courses || []).filter((c) =>
-      scopeIds.length === 0 ? true : scopeIds.includes(c.branchId),
+      scopeIds.length === 0 || !c.branchId ? true : scopeIds.includes(c.branchId),
     );
   }, [directorData.courses, scopeIds]);
 
@@ -70,7 +70,7 @@ export function CoursesPage({
   const filteredCourses = useMemo(() => {
     let result = allScopedCourses.filter((c) => {
       const matchesBranch =
-        selectedBranchId === "all" || c.branchId === selectedBranchId;
+        selectedBranchId === "all" || !c.branchId || c.branchId === selectedBranchId;
       const matchesSearch =
         !searchQuery.trim() ||
         c.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -137,9 +137,6 @@ export function CoursesPage({
                 {stats.coursesCount} ta
               </span>
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              O'quv markazining barcha kurslari katalogi, guruhlar tarkibi va narxlar taqsimoti
-            </p>
           </div>
         </div>
 

@@ -240,9 +240,6 @@ export function StudentsPage({
                 {total} ta
               </span>
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Jami o'quvchilar, guruhga qo'shilganlar va qarzdorlik monitoringi
-            </p>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">

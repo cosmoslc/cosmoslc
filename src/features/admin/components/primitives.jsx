@@ -241,25 +241,51 @@ export function PhoneInput({ value, onChange, autoFocus, onKeyDown }) {
   );
 }
 
-export function Modal({ title, onClose, children, wide }) {
+export function Modal({ title, onClose, children, wide, position = "right" }) {
+  if (position === "center") {
+    return (
+      <div
+        className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-slate-950/50 dark:bg-slate-950/70 backdrop-blur-md animate-backdrop-fade"
+        onClick={onClose}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className={`${GLASS} rounded-2xl p-5 sm:p-6 w-full ${wide ? "max-w-2xl" : "max-w-md"} max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white`}
+        >
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <h3 className="font-display text-lg font-bold text-slate-900 dark:text-white">
+              {title}
+            </h3>
+            <button onClick={onClose} className={BTN_ICON}>
+              <X size={18} />
+            </button>
+          </div>
+          {children}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40"
+      className="fixed inset-0 z-[999] flex justify-end bg-slate-950/50 dark:bg-slate-950/70 backdrop-blur-md animate-backdrop-fade"
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`${GLASS} rounded-xl p-5 sm:p-6 w-full ${wide ? "max-w-2xl" : "max-w-md"} max-h-[85vh] overflow-y-auto`}
+        className={`relative h-full min-h-screen w-full ${wide ? "max-w-2xl sm:max-w-xl" : "max-w-md sm:max-w-lg"} bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xl border-l border-slate-200/80 dark:border-slate-800/80 flex flex-col overflow-hidden animate-slide-in-right`}
       >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-display text-lg font-semibold text-slate-900 dark:text-white">
+        <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between shrink-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
+          <h3 className="font-display text-lg font-bold text-slate-900 dark:text-white">
             {title}
           </h3>
           <button onClick={onClose} className={BTN_ICON}>
-            <X size={18} />
+            <X size={19} />
           </button>
         </div>
-        {children}
+        <div className="p-5 sm:p-6 flex-1 overflow-y-auto space-y-4">
+          {children}
+        </div>
       </div>
     </div>
   );

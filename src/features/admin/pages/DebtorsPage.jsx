@@ -398,9 +398,6 @@ export function DebtorsPage({
                 To'lov nazorati
               </span>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              To'lovi kechikkan, muddati o'tgan va qisman to'lagan o'quvchilar ro'yxati hamda tezkor eslatmalar
-            </p>
           </div>
         </div>
 

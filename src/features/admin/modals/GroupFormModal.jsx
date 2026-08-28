@@ -5,6 +5,27 @@ import { INPUT_CLS, LABEL_CLS, PrimaryButton } from "../theme/tokens";
 import { money, todayISO } from "../utils/helpers";
 import { DayPicker, Modal, MoneyInput } from "../components/primitives";
 
+function computeEndTimeStr(startTimeStr, durationMinutes) {
+  if (!startTimeStr) return "16:30";
+  const [h, m] = startTimeStr.split(":").map(Number);
+  if (isNaN(h) || isNaN(m)) return "16:30";
+  const totalMins = h * 60 + m + Number(durationMinutes || 90);
+  const endH = Math.floor(totalMins / 60) % 24;
+  const endM = totalMins % 60;
+  return `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
+}
+
+function computeDurationMinutes(startTimeStr, endTimeStr) {
+  if (!startTimeStr || !endTimeStr) return 90;
+  const [sH, sM] = startTimeStr.split(":").map(Number);
+  const [eH, eM] = endTimeStr.split(":").map(Number);
+  if (isNaN(sH) || isNaN(sM) || isNaN(eH) || isNaN(eM)) return 90;
+  let startMins = sH * 60 + sM;
+  let endMins = eH * 60 + eM;
+  if (endMins <= startMins) endMins += 24 * 60;
+  return endMins - startMins;
+}
+
 export function GroupFormModal({
   editing,
   initialCourseId,
@@ -49,8 +70,8 @@ export function GroupFormModal({
   const [days, setDays] = useState(editing?.days || []);
 
   const [time, setTime] = useState(editing?.time || "15:00");
-  const [lessonDurationMinutes, setLessonDurationMinutes] = useState(
-    editing?.lessonDurationMinutes ?? "90",
+  const [endTime, setEndTime] = useState(
+    editing?.endTime || computeEndTimeStr(editing?.time || "15:00", editing?.lessonDurationMinutes ?? 90)
   );
 
   const [startDate, setStartDate] = useState(editing?.startDate || todayISO());
@@ -114,7 +135,9 @@ export function GroupFormModal({
       setError("O'qituvchini tanlang.");
       return;
     }
+    const calculatedDuration = computeDurationMinutes(time, endTime);
     onSubmit({
+      ...(editing?.id ? { id: editing.id } : {}),
       name: name.trim(),
       format,
       courseId,
@@ -127,7 +150,8 @@ export function GroupFormModal({
       roomId: roomId || null,
       days,
       time,
-      lessonDurationMinutes: parseFloat(lessonDurationMinutes) || 90,
+      endTime,
+      lessonDurationMinutes: calculatedDuration,
       startDate,
       telegramChatId: telegramChatId.trim(),
       color,
@@ -142,50 +166,21 @@ export function GroupFormModal({
       onClose={onClose}
     >
       <div className="space-y-4 text-slate-900 dark:text-slate-100 text-sm">
-        {/* Ta'lim shakli (Offline / Online) & Guruh nomi */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="md:col-span-2">
-            <label className={LABEL_CLS}>1. Guruh nomi *</label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Masalan: Front-end A1, IELTS Standard..."
-              className={INPUT_CLS}
-              autoFocus
-            />
-          </div>
-          <div>
-            <label className={LABEL_CLS}>Ta'lim shakli *</label>
-            <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
-              <button
-                type="button"
-                onClick={() => setFormat("offline")}
-                className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all ${
-                  format === "offline"
-                    ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
-                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-                }`}
-              >
-                Offline
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormat("online")}
-                className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all ${
-                  format === "online"
-                    ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
-                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-                }`}
-              >
-                Online
-              </button>
-            </div>
-          </div>
+        {/* Guruh nomi */}
+        <div>
+          <label className={LABEL_CLS}>Guruh nomi</label>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Front-end A1"
+            className={INPUT_CLS}
+            autoFocus
+          />
         </div>
 
-        {/* 2. Kurs tanlang */}
+        {/* Kurs tanlang */}
         <div>
-          <label className={LABEL_CLS}>2. Kursni tanlang *</label>
+          <label className={LABEL_CLS}>Kurs</label>
           <select
             value={courseId}
             onChange={(e) => handleCourseChange(e.target.value)}
@@ -193,7 +188,7 @@ export function GroupFormModal({
             disabled={!!editing}
           >
             {courses.length === 0 && (
-              <option value="">— Avval kurs yarating —</option>
+              <option value="">Kurs mavjud emas</option>
             )}
             {courses.map((c) => (
               <option key={c.id} value={c.id}>
@@ -201,20 +196,12 @@ export function GroupFormModal({
               </option>
             ))}
           </select>
-          {selectedCourse && Number(selectedCourse.price || 0) > 0 && (
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-              Kurs bazaviy narxi:{" "}
-              <span className="font-bold text-slate-700 dark:text-slate-300">
-                {money(selectedCourse.price || 0)} so'm
-              </span>
-            </p>
-          )}
         </div>
 
-        {/* 3. Guruh narxi va davomiyligi */}
+        {/* Guruh narxi va davomiyligi */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={LABEL_CLS}>3. Guruh narxi (oylik so'm)</label>
+            <label className={LABEL_CLS}>Guruh narxi</label>
             <MoneyInput
               value={price}
               onChange={(val) => setPrice(val)}
@@ -223,7 +210,7 @@ export function GroupFormModal({
             />
           </div>
           <div>
-            <label className={LABEL_CLS}>Kurs davomiyligi (oy)</label>
+            <label className={LABEL_CLS}>Guruh davomiyligi</label>
             <input
               type="number"
               min="1"
@@ -235,10 +222,10 @@ export function GroupFormModal({
           </div>
         </div>
 
-        {/* 4. O'qituvchi va ish haqi kelishuvi */}
+        {/* O'qituvchi va ish haqi kelishuvi */}
         <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
           <label className={LABEL_CLS}>
-            4. O'qituvchi va maosh hisoblash turi *
+            O'qituvchi
           </label>
           
           <div>
@@ -248,7 +235,7 @@ export function GroupFormModal({
               className={INPUT_CLS}
             >
               {teachers.length === 0 && (
-                <option value="">— O'qituvchi yo'q —</option>
+                <option value="">O'qituvchi mavjud emas</option>
               )}
               {teachers.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -267,14 +254,14 @@ export function GroupFormModal({
                   onChange={(e) => setSalaryType(e.target.value)}
                   className={INPUT_CLS}
                 >
-                  <option value="percent">Foizli ulush (%)</option>
+                  <option value="percent">Foizli ulush</option>
                   <option value="fixed">Belgilangan oylik</option>
                 </select>
               </div>
 
               {salaryType === "percent" ? (
                 <div>
-                  <label className={LABEL_CLS}>Guruhdagi ulushi (%)</label>
+                  <label className={LABEL_CLS}>Guruhdagi ulush</label>
                   <input
                     type="number"
                     min="0"
@@ -287,7 +274,7 @@ export function GroupFormModal({
                 </div>
               ) : (
                 <div>
-                  <label className={LABEL_CLS}>Oylik maoshi (so'm)</label>
+                  <label className={LABEL_CLS}>Oylik maosh</label>
                   <MoneyInput
                     value={fixedSalary}
                     onChange={(val) => setFixedSalary(val)}
@@ -300,19 +287,19 @@ export function GroupFormModal({
           )}
         </div>
 
-        {/* 5. Xona tanlash va Dars kunlari */}
+        {/* Xona tanlash va Dars kunlari */}
         <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
           <div>
-            <label className={LABEL_CLS}>5. Xona tanlash</label>
+            <label className={LABEL_CLS}>Xona</label>
             <select
               value={roomId}
               onChange={(e) => setRoomId(e.target.value)}
               className={INPUT_CLS}
             >
-              <option value="">— Xona tanlanmagan —</option>
+              <option value="">Xona tanlanmagan</option>
               {rooms.map((r) => (
                 <option key={r.id} value={r.id}>
-                  {r.name} ({r.capacity || 20} o'rinli)
+                  {r.name}
                 </option>
               ))}
             </select>
@@ -326,10 +313,10 @@ export function GroupFormModal({
           </div>
         </div>
 
-        {/* 6. Dars boshlanish vaqti va davomiyligi */}
+        {/* Dars boshlanish va tugash vaqti */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={LABEL_CLS}>6. Dars boshlanish vaqti</label>
+            <label className={LABEL_CLS}>Boshlanish vaqti</label>
             <input
               type="time"
               value={time}
@@ -338,25 +325,20 @@ export function GroupFormModal({
             />
           </div>
           <div>
-            <label className={LABEL_CLS}>Dars davomiyligi vaqti</label>
-            <select
-              value={lessonDurationMinutes}
-              onChange={(e) => setLessonDurationMinutes(e.target.value)}
+            <label className={LABEL_CLS}>Tugash vaqti</label>
+            <input
+              type="time"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
               className={INPUT_CLS}
-            >
-              <option value="60">60 daqiqa (1 soat)</option>
-              <option value="80">80 daqiqa (1.3 soat)</option>
-              <option value="90">90 daqiqa (1.5 soat)</option>
-              <option value="120">120 daqiqa (2 soat)</option>
-              <option value="180">180 daqiqa (3 soat)</option>
-            </select>
+            />
           </div>
         </div>
 
-        {/* 7. Boshlanish sanasi va Telegram Chat ID */}
+        {/* Boshlanish sanasi va Telegram Chat ID */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <label className={LABEL_CLS}>7. Boshlanish sanasi</label>
+            <label className={LABEL_CLS}>Boshlanish sanasi</label>
             <input
               type="date"
               value={startDate}
@@ -377,9 +359,9 @@ export function GroupFormModal({
           </div>
         </div>
 
-        {/* 8. Guruh rangi */}
+        {/* Guruh rangi */}
         <div>
-          <label className={LABEL_CLS}>8. Guruh rangi</label>
+          <label className={LABEL_CLS}>Guruh rangi</label>
           <div className="flex gap-2 flex-wrap pt-1">
             {GROUP_COLORS.map((c) => (
               <button
@@ -395,13 +377,13 @@ export function GroupFormModal({
           </div>
         </div>
 
-        {/* 9. Izoh */}
+        {/* Izoh */}
         <div>
-          <label className={LABEL_CLS}>Izoh (Qo'shimcha eslatma)</label>
+          <label className={LABEL_CLS}>Izoh</label>
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Guruh bo'yicha izoh va eslatmalar..."
+            placeholder="Izoh yozing..."
             className={`${INPUT_CLS} min-h-[64px]`}
           />
         </div>

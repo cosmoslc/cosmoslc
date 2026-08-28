@@ -71,7 +71,7 @@ export async function addTeacherHR(payload) {
   const notePayload = JSON.stringify(metaObj);
 
   const insertData = {
-    branch_id: payload.branchId,
+    branch_id: payload.branchId ? payload.branchId : null,
     name: payload.name,
     phone: payload.phone,
     salary_type: payload.salaryType,
@@ -112,7 +112,7 @@ export async function updateTeacherHR(id, payload) {
   const notePayload = JSON.stringify(metaObj);
 
   const patch = {
-    branch_id: payload.branchId,
+    branch_id: payload.branchId ? payload.branchId : null,
     name: payload.name,
     phone: payload.phone,
     salary_type: payload.salaryType,

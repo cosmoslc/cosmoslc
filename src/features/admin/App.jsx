@@ -495,17 +495,25 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
   const handleSaveTeacherHR = async (teacherData) => {
     try {
       let res;
-      if (teacherData.id && directorData?.teachersHR?.some((t) => t.id === teacherData.id)) {
+      if (teacherData.id && directorData?.teachersHR?.some((t) => String(t.id) === String(teacherData.id))) {
         res = await api.updateTeacherHR(teacherData.id, teacherData);
       } else {
         res = await api.addTeacherHR(teacherData);
+      }
+      if (res) {
+        setDirectorData((prev) => ({
+          ...prev,
+          teachersHR: prev?.teachersHR
+            ? [...prev.teachersHR.filter((t) => String(t.id) !== String(res.id)), res]
+            : [res],
+        }));
       }
       addToast(
         teacherData.id
           ? "O'qituvchi ma'lumotlari saqlandi"
           : "Yangi o'qituvchi qo'shildi",
       );
-      await refreshData();
+      refreshData().catch((err) => console.error("Background refresh error:", err));
       return res;
     } catch (e) {
       console.error(e);
@@ -516,8 +524,12 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
   const handleDeleteTeacherHR = async (teacherId) => {
     try {
       await api.deleteTeacherHR(teacherId);
+      setDirectorData((prev) => ({
+        ...prev,
+        teachersHR: (prev?.teachersHR || []).filter((t) => String(t.id) !== String(teacherId)),
+      }));
       addToast("O'qituvchi o'chirildi");
-      await refreshData();
+      refreshData().catch((err) => console.error("Background refresh error:", err));
     } catch (e) {
       console.error(e);
       addToast("O'qituvchini o'chirishda xatolik", "error");
@@ -543,6 +555,14 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
         res = await api.updateCourse(courseData.id, courseData);
       } else {
         res = await api.addCourse(courseData);
+      }
+      if (res) {
+        setDirectorData((prev) => ({
+          ...prev,
+          courses: prev?.courses
+            ? [...prev.courses.filter((c) => c.id !== res.id), res]
+            : [res],
+        }));
       }
       addToast(
         courseData.id
@@ -572,17 +592,25 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
   const handleSaveGroup = async (groupData) => {
     try {
       let res;
-      if (groupData.id && opData?.groups?.some((g) => g.id === groupData.id)) {
+      if (groupData.id && opData?.groups?.some((g) => String(g.id) === String(groupData.id))) {
         res = await api.updateGroup(groupData.id, groupData);
       } else {
         res = await api.addGroup(groupData);
+      }
+      if (res) {
+        setOpData((prev) => ({
+          ...prev,
+          groups: prev?.groups
+            ? [...prev.groups.filter((g) => String(g.id) !== String(res.id)), res]
+            : [res],
+        }));
       }
       addToast(
         groupData.id
           ? "Guruh muvaffaqiyatli yangilandi"
           : "Yangi guruh ochildi",
       );
-      await refreshData();
+      refreshData().catch((err) => console.error("Background refresh error:", err));
       return res;
     } catch (e) {
       console.error(e);
@@ -593,8 +621,12 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
   const handleDeleteGroup = async (groupId) => {
     try {
       await api.deleteGroup(groupId);
+      setOpData((prev) => ({
+        ...prev,
+        groups: (prev?.groups || []).filter((g) => String(g.id) !== String(groupId)),
+      }));
       addToast("Guruh o'chirildi");
-      await refreshData();
+      refreshData().catch((err) => console.error("Background refresh error:", err));
     } catch (e) {
       console.error(e);
       addToast("Guruhni o'chirishda xatolik", "error");
@@ -1474,8 +1506,8 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
 
         {modal?.type === "courseForm" && (
           <CourseFormModal
-            editing={modal.course}
-            branches={directorData?.branches || []}
+            editing={modal.course || modal.editing}
+            branches={directorData?.branches?.length ? directorData.branches : (scopeBranches || [])}
             onSubmit={handleSaveCourse}
             onClose={() => setModal(null)}
           />

@@ -18,7 +18,7 @@ export async function fetchCourses() {
 
 export async function addCourse(payload) {
   const fullPayload = {
-    branch_id: payload.branchId,
+    branch_id: payload.branchId ? payload.branchId : null,
     name: payload.name,
     price: payload.price || 0,
     duration_months: payload.durationMonths || 0,
@@ -51,7 +51,7 @@ export async function addCourse(payload) {
 
 export async function updateCourse(id, payload) {
   const fullPayload = {
-    branch_id: payload.branchId,
+    branch_id: payload.branchId ? payload.branchId : null,
     name: payload.name,
     price: payload.price || 0,
     duration_months: payload.durationMonths || 0,

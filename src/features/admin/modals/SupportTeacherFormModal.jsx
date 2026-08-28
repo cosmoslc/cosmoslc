@@ -25,6 +25,7 @@ export function SupportTeacherFormModal({
   const [branchId, setBranchId] = useState(
     editing?.branchId || branches[0]?.id || "",
   );
+  const effectiveBranchId = branchId || editing?.branchId || branches[0]?.id || "";
   // Assigned Main Teacher ID
   const [assignedTeacherId, setAssignedTeacherId] = useState(
     editing?.assignedTeacherId || (teachers.length > 0 ? teachers[0].id : ""),
@@ -112,7 +113,7 @@ export function SupportTeacherFormModal({
     const workingHoursStr = `${startTime} - ${endTime}`;
     const payload = {
       ...(editing?.id ? { id: editing.id } : {}),
-      branchId,
+      branchId: effectiveBranchId || null,
       assignedTeacherId,
       name: name.trim(),
       phone,

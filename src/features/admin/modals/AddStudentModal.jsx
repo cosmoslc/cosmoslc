@@ -102,6 +102,18 @@ export function AddStudentModal({
       statusNote: statusNote.trim(),
       joinedAt: joinedAt || new Date().toISOString().slice(0, 10),
       groupIds: groupId ? [groupId] : [],
+      groupMemberships: groupId
+        ? {
+            ...(targetEditing?.groupMemberships || {}),
+            [String(groupId)]: targetEditing?.groupMemberships?.[String(groupId)] || {
+              groupId: String(groupId),
+              status: "trial",
+              enrolledAt: new Date().toISOString(),
+              activationDate: null,
+            },
+          }
+        : targetEditing?.groupMemberships || {},
+      balance: typeof targetEditing?.balance === "number" ? targetEditing.balance : 0,
       coins: targetEditing?.coins ?? 0,
       status: targetEditing?.status || "active",
     };
@@ -131,36 +143,8 @@ export function AddStudentModal({
       wide
     >
       <div className="space-y-4 text-sm">
-        {/* Guruh Tanlash (Dropdown) */}
+        {/* Asosiy Ma'lumotlar (Ism, Telefon, Parol, Guruh) */}
         <div>
-          <label className={LABEL_CLS}>Guruhga biriktirish (Dropdown)</label>
-          {groups.length === 0 ? (
-            <div className="space-y-2">
-              <select
-                value={groupId}
-                onChange={(e) => setGroupId(e.target.value)}
-                className={INPUT_CLS}
-              >
-                <option value="">Guruhsiz (Keyinroq biriktirish)</option>
-              </select>
-              <p className="text-slate-400 text-xs">
-                Avval kurs va guruh yarating. Hozircha o'quvchi guruhsiz saqlanadi.
-              </p>
-            </div>
-          ) : (
-            <SearchableGroupSelect
-              groups={groups}
-              courses={courses}
-              students={opData?.students || []}
-              value={groupId}
-              onChange={(gid) => setGroupId(gid)}
-              placeholder="Guruhni qidirish yoki dropdown orqali tanlash..."
-            />
-          )}
-        </div>
-
-        {/* Asosiy Ma'lumotlar (Ism, Telefon, Parol) */}
-        <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
           <p className="font-bold text-xs uppercase tracking-wider text-slate-400 mb-3">
             Asosiy Ma'lumotlar
           </p>
@@ -188,10 +172,35 @@ export function AddStudentModal({
                   type="text"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Bo'sh bo'lsa telefon oxiri (masalan: 1234)"
+                  placeholder="Masalan: 1234"
                   className={INPUT_CLS}
                 />
               </div>
+            </div>
+
+            {/* Guruh Tanlash - Telefon raqam va paroldan keyin */}
+            <div>
+              <label className={LABEL_CLS}>Guruhga biriktirish</label>
+              {groups.length === 0 ? (
+                <div>
+                  <select
+                    value={groupId}
+                    onChange={(e) => setGroupId(e.target.value)}
+                    className={INPUT_CLS}
+                  >
+                    <option value="">Guruhsiz</option>
+                  </select>
+                </div>
+              ) : (
+                <SearchableGroupSelect
+                  groups={groups}
+                  courses={courses}
+                  students={opData?.students || []}
+                  value={groupId}
+                  onChange={(gid) => setGroupId(gid)}
+                  placeholder="Guruhni tanlang..."
+                />
+              )}
             </div>
           </div>
         </div>
@@ -226,7 +235,7 @@ export function AddStudentModal({
             </div>
 
             <div>
-              <label className={LABEL_CLS}>Maktabi (raqam / nomi)</label>
+              <label className={LABEL_CLS}>Maktabi</label>
               <input
                 value={schoolNumber}
                 onChange={(e) => setSchoolNumber(e.target.value)}
@@ -253,7 +262,7 @@ export function AddStudentModal({
             Yashash Manzili
           </p>
           <div>
-            <label className={LABEL_CLS}>Adresi (Viloyat, tuman, ko'cha, uy)</label>
+            <label className={LABEL_CLS}>Adresi</label>
             <input
               value={streetAddress}
               onChange={(e) => setStreetAddress(e.target.value)}
@@ -301,7 +310,7 @@ export function AddStudentModal({
           </div>
 
           <div>
-            <label className={LABEL_CLS}>Izoh (Qo'shimcha eslatma)</label>
+            <label className={LABEL_CLS}>Izoh</label>
             <textarea
               value={statusNote}
               onChange={(e) => setStatusNote(e.target.value)}

@@ -48,21 +48,24 @@ export function GroupsPage({
   const [courseFilter, setCourseFilter] = useState("all");
   const [dayFilter, setDayFilter] = useState("all");
 
-  const groups = allGroups.filter(
-    (g) => g.courseId && courseIds.includes(g.courseId),
-  );
+  const groups = allGroups.filter((g) => {
+    if (scopeBranchIds && scopeBranchIds.length > 0) {
+      return !g.courseId || courses.some((c) => String(c.id) === String(g.courseId));
+    }
+    return true;
+  });
 
   const rawRows = groups
     .map((g) => {
       const count = opGroupStudentCount(opData, g.id);
-      const course = courses.find((c) => c.id === g.courseId);
+      const course = allCourses.find((c) => String(c.id) === String(g.courseId));
       const teacher = teachers.find((t) => String(t.id) === String(g.teacherHrId || g.teacherId));
-      const room = rooms.find((r) => r.id === g.roomId);
+      const room = rooms.find((r) => String(r.id) === String(g.roomId));
       const expectedRevenue = (g.price || 0) * count;
 
       // Calculate collected revenue for this group in the current month
       const collectedRevenue = allPayments
-        .filter((p) => p.groupId === g.id && p.month === currentMonth)
+        .filter((p) => String(p.groupId) === String(g.id) && p.month === currentMonth)
         .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
       const collectionPercent =
@@ -93,7 +96,7 @@ export function GroupsPage({
         (g.course?.name && g.course.name.toLowerCase().includes(q)) ||
         (g.teacher?.name && g.teacher.name.toLowerCase().includes(q));
 
-      const matchCourse = courseFilter === "all" || g.courseId === courseFilter;
+      const matchCourse = courseFilter === "all" || String(g.courseId) === String(courseFilter);
 
       const matchDay = (() => {
         if (dayFilter === "all") return true;
@@ -155,9 +158,6 @@ export function GroupsPage({
                 {totalGroups} ta
               </span>
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Barcha o'quv guruhlari, to'lovlar monitoringi va tushum ko'rsatkichlari
-            </p>
           </div>
         </div>
         {canEdit !== false && (
