@@ -1,4 +1,5 @@
 import { useMemo, useState, useRef, useEffect } from "react";
+import * as XLSX from "xlsx";
 import {
   GraduationCap,
   Plus,
@@ -239,6 +240,26 @@ export function StudentsPage({
     }
   };
 
+  const exportStudentsExcel = () => {
+    const exportData = filteredStudents.map((s) => {
+      const studentGroups = groups.filter((g) => (s.groupIds || []).includes(g.id));
+      const groupNames = studentGroups.map((g) => g.name).join(", ") || "Guruhsiz";
+      return {
+        "F.I.SH": s.name || "",
+        "Telefon": s.phone || "",
+        "Ota-ona telefoni": s.parentPhone || s.phone2 || "",
+        "Guruhlar": groupNames,
+        "Balans": s.balance || 0,
+        "Holati": STATUS_META[s.status]?.label || s.status || "Faol",
+        "Qo'shilgan vaqti": s.joinedAt || s.createdAt || "",
+      };
+    });
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "O'quvchilar");
+    XLSX.writeFile(workbook, `Oquvchilar_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -257,10 +278,12 @@ export function StudentsPage({
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <ExcelButton
-            onClick={() => openModal({ type: "importStudents" })}
-          >
-            <FileSpreadsheet size={16} /> Excel'dan import
-          </ExcelButton>
+            onExport={exportStudentsExcel}
+            onImport={() => openModal({ type: "importStudents" })}
+            title="O'quvchilar Excel amallari"
+            exportLabel="O'quvchilar ro'yxatini eksport qilish"
+            importLabel="Excel'dan o'quvchilarni import qilish"
+          />
           <PrimaryButton onClick={() => openModal({ type: "addStudentFull" })}>
             <Plus size={16} /> Yangi o'quvchi
           </PrimaryButton>
@@ -656,9 +679,18 @@ export function StudentsPage({
                     value={status}
                     onChange={(e) => {
                       const newStatus = e.target.value;
+                      const todayStr = new Date().toISOString().slice(0, 10);
+                      const payload = {
+                        status: newStatus,
+                        ...(newStatus === "paused"
+                          ? { pausedAt: todayStr }
+                          : newStatus === "active"
+                          ? { activationDate: todayStr, reactivatedAt: todayStr, pausedAt: null }
+                          : {}),
+                      };
                       const saveFn = onUpdateStudent || onSaveStudent;
                       if (saveFn) {
-                        saveFn(student.id, { status: newStatus });
+                        saveFn(student.id, payload);
                       }
                     }}
                     className={`rounded-lg px-2.5 py-1 text-xs font-semibold cursor-pointer border focus:outline-none transition-all ${

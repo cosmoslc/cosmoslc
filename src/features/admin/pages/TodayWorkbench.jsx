@@ -23,6 +23,7 @@ import {
   Edit3,
 } from "lucide-react";
 import { money, thisMonthKey, todayISO, formatDate } from "../utils/helpers";
+import { calculateStudentGroupFee } from "../../../shared/utils/prorata";
 import { filterGroupsByBranch, opGroups, opStudentsInGroups, opAttendance, attendanceStatus } from "../utils/dataHelpers";
 import { GLASS, GLASS_SOFT, INPUT_CLS, BTN_PRIMARY_BASE, BTN_GHOST } from "../theme/tokens";
 import { MONTHS_UZ, JS_DAY_NAMES } from "../utils/constants";
@@ -88,12 +89,23 @@ export function TodayWorkbench({
       const price = Number(g.price || course?.price || 0);
 
       grpStudents.forEach((s) => {
+        const membership = s.groupMemberships?.[g.id] || s.groupMemberships?.[String(g.id)] || s;
+        const feeInfo = calculateStudentGroupFee({
+          fullMonthlyFee: price,
+          groupDays: g.days || ["Dush", "Chor", "Juma"],
+          monthStr: currentMonth,
+          membership,
+          student: s,
+        });
+
+        const expectedFee = feeInfo.calculatedFee;
+
         // Calculate payments for this month for this student in this group
         const studentGroupPayments = payments.filter(
           (p) => p.studentId === s.id && p.groupId === g.id && p.month === currentMonth
         );
         const paidSoFar = studentGroupPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-        const debt = Math.max(0, price - paidSoFar);
+        const debt = Math.max(0, expectedFee - paidSoFar);
 
         // Check if student has recorded explicit debt
         const hasExplicitDebt = studentGroupPayments.some((p) => Number(p.debt) > 0);
@@ -105,7 +117,7 @@ export function TodayWorkbench({
             student: s,
             group: g,
             course,
-            price,
+            price: expectedFee,
             paidAmount: paidSoFar,
             debtAmount: debt,
             status,

@@ -49,6 +49,7 @@ import {
   Scale,
 } from "lucide-react";
 import { money, thisMonthKey, formatDate } from "../utils/helpers";
+import { calculateStudentGroupFee } from "../../../shared/utils/prorata";
 import {
   opActiveStudents,
   opFrozenStudents,
@@ -240,7 +241,7 @@ export function DashboardHome({
   // ==========================================
   // 1.1 KUTILAYOTGAN VA YIG'ILGAN DAROMAD, QARZDORLAR VA BALANS
   // ==========================================
-  // Kutilayotgan daromad (Expected Revenue based on active students enrolled in groups * course/group prices)
+  // Kutilayotgan daromad (Expected Revenue based on student memberships and status)
   const expectedRevenue = useMemo(() => {
     let total = 0;
     const allGroups = opData?.groups || [];
@@ -249,11 +250,29 @@ export function DashboardHome({
       return branchIds.includes(g.branchId);
     });
 
+    const currentM = thisMonthKey();
+
     scopedGroups.forEach((g) => {
       const course = (directorData?.courses || []).find((c) => c.id === g.courseId);
       const price = Number(g.price || course?.price || 0);
-      const count = opGroupStudentCount(opData, g.id);
-      total += price * count;
+      const grpStudents = opStudentsInGroups(opData, [g.id]);
+
+      if (price > 0 && grpStudents.length > 0) {
+        grpStudents.forEach((s) => {
+          const membership = s.groupMemberships?.[g.id] || s.groupMemberships?.[String(g.id)] || s;
+          const feeInfo = calculateStudentGroupFee({
+            fullMonthlyFee: price,
+            groupDays: g.days || ["Dush", "Chor", "Juma"],
+            monthStr: currentM,
+            membership,
+            student: s,
+          });
+          total += feeInfo.calculatedFee;
+        });
+      } else {
+        const count = opGroupStudentCount(opData, g.id);
+        total += price * count;
+      }
     });
 
     if (total === 0) {
@@ -276,12 +295,25 @@ export function DashboardHome({
       return branchIds.includes(g.branchId);
     });
 
+    const currentM = thisMonthKey();
+
     scopedGroups.forEach((g) => {
       const course = (directorData?.courses || []).find((c) => c.id === g.courseId);
       const price = Number(g.price || course?.price || 0);
       const grpStudents = opStudentsInGroups(opData, [g.id]);
 
       grpStudents.forEach((s) => {
+        const membership = s.groupMemberships?.[g.id] || s.groupMemberships?.[String(g.id)] || s;
+        const feeInfo = calculateStudentGroupFee({
+          fullMonthlyFee: price,
+          groupDays: g.days || ["Dush", "Chor", "Juma"],
+          monthStr: currentM,
+          membership,
+          student: s,
+        });
+
+        const expectedFee = feeInfo.calculatedFee;
+
         const studentPayments = (directorData?.payments || []).filter(
           (p) =>
             p.studentId === s.id &&
@@ -289,7 +321,7 @@ export function DashboardHome({
             (isSelectedPeriod(p.date) || matchesMonthKey(p.month)),
         );
         const paid = studentPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-        const debt = Math.max(0, price - paid);
+        const debt = Math.max(0, expectedFee - paid);
         if (debt > 0) {
           count++;
           totalDebt += debt;

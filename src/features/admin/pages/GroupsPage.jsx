@@ -23,7 +23,8 @@ import {
 } from "lucide-react";
 import { BTN_GHOST, INPUT_CLS, PrimaryButton, ExcelButton } from "../theme/tokens";
 import { money, thisMonthKey } from "../utils/helpers";
-import { filterGroupsByBranch, opGroupStudentCount, opGroups, opRooms } from "../utils/dataHelpers";
+import { filterGroupsByBranch, opGroupStudentCount, opGroups, opRooms, opStudentsInGroups } from "../utils/dataHelpers";
+import { calculateStudentGroupFee } from "../../../shared/utils/prorata";
 import { EmptyState } from "../components/primitives";
 
 export function GroupsPage({
@@ -56,7 +57,25 @@ export function GroupsPage({
       const course = allCourses.find((c) => String(c.id) === String(g.courseId));
       const teacher = teachers.find((t) => String(t.id) === String(g.teacherHrId || g.teacherId));
       const room = rooms.find((r) => String(r.id) === String(g.roomId));
-      const expectedRevenue = (g.price || 0) * count;
+      
+      const grpStudents = opStudentsInGroups(opData, [g.id]);
+      const fullPrice = g.price || 0;
+      let expectedRevenue = 0;
+      if (grpStudents.length > 0 && fullPrice > 0) {
+        grpStudents.forEach((student) => {
+          const membership = student.groupMemberships?.[g.id] || student.groupMemberships?.[String(g.id)] || student;
+          const feeInfo = calculateStudentGroupFee({
+            fullMonthlyFee: fullPrice,
+            groupDays: g.days || ["Dush", "Chor", "Juma"],
+            monthStr: currentMonth,
+            membership,
+            student,
+          });
+          expectedRevenue += feeInfo.calculatedFee;
+        });
+      } else {
+        expectedRevenue = fullPrice * count;
+      }
 
       // Calculate collected revenue for this group in the current month
       const collectedRevenue = allPayments
@@ -157,18 +176,13 @@ export function GroupsPage({
         </div>
         {canEdit !== false && (
           <div className="flex items-center gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={handleExportExcel}
-              className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center gap-2 border border-slate-200/80 dark:border-slate-700 cursor-pointer"
-            >
-              <Download size={16} /> Export (Excel)
-            </button>
             <ExcelButton
-              onClick={() => openModal({ type: "importGroups" })}
-            >
-              <FileSpreadsheet size={16} /> Import (Excel)
-            </ExcelButton>
+              onExport={handleExportExcel}
+              onImport={() => openModal({ type: "importGroups" })}
+              title="Guruhlar Excel amallari"
+              exportLabel="Guruhlar ro'yxatini eksport qilish"
+              importLabel="Excel'dan guruhlarni import qilish"
+            />
             <PrimaryButton onClick={() => openModal({ type: "groupForm" })}>
               <Plus size={16} /> Yangi guruh ochish
             </PrimaryButton>

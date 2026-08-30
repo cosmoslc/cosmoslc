@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { INPUT_CLS, PrimaryButton, GLASS } from "../theme/tokens";
 import { money, formatDate, normalizePhone, thisMonthKey } from "../utils/helpers";
-import { calculateProratedFee } from "../../../shared/utils/prorata";
+import { calculateStudentGroupFee, calculateProratedFee } from "../../../shared/utils/prorata";
 import { opGroups, opStudentsInGroups } from "../utils/dataHelpers";
 import { Avatar, EmptyState } from "../components/primitives";
 import { RecordPaymentModal } from "../modals/RecordPaymentModal";
@@ -133,15 +133,19 @@ export function DebtorsPage({
       const groupStudents = opStudentsInGroups(opData, [group.id]);
 
       groupStudents.forEach((student) => {
-        const joinDate = student.joinedAt || student.createdAt || student.startDate || "";
-        const prorata = calculateProratedFee({
+        const membership = student.groupMemberships?.[group.id] || student.groupMemberships?.[String(group.id)] || student;
+        const feeInfo = calculateStudentGroupFee({
           fullMonthlyFee: price,
           groupDays: group.days || ["Dush", "Chor", "Juma"],
           monthStr: targetMonthKey,
-          joinDate,
+          membership,
+          student,
         });
 
-        const effectivePrice = prorata.calculatedFee;
+        const effectivePrice = feeInfo.calculatedFee;
+
+        // Skip trial students who have 0 fee obligation
+        if (feeInfo.isTrial) return;
 
         // Calculate amount paid by student for this group in target month
         const paidThisMonth = allPayments
@@ -186,8 +190,8 @@ export function DebtorsPage({
             teacherName: teacher?.name || "Ustoz biriktirilmagan",
             price: effectivePrice,
             basePrice: price,
-            isProrated: prorata.isProrated,
-            prorataInfo: prorata,
+            isProrated: feeInfo.isProrated,
+            prorataInfo: feeInfo,
             paidSoFar: paidThisMonth,
             debtAmount,
             paidPercent: effectivePrice > 0 ? Math.round((paidThisMonth / effectivePrice) * 100) : 0,

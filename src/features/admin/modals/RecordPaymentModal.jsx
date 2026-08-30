@@ -23,7 +23,7 @@ import {
   todayISO,
   thisMonthKey,
 } from "../utils/helpers";
-import { calculateProratedFee } from "../../../shared/utils/prorata";
+import { calculateProratedFee, calculateStudentGroupFee } from "../../../shared/utils/prorata";
 
 // Default and stored payment methods
 function getStoredPaymentMethods(customTypes = []) {
@@ -207,12 +207,13 @@ export function RecordPaymentModal({
     if (!selectedGroupObj || !baseGroupPrice) {
       return { calculatedFee: baseGroupPrice, isProrated: false, totalLessons: 0, attendedLessons: 0, pricePerLesson: 0, reason: "" };
     }
-    const joinDate = selectedStudent?.joinedAt || selectedStudent?.createdAt || selectedStudent?.startDate || "";
-    return calculateProratedFee({
+    const membership = selectedStudent?.groupMemberships?.[selectedGroupObj.id] || selectedStudent?.groupMemberships?.[String(selectedGroupObj.id)] || selectedStudent;
+    return calculateStudentGroupFee({
       fullMonthlyFee: baseGroupPrice,
       groupDays: selectedGroupObj.days || ["Dush", "Chor", "Juma"],
       monthStr: selectedMonth,
-      joinDate,
+      membership,
+      student: selectedStudent,
     });
   }, [selectedGroupObj, baseGroupPrice, selectedStudent, selectedMonth]);
 
@@ -267,15 +268,16 @@ export function RecordPaymentModal({
       if (!sId || !mth) return rawPrice > 0 ? String(rawPrice) : "";
 
       const st = allStudents.find((s) => s.id === sId) || resolvedStudent;
-      const joinDate = st?.joinedAt || st?.createdAt || st?.startDate || "";
-      const prorata = calculateProratedFee({
+      const membership = st?.groupMemberships?.[gId] || st?.groupMemberships?.[String(gId)] || st;
+      const feeInfo = calculateStudentGroupFee({
         fullMonthlyFee: rawPrice,
         groupDays: grp?.days || ["Dush", "Chor", "Juma"],
         monthStr: mth,
-        joinDate,
+        membership,
+        student: st,
       });
 
-      const price = prorata.calculatedFee;
+      const price = feeInfo.calculatedFee;
 
       const paid = allPayments
         .filter(

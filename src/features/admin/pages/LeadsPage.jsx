@@ -42,8 +42,9 @@ import {
   Radio as RadioIcon,
   AlignLeft,
 } from "lucide-react";
+import * as XLSX from "xlsx";
 import { LEAD_STATUSES } from "../../../shared/constants/finance";
-import { INPUT_CLS, LABEL_CLS, GLASS, PrimaryButton } from "../theme/tokens";
+import { INPUT_CLS, LABEL_CLS, GLASS, PrimaryButton, ExcelButton } from "../theme/tokens";
 import { addStudent, updateStudent } from "../../../shared/api";
 import { LeadProfilePage } from "./LeadProfilePage";
 import { SearchableGroupSelect } from "../../../shared/components/SearchableGroupSelect";
@@ -826,6 +827,27 @@ export function LeadsPage({
           >
             <Sliders size={16} className={currentView === "leadsSettings" || currentView === "leadsFormSettings" ? "text-white" : "text-violet-600 dark:text-violet-400"} />
           </button>
+
+          <ExcelButton
+            onExport={() => {
+              const exportData = (filteredLeads || []).map((l) => ({
+                "F.I.SH": l.name || "",
+                "1-Telefon": l.phone || "",
+                "2-Telefon": l.phone2 || l.parentPhone || "",
+                "Sinf": l.grade || "",
+                "Manba": l.source || "",
+                "Holat": l.status || "new",
+                "Izoh": l.note || "",
+                "Yaratilgan sana": l.createdAt ? new Date(l.createdAt).toLocaleDateString() : "",
+              }));
+              const worksheet = XLSX.utils.json_to_sheet(exportData);
+              const workbook = XLSX.utils.book_new();
+              XLSX.utils.book_append_sheet(workbook, worksheet, "Lidlar");
+              XLSX.writeFile(workbook, `Lidlar_${new Date().toISOString().slice(0, 10)}.xlsx`);
+            }}
+            title="Lidlar Excel amallari"
+            exportLabel="Lidlar ro'yxatini eksport qilish"
+          />
 
           <PrimaryButton
             onClick={() => {

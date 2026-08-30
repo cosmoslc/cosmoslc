@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { INPUT_CLS, PrimaryButton, GLASS } from "../theme/tokens";
 import { money, formatDate, normalizePhone, thisMonthKey } from "../utils/helpers";
+import { calculateStudentGroupFee } from "../../../shared/utils/prorata";
 import { opGroups, opStudentsInGroups } from "../utils/dataHelpers";
 import { Avatar, EmptyState } from "../components/primitives";
 import * as api from "../../../shared/api";
@@ -208,6 +209,17 @@ export function PaymentsPage({
 
       const groupStudentList = opStudentsInGroups(opData, [g.id]);
       groupStudentList.forEach((s) => {
+        const membership = s.groupMemberships?.[g.id] || s.groupMemberships?.[String(g.id)] || s;
+        const feeInfo = calculateStudentGroupFee({
+          fullMonthlyFee: groupPrice,
+          groupDays: g.days || ["Dush", "Chor", "Juma"],
+          monthStr: targetMonthKey,
+          membership,
+          student: s,
+        });
+
+        const expectedFee = feeInfo.calculatedFee;
+
         const paidSoFar = allPayments
           .filter(
             (p) =>
@@ -217,8 +229,8 @@ export function PaymentsPage({
           )
           .reduce((sum, p) => sum + Number(p.amount || 0), 0);
 
-        if (paidSoFar < groupPrice) {
-          const debt = groupPrice - paidSoFar;
+        if (paidSoFar < expectedFee) {
+          const debt = expectedFee - paidSoFar;
           list.push({
             id: `pending-${s.id}-${g.id}-${targetMonthKey}`,
             isPaymentRecord: false,
@@ -231,7 +243,7 @@ export function PaymentsPage({
             groupName: g.name,
             groupColor: g.color || "#6366f1",
             courseName: course?.name || "Kurs",
-            price: groupPrice,
+            price: expectedFee,
             amount: debt,
             paidSoFar,
             method: "unpaid",
@@ -292,6 +304,17 @@ export function PaymentsPage({
 
       const groupStudentList = opStudentsInGroups(opData, [g.id]);
       groupStudentList.forEach((s) => {
+        const membership = s.groupMemberships?.[g.id] || s.groupMemberships?.[String(g.id)] || s;
+        const feeInfo = calculateStudentGroupFee({
+          fullMonthlyFee: price,
+          groupDays: g.days || ["Dush", "Chor", "Juma"],
+          monthStr: targetMonthKey,
+          membership,
+          student: s,
+        });
+
+        const expectedFee = feeInfo.calculatedFee;
+
         const paidThisMonth = allPayments
           .filter(
             (p) =>
@@ -301,8 +324,8 @@ export function PaymentsPage({
           )
           .reduce((sum, p) => sum + (p.amount || 0), 0);
 
-        if (paidThisMonth < price) {
-          kutilayotganTolov += price - paidThisMonth;
+        if (paidThisMonth < expectedFee) {
+          kutilayotganTolov += expectedFee - paidThisMonth;
           debtorsCount++;
         }
       });

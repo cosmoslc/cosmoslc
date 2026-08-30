@@ -13,17 +13,7 @@ export const BTN_GHOST = "bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 d
 export const BTN_ICON = "w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 flex items-center justify-center transition-all text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white shrink-0 cursor-pointer";
 export const PAGE_BG_STYLE = { background: '#f8fafc' };
 
-export function ExcelButton({ children, className = '', ...props }) {
-  return (
-    <button
-      type="button"
-      {...props}
-      className={`${BTN_EXCEL} ${className}`}
-    >
-      {children}
-    </button>
-  );
-}
+export { ExcelButton, ExcelActionsModal } from '../components/ExcelActionsModal';
 
 export function PrimaryButton({ children, className = '', style, ...props }) {
   const theme = useTheme();

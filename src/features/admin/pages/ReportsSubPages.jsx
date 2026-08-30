@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { ExcelButton } from "../theme/tokens";
 import {
   BarChart3,
   TrendingUp,
@@ -87,13 +88,11 @@ const FilterBar = ({ search, setSearch, onExport, placeholder }) => (
         <option value="year">Shu yil</option>
       </select>
 
-      <button
-        onClick={onExport}
-        className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all"
-      >
-        <Download size={14} />
-        Export
-      </button>
+      <ExcelButton
+        onExport={onExport}
+        title="Hisobot Excel amallari"
+        exportLabel="Hisobotni Excel'da yuklab olish"
+      />
     </div>
   </div>
 );

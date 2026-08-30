@@ -42,6 +42,8 @@ import {
   MoreVertical,
   SquarePen,
   Snowflake,
+  Camera,
+  Upload,
 } from "lucide-react";
 import {
   INPUT_CLS,
@@ -193,10 +195,19 @@ export function StudentProfilePage({
   // Reactive student state: sync with opData/directorData or local updates
   const liveStudent = useMemo(() => {
     const list = opData?.students || directorData?.students || [];
-    return list.find((s) => s.id === student?.id) || student;
+    return list.find((s) => String(s.id) === String(student?.id)) || student;
   }, [opData?.students, directorData?.students, student]);
 
   const [localStudent, setLocalStudent] = useState(student);
+
+  useEffect(() => {
+    if (student) {
+      setLocalStudent((prev) => ({
+        ...prev,
+        ...student,
+      }));
+    }
+  }, [student]);
 
   useEffect(() => {
     if (liveStudent) {
@@ -411,6 +422,21 @@ export function StudentProfilePage({
   const totalDebt = useMemo(() => {
     return groupDebts.reduce((sum, d) => sum + (d.remainingDebt || 0), 0);
   }, [groupDebts]);
+
+  // Tabledagi sof hisoblangan balans (StudentsPage bilan 100% bir xil)
+  const tableBalance = useMemo(() => {
+    const isTrial =
+      currentStudent?.status === "trial" ||
+      (assignedGroups.length > 0 &&
+        assignedGroups.every((g) => {
+          const m =
+            currentStudent?.groupMemberships?.[g.id] ||
+            currentStudent?.groupMemberships?.[String(g.id)];
+          return !m?.activationDate || m?.status === "trial";
+        }));
+    const rawBal = Number(currentStudent?.balance || 0) - totalDebt;
+    return isTrial && rawBal <= 0 ? 0 : rawBal;
+  }, [currentStudent, assignedGroups, totalDebt]);
 
   // Student's payment history
   const studentPayments = useMemo(() => {
@@ -958,23 +984,72 @@ export function StudentProfilePage({
     }
   };
 
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Url = reader.result;
+        const updatedData = { photo: base64Url, avatar: base64Url };
+        setLocalStudent((prev) => ({
+          ...prev,
+          ...updatedData,
+        }));
+        await api.updateStudent(currentStudent.id, updatedData);
+        if (onUpdateStudent) {
+          await onUpdateStudent(currentStudent.id, updatedData);
+        }
+        setSaveSuccessMsg("Profil rasmi muvaffaqiyatli yuklandi!");
+        setTimeout(() => setSaveSuccessMsg(""), 2500);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error(err);
+      setErrorMsg("Rasm yuklashda xatolik yuz berdi");
+    }
+  };
+
   const handleToggleFreezeStudent = async (groupId, currentIsPaused) => {
     try {
       const isPaused = currentStudent?.status === "paused" || currentIsPaused;
       const newStatus = isPaused ? "active" : "paused";
+      const todayStr = new Date().toISOString().slice(0, 10);
       const currentMemberships = { ...(currentStudent?.groupMemberships || {}) };
+      
       if (groupId) {
         const targetGid = String(groupId);
+        const prevMem = currentMemberships[targetGid] || {};
         currentMemberships[targetGid] = {
-          ...(currentMemberships[targetGid] || {}),
+          ...prevMem,
           status: newStatus,
-          activationDate: newStatus === "active" ? (currentMemberships[targetGid]?.activationDate || new Date().toISOString().slice(0, 10)) : null,
+          pausedAt: newStatus === "paused" ? todayStr : null,
+          previousPausedAt: newStatus === "active" ? (prevMem.pausedAt || prevMem.previousPausedAt || null) : prevMem.previousPausedAt,
+          activationDate: newStatus === "active" ? todayStr : prevMem.activationDate,
+          reactivatedAt: newStatus === "active" ? todayStr : null,
           updatedAt: new Date().toISOString(),
         };
+      } else {
+        (currentStudent?.groupIds || []).forEach((gid) => {
+          const targetGid = String(gid);
+          const prevMem = currentMemberships[targetGid] || {};
+          currentMemberships[targetGid] = {
+            ...prevMem,
+            status: newStatus,
+            pausedAt: newStatus === "paused" ? todayStr : null,
+            previousPausedAt: newStatus === "active" ? (prevMem.pausedAt || prevMem.previousPausedAt || null) : prevMem.previousPausedAt,
+            activationDate: newStatus === "active" ? todayStr : prevMem.activationDate,
+            reactivatedAt: newStatus === "active" ? todayStr : null,
+            updatedAt: new Date().toISOString(),
+          };
+        });
       }
 
       const updatedData = {
         status: newStatus,
+        pausedAt: newStatus === "paused" ? todayStr : null,
+        reactivatedAt: newStatus === "active" ? todayStr : null,
+        activationDate: newStatus === "active" ? todayStr : currentStudent?.activationDate,
         groupMemberships: currentMemberships,
       };
 
@@ -989,7 +1064,7 @@ export function StudentProfilePage({
       if (onUpdateStudent) {
         await onUpdateStudent(currentStudent.id, updatedData);
       }
-      setSaveSuccessMsg(isPaused ? "O'quvchi faollashtirildi!" : "O'quvchi muzlatildi!");
+      setSaveSuccessMsg(isPaused ? "O'quvchi qayta faollashtirildi!" : "O'quvchi muzlatildi!");
       setTimeout(() => setSaveSuccessMsg(""), 2500);
     } catch (err) {
       console.error(err);
@@ -1138,11 +1213,34 @@ export function StudentProfilePage({
             >
               <ArrowLeft size={18} />
             </button>
-            <img
-              className="avatar"
-              src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(currentStudent.name || "Bexruzbek")}&backgroundColor=f4c56b`}
-              alt="avatar"
-            />
+
+            {/* Profile Avatar: Icon by default, custom image if set/uploaded */}
+            <div className="relative group shrink-0">
+              {currentStudent?.photo || currentStudent?.avatar || currentStudent?.photoUrl || currentStudent?.avatarUrl ? (
+                <img
+                  className="avatar w-12 h-12 rounded-full object-cover border border-slate-200 dark:border-slate-700 shadow-xs"
+                  src={currentStudent.photo || currentStudent.avatar || currentStudent.photoUrl || currentStudent.avatarUrl}
+                  alt={currentStudent.name || "avatar"}
+                />
+              ) : (
+                <div className="avatar w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-xs">
+                  <User size={22} className="text-slate-500 dark:text-slate-400" />
+                </div>
+              )}
+              <label
+                className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition-opacity text-white"
+                title="Profil rasmini yuklash / o'zgartirish"
+              >
+                <Camera size={14} />
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarUpload}
+                />
+              </label>
+            </div>
+
             <div className="name-block">
               <h1>{currentStudent.name || "Xusanov Bexruzbek"}</h1>
             </div>
@@ -1151,8 +1249,9 @@ export function StudentProfilePage({
               className="menu-btn"
               id="menuToggle"
               onClick={() => setShowActionsMenu((prev) => !prev)}
+              title="Qo'shimcha amallar"
             >
-              &#8226;&#8226;&#8226;
+              <MoreVertical size={16} />
             </button>
 
             <div className={`dropdown ${showActionsMenu ? "open" : ""}`} ref={actionsMenuRef}>
@@ -1170,23 +1269,71 @@ export function StudentProfilePage({
             </div>
           </div>
 
-          <div className="balance-row">
-            <span className={`balance-pill ${Number(currentStudent.balance || 0) >= 0 ? "bg-[#16a34a]" : "bg-[#ef4444]"}`}>
-              {money(typeof currentStudent.balance === "number" ? currentStudent.balance : 0)}
-            </span>
-            <span className="balance-label">balans (so'm)</span>
-            <span>
-              <span className="stat-pill yellow">{currentStudent.coins || 0}</span>ta tanga{" "}
-              <a className="stat-link" onClick={() => setActiveTab("coins")}>
-                &#9998;
-              </a>
-            </span>
-            <span>
-              <span className="stat-pill green">{currentStudent.crystals || 0}</span>ta kristal{" "}
-              <a className="stat-link" onClick={() => setActiveTab("coins")}>
-                &#9998;
-              </a>
-            </span>
+          {/* 1-Qatorda Ixcham Ko'rsatkichlar (Balans, Tanga, Kristal) */}
+          <div className="grid grid-cols-3 gap-1.5 pt-3.5 pb-2 text-xs w-full">
+            {/* 1. Balans (Tabledagi hisoblangan joriy balans) */}
+            <button
+              type="button"
+              onClick={() => {
+                if (openModal) {
+                  openModal({ type: "recordPayment", studentId: currentStudent.id, student: currentStudent });
+                } else if (onRecordPayment) {
+                  onRecordPayment({ studentId: currentStudent.id });
+                } else {
+                  setActiveTab("payments");
+                }
+              }}
+              title={`Tabledagi balans: ${tableBalance > 0 ? "+" : ""}${money(tableBalance)} so'm`}
+              className={`flex flex-col items-start justify-center p-2 rounded-lg border text-left transition-all cursor-pointer min-w-0 ${
+                tableBalance > 0
+                  ? "bg-emerald-50/70 hover:bg-emerald-100/70 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border-emerald-200/70 dark:border-emerald-800/60"
+                  : tableBalance < 0
+                  ? "bg-rose-50/70 hover:bg-rose-100/70 dark:bg-rose-950/40 dark:hover:bg-rose-950/70 text-rose-800 dark:text-rose-300 border-rose-200/70 dark:border-rose-800/60"
+                  : "bg-slate-50/70 hover:bg-slate-100/70 dark:bg-slate-800/40 dark:hover:bg-slate-800/70 text-slate-700 dark:text-slate-300 border-slate-200/70 dark:border-slate-700/60"
+              }`}
+            >
+              <div className="flex items-center gap-1 w-full min-w-0">
+                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${tableBalance > 0 ? "bg-emerald-500" : tableBalance < 0 ? "bg-rose-500" : "bg-slate-400"}`} />
+                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 truncate">Balans</span>
+              </div>
+              <div className="font-bold font-mono text-[11px] truncate mt-0.5 w-full">
+                {tableBalance > 0 ? `+${money(tableBalance)}` : tableBalance < 0 ? `${money(tableBalance)}` : "0"} so'm
+              </div>
+            </button>
+
+            {/* 2. Tangalar (Coins) */}
+            <button
+              type="button"
+              onClick={() => setActiveTab("coins")}
+              title="Tangalar boshqaruvi"
+              className="flex flex-col items-start justify-center p-2 rounded-lg border bg-amber-50/70 hover:bg-amber-100/70 dark:bg-amber-950/30 dark:hover:bg-amber-950/60 border-amber-200/70 dark:border-amber-800/50 text-amber-900 dark:text-amber-300 text-left transition-all cursor-pointer min-w-0 group"
+            >
+              <div className="flex items-center gap-1 w-full min-w-0">
+                <Coins size={11} className="text-amber-500 shrink-0" />
+                <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 truncate">Tanga</span>
+                <Edit3 size={9} className="opacity-0 group-hover:opacity-100 transition-opacity ml-auto text-amber-500 shrink-0" />
+              </div>
+              <div className="font-bold font-mono text-[11px] truncate mt-0.5 w-full text-amber-900 dark:text-amber-200">
+                {currentStudent.coins || 0}
+              </div>
+            </button>
+
+            {/* 3. Kristallar (Crystals) */}
+            <button
+              type="button"
+              onClick={() => setActiveTab("coins")}
+              title="Kristallar"
+              className="flex flex-col items-start justify-center p-2 rounded-lg border bg-sky-50/70 hover:bg-sky-100/70 dark:bg-sky-950/30 dark:hover:bg-sky-950/60 border-sky-200/70 dark:border-sky-800/50 text-sky-900 dark:text-sky-300 text-left transition-all cursor-pointer min-w-0 group"
+            >
+              <div className="flex items-center gap-1 w-full min-w-0">
+                <Sparkles size={11} className="text-sky-500 shrink-0" />
+                <span className="text-[10px] font-semibold text-sky-700 dark:text-sky-400 truncate">Kristal</span>
+                <Edit3 size={9} className="opacity-0 group-hover:opacity-100 transition-opacity ml-auto text-sky-500 shrink-0" />
+              </div>
+              <div className="font-bold font-mono text-[11px] truncate mt-0.5 w-full text-sky-900 dark:text-sky-200">
+                {currentStudent.crystals || 0}
+              </div>
+            </button>
           </div>
 
           <div className="info-line">
@@ -1203,22 +1350,40 @@ export function StudentProfilePage({
           </div>
 
           <div className="actions-row">
-            <a className="link-btn" onClick={() => setShowMoreInfo(!showMoreInfo)}>
-              - qo'shimcha ma'lumotlarni <span style={{ fontSize: "11px" }}>&#9998;</span>
-            </a>
-            <button type="button" className="icon-btn-mini" onClick={() => setActiveTab("sms")}>&#9993;</button>
+            <button
+              type="button"
+              onClick={() => setShowMoreInfo(!showMoreInfo)}
+              className="link-btn text-xs font-semibold hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-0 p-0 text-indigo-600 dark:text-indigo-400"
+            >
+              <span>Qo'shimcha ma'lumotlar</span>
+              {showMoreInfo ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            </button>
+            <button
+              type="button"
+              className="icon-btn-mini"
+              onClick={() => setActiveTab("sms")}
+              title="SMS jo'natish"
+            >
+              <MessageSquare size={13} />
+            </button>
             <button
               type="button"
               className="icon-btn-mini"
               onClick={() => {
-                if (openModal) openModal({ type: "recordPayment", studentId: currentStudent.id });
+                if (openModal) openModal({ type: "recordPayment", studentId: currentStudent.id, student: currentStudent });
                 else setActiveTab("payments");
               }}
+              title="To'lov qabul qilish"
             >
-              &#128176;
+              <CreditCard size={13} />
             </button>
-            <button type="button" className="outline-btn" onClick={() => setActiveTab("history")}>
-              &#8635; Lid tarixi
+            <button
+              type="button"
+              className="outline-btn flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold cursor-pointer rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 hover:bg-indigo-100/50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 transition-colors"
+              onClick={() => setActiveTab("history")}
+            >
+              <History size={13} />
+              <span>Lid tarixi</span>
             </button>
           </div>
 
@@ -1324,7 +1489,7 @@ export function StudentProfilePage({
                     </button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="grid grid-cols-1 2xl:grid-cols-2 gap-5">
                     {groupDebts.map((item) => {
                       const {
                         group: grp,
@@ -1597,97 +1762,90 @@ export function StudentProfilePage({
 
           {/* TAB 2: TO'LOVLAR */}
           {activeTab === "payments" && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white dark:bg-slate-850 p-5 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
-                  <div className="text-xs font-bold text-slate-500 dark:text-slate-400">Jami to'langan summa</div>
-                  <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
-                    {money(totalPaidSum)} <span className="text-xs font-normal text-slate-400">so'm</span>
+            <div className="space-y-4">
+              {/* Yuqori qisqa hisob ko'rsatkichlari (Yagona toza panel) */}
+              <div className="bg-white dark:bg-slate-850 rounded-xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 dark:divide-slate-800">
+                <div className="py-2 sm:py-0 sm:px-4 first:pl-0">
+                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">Joriy Balans</div>
+                  <div className={`text-xl font-black mt-0.5 ${tableBalance > 0 ? "text-emerald-600 dark:text-emerald-400" : tableBalance < 0 ? "text-rose-600 dark:text-rose-400" : "text-slate-900 dark:text-white"}`}>
+                    {tableBalance > 0 ? `+${money(tableBalance)}` : tableBalance < 0 ? `${money(tableBalance)}` : "0"} <span className="text-xs font-normal text-slate-400">so'm</span>
                   </div>
-                  <div className="text-[11px] text-slate-400 mt-1">{studentPayments.length} ta to'lov operatsiyasi</div>
+                  <div className="text-[11px] text-slate-400 mt-0.5">Depozit: {money(currentStudent.balance || 0)} so'm</div>
                 </div>
 
-                <div className="bg-white dark:bg-slate-850 p-5 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
-                  <div className="text-xs font-bold text-slate-500 dark:text-slate-400">Joriy oydagi qarzdorlik</div>
-                  <div className={`text-2xl font-black mt-1 ${totalDebt > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600"}`}>
+                <div className="py-2 sm:py-0 sm:px-4">
+                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">Qarzdorlik</div>
+                  <div className={`text-xl font-black mt-0.5 ${totalDebt > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600"}`}>
                     {money(totalDebt)} <span className="text-xs font-normal text-slate-400">so'm</span>
                   </div>
-                  <div className="text-[11px] text-slate-400 mt-1">
-                    {totalDebt > 0 ? "To'lov muddati kechikmoqda" : "Barcha guruhlar to'langan ✓"}
+                  <div className="text-[11px] text-slate-400 mt-0.5">
+                    {totalDebt > 0 ? "To'lanishi kutilmoqda" : "Qarzdorlik yo'q"}
                   </div>
                 </div>
 
-                <div className="bg-white dark:bg-slate-850 p-5 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
-                  <div>
-                    <div className="text-xs font-bold text-slate-500 dark:text-slate-400">O'quvchi Balansi</div>
-                    <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
-                      {money(currentStudent.balance || 0)} <span className="text-xs font-normal text-slate-400">so'm</span>
-                    </div>
+                <div className="py-2 sm:py-0 sm:px-4 last:pr-0">
+                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">Jami To'langan</div>
+                  <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                    {money(totalPaidSum)} <span className="text-xs font-normal text-slate-400">so'm</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (openModal) {
-                        openModal({ type: "recordPayment", studentId: currentStudent.id });
-                      } else if (onRecordPayment) {
-                        onRecordPayment({ studentId: currentStudent.id });
-                      }
-                    }}
-                    className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
-                  >
-                    + To'lov qabul qilish
-                  </button>
+                  <div className="text-[11px] text-slate-400 mt-0.5">{studentPayments.length} ta to'lov</div>
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-slate-850 rounded-xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-4">
-                <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
-                  <CreditCard size={18} className="text-emerald-600" />
-                  To'lovlar tarixi ({studentPayments.length} ta)
-                </h3>
+              {/* To'lovlar ro'yxati jadvali */}
+              <div className="bg-white dark:bg-slate-850 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                    <CreditCard size={16} className="text-emerald-600" />
+                    To'lovlar tarixi
+                  </h3>
+                  <span className="text-xs font-semibold text-slate-400">
+                    Jami: {studentPayments.length} ta
+                  </span>
+                </div>
 
                 {studentPayments.length === 0 ? (
-                  <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-slate-400 text-xs">
-                    To'lov yozuvlari topilmadi
+                  <div className="p-8 text-center text-slate-400 text-xs font-medium">
+                    Hozircha hech qanday to'lov mavjud emas
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs border-collapse">
                       <thead>
-                        <tr className="border-b border-slate-200 dark:border-slate-700 text-slate-400 font-bold">
-                          <th className="py-3 px-3">Sana</th>
-                          <th className="py-3 px-3">Guruh</th>
-                          <th className="py-3 px-3">Summa</th>
-                          <th className="py-3 px-3">Oy</th>
-                          <th className="py-3 px-3">To'lov turi</th>
-                          <th className="py-3 px-3">Izoh</th>
+                        <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 text-slate-400 font-semibold">
+                          <th className="py-3 px-4">Sana</th>
+                          <th className="py-3 px-4">Guruh</th>
+                          <th className="py-3 px-4">Summa</th>
+                          <th className="py-3 px-4">Oy</th>
+                          <th className="py-3 px-4">To'lov turi</th>
+                          <th className="py-3 px-4">Izoh</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
                         {studentPayments.map((p) => {
                           const grp = allGroups.find((g) => g.id === p.groupId);
                           return (
-                            <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                              <td className="py-3 px-3 font-mono font-bold text-slate-900 dark:text-white">
+                            <tr key={p.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                              <td className="py-3.5 px-4 font-mono font-semibold text-slate-900 dark:text-white whitespace-nowrap">
                                 {formatDate(p.date || p.createdAt?.slice(0, 10))}
                               </td>
-                              <td className="py-3 px-3">
+                              <td className="py-3.5 px-4">
                                 <span className="font-bold text-slate-800 dark:text-slate-200">
                                   {grp?.name || "Umumiy to'lov"}
                                 </span>
                               </td>
-                              <td className="py-3 px-3 font-black text-emerald-600 dark:text-emerald-400 text-sm">
+                              <td className="py-3.5 px-4 font-bold text-emerald-600 dark:text-emerald-400 text-sm whitespace-nowrap">
                                 +{money(p.amount)} so'm
                               </td>
-                              <td className="py-3 px-3 font-mono text-slate-500">
+                              <td className="py-3.5 px-4 font-mono text-slate-500 whitespace-nowrap">
                                 {p.month || "—"}
                               </td>
-                              <td className="py-3 px-3">
-                                <span className="px-2 py-0.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold uppercase text-[10px]">
+                              <td className="py-3.5 px-4">
+                                <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium text-[11px]">
                                   {p.method || p.type || "Naqd pul"}
                                 </span>
                               </td>
-                              <td className="py-3 px-3 text-slate-500 max-w-xs truncate">
+                              <td className="py-3.5 px-4 text-slate-500 max-w-xs truncate">
                                 {p.comment || p.note || "—"}
                               </td>
                             </tr>

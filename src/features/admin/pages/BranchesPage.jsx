@@ -50,7 +50,9 @@ import {
   formatDate,
   normalizePhone,
   getPaymentStatus,
+  getPaymentTotal,
 } from "../utils/helpers";
+import { calculateStudentGroupFee } from "../../../shared/utils/prorata";
 import { MONTHS_UZ } from "../utils/constants";
 
 export function BranchesPage({
@@ -652,20 +654,27 @@ function BranchFullDetailPage({
         const grp = branchGroups.find((g) => g.id === gid);
         if (grp) {
           const price = grp.price || 500000;
-          const status = getPaymentStatus(
-            directorData?.payments || [],
-            student.id,
-            grp.id,
-            thisMonth,
-            price,
-          );
-          if (status === "unpaid" || status === "partial" || (student.balance || 0) < 0) {
-            const debtAmount = price - (student.balance || 0);
-            list.push({
-              student,
-              group: grp,
-              debtAmount: Math.max(debtAmount, price),
-            });
+          const membership = student.groupMemberships?.[grp.id] || student.groupMemberships?.[String(grp.id)] || student;
+          const feeInfo = calculateStudentGroupFee({
+            fullMonthlyFee: price,
+            groupDays: grp.days || ["Dush", "Chor", "Juma"],
+            monthStr: thisMonth,
+            membership,
+            student,
+          });
+
+          const expectedFee = feeInfo.calculatedFee;
+
+          if (expectedFee > 0) {
+            const paid = getPaymentTotal(directorData?.payments || [], student.id, grp.id, thisMonth);
+            if (paid < expectedFee) {
+              const debtAmount = expectedFee - paid;
+              list.push({
+                student,
+                group: grp,
+                debtAmount,
+              });
+            }
           }
         }
       });

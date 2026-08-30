@@ -229,14 +229,26 @@ export function calculateProratedFee({
   };
 }
 
+function formatShortDate(dateStr) {
+  if (!dateStr) return "";
+  const str = String(dateStr).slice(0, 10);
+  const parts = str.split("-");
+  if (parts.length === 3) {
+    return `${parts[2]}.${parts[1]}.${parts[0]}`;
+  }
+  return str;
+}
+
 /**
  * Calculates student group membership fee and detailed lesson breakdown
  * 
  * Rules:
  * - If status is "trial" or not activated yet: 0 fee (trial period), marked as "Sinovda"
- * - If status is "active" with an activation date:
- *   Lessons before activation date are 0 fee (NOT charged)
- *   Lessons on/after activation date are charged at (monthly fee / total lessons) * remaining lessons
+ * - If status is "paused":
+ *   Only lessons held BEFORE the pause date (and after activation date) are calculated/charged.
+ *   Lessons on/after pause date (unheld) are NOT charged.
+ * - If status is "active":
+ *   Lessons on/after activation/reactivation date are charged at (monthly fee / total lessons) * remaining lessons.
  */
 export function calculateStudentGroupFee({
   fullMonthlyFee = 0,
@@ -277,25 +289,6 @@ export function calculateStudentGroupFee({
   const isTrial = status === "trial";
   const isPaused = status === "paused";
 
-  if (isPaused) {
-    return {
-      status: "paused",
-      statusLabel: "Muzlatilgan",
-      isTrial: false,
-      isPaused: true,
-      calculatedFee: 0,
-      fullPrice: fee,
-      totalLessons,
-      missedLessons: totalLessons,
-      attendedLessons: 0,
-      pricePerLesson,
-      isProrated: false,
-      activationDate: membership?.activationDate || null,
-      allLessonDates,
-      reason: "O'quvchi muzlatilgan (To'lov hisoblanmaydi)",
-    };
-  }
-
   if (isTrial) {
     return {
       status: "trial",
@@ -315,8 +308,96 @@ export function calculateStudentGroupFee({
     };
   }
 
-  // Active status - check activation date
-  const actDate = membership?.activationDate || student?.joinedAt || student?.createdAt || student?.startDate || "";
+  if (isPaused) {
+    const pauseDate =
+      membership?.pausedAt ||
+      student?.pausedAt ||
+      membership?.updatedAt ||
+      student?.updatedAt ||
+      "";
+    const pauseDateStr = typeof pauseDate === "string" ? pauseDate.slice(0, 10) : "";
+    const pauseMonth = pauseDateStr.slice(0, 7);
+
+    const actDate =
+      membership?.activationDate ||
+      student?.activationDate ||
+      student?.joinedAt ||
+      student?.createdAt ||
+      student?.startDate ||
+      "";
+    const actDateStr = typeof actDate === "string" ? actDate.slice(0, 10) : "";
+    const actMonth = actDateStr.slice(0, 7);
+
+    // If student was paused before this month -> 0 lessons held in this active month
+    if (pauseMonth && pauseMonth < activeMonth) {
+      return {
+        status: "paused",
+        statusLabel: "Muzlatilgan",
+        isTrial: false,
+        isPaused: true,
+        calculatedFee: 0,
+        fullPrice: fee,
+        totalLessons,
+        missedLessons: totalLessons,
+        attendedLessons: 0,
+        pricePerLesson,
+        isProrated: false,
+        activationDate: actDateStr || null,
+        pausedAt: pauseDateStr || null,
+        allLessonDates,
+        reason: "O'quvchi bu oydan oldin muzlatilgan (To'lov hisoblanmaydi)",
+      };
+    }
+
+    // If paused in current month (or if no pause date provided, assume pause date is now)
+    const effectivePauseDate =
+      pauseMonth === activeMonth && pauseDateStr
+        ? pauseDateStr
+        : new Date().toISOString().slice(0, 10);
+
+    // Lessons held while active: strictly before pause date and on/after activation date
+    const attendedLessons = allLessonDates.filter((date) => {
+      const afterActivation =
+        !actDateStr || (actMonth && actMonth < activeMonth) || date >= actDateStr;
+      const beforePause = date < effectivePauseDate;
+      return afterActivation && beforePause;
+    }).length;
+
+    const missedLessons = Math.max(0, totalLessons - attendedLessons);
+    const calculatedFee = Math.round(pricePerLesson * attendedLessons);
+
+    return {
+      status: "paused",
+      statusLabel: "Muzlatilgan",
+      isTrial: false,
+      isPaused: true,
+      calculatedFee,
+      fullPrice: fee,
+      totalLessons,
+      missedLessons,
+      attendedLessons,
+      pricePerLesson,
+      isProrated: attendedLessons < totalLessons,
+      activationDate: actDateStr || null,
+      pausedAt: pauseDateStr || null,
+      allLessonDates,
+      reason:
+        attendedLessons > 0
+          ? `Muzlatilgan (${formatShortDate(effectivePauseDate)} gacha o'tilgan ${attendedLessons} ta dars hisoblandi, qolgan ${missedLessons} ta o'tilmagan dars hisoblanmadi: ${calculatedFee.toLocaleString()} so'm)`
+          : "O'quvchi muzlatilgan (O'tilgan darslar yo'q, to'lov hisoblanmaydi)",
+    };
+  }
+
+  // Active status - check activation date or reactivation date
+  const actDate =
+    membership?.reactivatedAt ||
+    membership?.activationDate ||
+    student?.reactivatedAt ||
+    student?.activationDate ||
+    student?.joinedAt ||
+    student?.createdAt ||
+    student?.startDate ||
+    "";
   const actDateStr = typeof actDate === "string" ? actDate.slice(0, 10) : "";
   const actMonth = actDateStr.slice(0, 7);
 
@@ -360,7 +441,8 @@ export function calculateStudentGroupFee({
     };
   }
 
-  // Activated in current month
+  // Activated in current month:
+  // Count lessons on or after activation/reactivation date
   const missedLessons = allLessonDates.filter((date) => date < actDateStr).length;
   const attendedLessons = Math.max(0, totalLessons - missedLessons);
   const proratedFee = Math.round(pricePerLesson * attendedLessons);
@@ -379,8 +461,9 @@ export function calculateStudentGroupFee({
     isProrated: missedLessons > 0,
     activationDate: actDateStr,
     allLessonDates,
-    reason: missedLessons > 0
-      ? `${missedLessons} ta o'tgan dars hisoblanmadi, qolgan ${attendedLessons} ta dars uchun to'lov (${proratedFee.toLocaleString()} so'm)`
-      : "Oy boshidan faollashtirilgan (To'liq to'lov)",
+    reason:
+      missedLessons > 0
+        ? `${formatShortDate(actDateStr)} dan faollashtirildi: ${attendedLessons} ta dars hisoblandi (${proratedFee.toLocaleString()} so'm)`
+        : "Oy boshidan faollashtirilgan (To'liq to'lov)",
   };
 }
