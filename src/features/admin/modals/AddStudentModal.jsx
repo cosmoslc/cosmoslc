@@ -119,7 +119,7 @@ export function AddStudentModal({
         : targetEditing?.groupMemberships || {},
       balance: typeof targetEditing?.balance === "number" ? targetEditing.balance : 0,
       coins: targetEditing?.coins ?? 0,
-      status: targetEditing?.status || "active",
+      status: targetEditing?.status || "trial",
     };
 
     if (targetEditing && password) {

@@ -69,6 +69,7 @@ function fromRow(s) {
     streetAddress: s.street_address || s.streetAddress,
     status: s.status || "active",
     statusNote: s.status_note || s.statusNote || "",
+    groupMemberships: s.group_memberships || s.groupMemberships || {},
     joinedAt: s.joined_at || s.joinedAt || s.created_at || s.createdAt || new Date().toISOString().slice(0, 10),
     managerId: s.manager_id || s.managerId || null,
     studiedOneWeek: s.studied_one_week ?? s.studiedOneWeek ?? true,
@@ -111,6 +112,7 @@ export async function addStudent(payload) {
     street_address: payload.streetAddress || null,
     status: payload.status || "active",
     status_note: payload.statusNote || null,
+    group_memberships: payload.groupMemberships || {},
   };
 
   try {
@@ -164,22 +166,43 @@ export async function updateStudent(id, payload) {
   if (payload.streetAddress !== undefined) patch.street_address = payload.streetAddress;
   if (payload.status !== undefined) patch.status = payload.status;
   if (payload.statusNote !== undefined) patch.status_note = payload.statusNote;
+  if (payload.groupMemberships !== undefined) patch.group_memberships = payload.groupMemberships;
+  if (payload.studiedOneWeek !== undefined) patch.studied_one_week = payload.studiedOneWeek;
+  if (payload.hasContract !== undefined) patch.has_contract = payload.hasContract;
+  if (payload.managerId !== undefined) patch.manager_id = payload.managerId;
 
-  const { error } = await supabase.from("students").update(patch).eq("id", id);
-  if (error) {
-    console.warn("Supabase updateStudent error, trying fallback without balance/format:", error.message);
-    const retryPatch = { ...patch };
-    if (retryPatch.balance !== undefined) delete retryPatch.balance;
-    const { error: e2 } = await supabase.from("students").update(retryPatch).eq("id", id);
-    if (e2) {
-      if (retryPatch.group_ids && Array.isArray(retryPatch.group_ids)) {
-        retryPatch.group_ids = `{${retryPatch.group_ids.join(",")}}`;
-        const { error: e3 } = await supabase.from("students").update(retryPatch).eq("id", id);
-        if (e3) console.error("Supabase updateStudent all retries failed:", e3);
-      } else {
-        console.error("Supabase updateStudent fallback error:", e2);
+  if (Object.keys(patch).length === 0) return { success: true };
+
+  try {
+    const { data, error } = await supabase.from("students").update(patch).eq("id", id).select();
+    if (error) {
+      console.warn("Supabase updateStudent error, trying fallback:", error.message);
+      const retryPatch = { ...patch };
+      if (error.message && error.message.includes("group_memberships")) {
+        delete retryPatch.group_memberships;
       }
+      if (retryPatch.balance !== undefined) delete retryPatch.balance;
+      const { data: d2, error: e2 } = await supabase.from("students").update(retryPatch).eq("id", id).select();
+      if (e2) {
+        if (retryPatch.group_ids && Array.isArray(retryPatch.group_ids)) {
+          retryPatch.group_ids = `{${retryPatch.group_ids.join(",")}}`;
+          const { data: d3, error: e3 } = await supabase.from("students").update(retryPatch).eq("id", id).select();
+          if (e3) {
+            console.error("Supabase updateStudent all retries failed:", e3);
+            throw e3;
+          }
+          return d3?.[0] ? fromRow(d3[0]) : { success: true };
+        } else {
+          console.error("Supabase updateStudent fallback error:", e2);
+          throw e2;
+        }
+      }
+      return d2?.[0] ? fromRow(d2[0]) : { success: true };
     }
+    return data?.[0] ? fromRow(data[0]) : { success: true };
+  } catch (err) {
+    console.error("Supabase updateStudent exception:", err);
+    throw err;
   }
 }
 

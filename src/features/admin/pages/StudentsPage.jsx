@@ -28,7 +28,7 @@ import {
   normalizePhone,
 } from "../utils/helpers";
 import { getPaymentStatus, getPaymentTotal, thisMonthKey } from "../utils/helpers";
-import { calculateProratedFee } from "../../../shared/utils/prorata";
+import { calculateProratedFee, calculateStudentGroupFee } from "../../../shared/utils/prorata";
 import { filterGroupsByBranch, opGroups } from "../utils/dataHelpers";
 import { StudentProfilePage } from "./StudentProfilePage";
 
@@ -36,6 +36,10 @@ const STATUS_META = {
   active: {
     label: "Faol",
     cls: "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-900/50",
+  },
+  trial: {
+    label: "Sinovda",
+    cls: "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/70 dark:border-amber-900/50",
   },
   paused: {
     label: "Muzlatilgan",
@@ -128,17 +132,18 @@ export function StudentsPage({
           studentGids.includes(String(g.id)),
         );
         let totalUnpaid = 0;
-        const joinDate = student.joinedAt || student.createdAt || student.startDate || "";
         groupList.forEach((group) => {
           let price = Number(group.price || 0);
           if (price > 0) {
-            const prorata = calculateProratedFee({
+            const membership = student?.groupMemberships?.[group.id] || student?.groupMemberships?.[String(group.id)];
+            const feeInfo = calculateStudentGroupFee({
               fullMonthlyFee: price,
               groupDays: group.days || ["Dush", "Chor", "Juma"],
               monthStr: month,
-              joinDate,
+              membership,
+              student,
             });
-            const expected = prorata.calculatedFee || price;
+            const expected = feeInfo.calculatedFee;
             const paid = getPaymentTotal(
               directorData.payments || [],
               student.id,
@@ -148,7 +153,16 @@ export function StudentsPage({
             totalUnpaid += Math.max(0, expected - paid);
           }
         });
-        const netBal = Number(student.balance || 0) - totalUnpaid;
+        const isTrial =
+          student.status === "trial" ||
+          (groupList.length > 0 &&
+            groupList.every((g) => {
+              const m = student?.groupMemberships?.[g.id] || student?.groupMemberships?.[String(g.id)];
+              return !m?.activationDate || m?.status === "trial";
+            }));
+
+        const rawBal = Number(student.balance || 0) - totalUnpaid;
+        const netBal = isTrial && rawBal <= 0 ? 0 : rawBal;
         const isDebtor = netBal < 0;
         return debtFilter === "debtors" ? isDebtor : !isDebtor;
       })();
@@ -194,7 +208,7 @@ export function StudentsPage({
         student={selectedStudentForProfile}
         directorData={directorData}
         opData={opData}
-        onUpdateStudent={onUpdateStudent}
+        onUpdateStudent={onUpdateStudent || onSaveStudent}
         onDeleteStudent={onDeleteStudent}
         onAddCoins={onAddCoins}
         onRecordPayment={onRecordPayment}
@@ -242,13 +256,11 @@ export function StudentsPage({
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
+          <ExcelButton
             onClick={() => openModal({ type: "importStudents" })}
-            className="px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 font-bold text-xs hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all flex items-center gap-2 shadow-xs cursor-pointer"
           >
             <FileSpreadsheet size={16} /> Excel'dan import
-          </button>
+          </ExcelButton>
           <PrimaryButton onClick={() => openModal({ type: "addStudentFull" })}>
             <Plus size={16} /> Yangi o'quvchi
           </PrimaryButton>
@@ -487,17 +499,18 @@ export function StudentsPage({
                 .join("") || "N";
 
             let totalUnpaidFee = 0;
-            const joinDate = student.joinedAt || student.createdAt || student.startDate || "";
             studentGroups.forEach((g) => {
               const fullPrice = Number(g.price || 0);
               if (fullPrice > 0) {
-                const prorata = calculateProratedFee({
+                const membership = student?.groupMemberships?.[g.id] || student?.groupMemberships?.[String(g.id)];
+                const feeInfo = calculateStudentGroupFee({
                   fullMonthlyFee: fullPrice,
                   groupDays: g.days || ["Dush", "Chor", "Juma"],
                   monthStr: month,
-                  joinDate,
+                  membership,
+                  student,
                 });
-                const expectedFee = prorata.calculatedFee || fullPrice;
+                const expectedFee = feeInfo.calculatedFee;
                 const paidAmount = getPaymentTotal(
                   directorData.payments || [],
                   student.id,
@@ -508,7 +521,16 @@ export function StudentsPage({
               }
             });
 
-            const bal = Number(student.balance || 0) - totalUnpaidFee;
+            const isTrial =
+              status === "trial" ||
+              (studentGroups.length > 0 &&
+                studentGroups.every((g) => {
+                  const m = student?.groupMemberships?.[g.id] || student?.groupMemberships?.[String(g.id)];
+                  return !m?.activationDate || m?.status === "trial";
+                }));
+
+            const rawBal = Number(student.balance || 0) - totalUnpaidFee;
+            const bal = isTrial && rawBal <= 0 ? 0 : rawBal;
 
             return (
               <div
@@ -634,9 +656,9 @@ export function StudentsPage({
                     value={status}
                     onChange={(e) => {
                       const newStatus = e.target.value;
-                      const saveFn = onSaveStudent || onUpdateStudent;
+                      const saveFn = onUpdateStudent || onSaveStudent;
                       if (saveFn) {
-                        saveFn({ ...student, status: newStatus });
+                        saveFn(student.id, { status: newStatus });
                       }
                     }}
                     className={`rounded-lg px-2.5 py-1 text-xs font-semibold cursor-pointer border focus:outline-none transition-all ${

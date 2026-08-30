@@ -70,6 +70,11 @@ export async function addGroup(payload) {
     duration_months: payload.durationMonths || 6,
     start_date: payload.startDate || "",
     color: payload.color || "#8b5cf6",
+    format: payload.format || "offline",
+    telegram_chat_id: payload.telegramChatId || null,
+    end_time: payload.endTime || null,
+    lesson_duration_minutes: payload.lessonDurationMinutes || 60,
+    note: payload.note || null,
   };
 
   let { data, error } = await supabase
@@ -115,6 +120,11 @@ export async function updateGroup(id, payload) {
   if (payload.durationMonths !== undefined) patch.duration_months = payload.durationMonths;
   if (payload.startDate !== undefined) patch.start_date = payload.startDate;
   if (payload.color !== undefined) patch.color = payload.color;
+  if (payload.format !== undefined) patch.format = payload.format;
+  if (payload.telegramChatId !== undefined) patch.telegram_chat_id = payload.telegramChatId;
+  if (payload.endTime !== undefined) patch.end_time = payload.endTime;
+  if (payload.lessonDurationMinutes !== undefined) patch.lesson_duration_minutes = payload.lessonDurationMinutes;
+  if (payload.note !== undefined) patch.note = payload.note;
 
   let { data, error } = await supabase
     .from("groups")

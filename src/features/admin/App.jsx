@@ -701,16 +701,22 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
   };
 
   // Students
-  const handleSaveStudent = async (studentData) => {
+  const handleSaveStudent = async (arg1, arg2) => {
     try {
       let res;
-      if (studentData.id && opData?.students?.some((s) => s.id === studentData.id)) {
-        res = await api.updateStudent(studentData.id, studentData);
+      const isIdFirst = typeof arg1 === "string";
+      const studentId = isIdFirst ? arg1 : arg1?.id;
+      const payload = isIdFirst ? arg2 : arg1;
+
+      if (studentId && opData?.students?.some((s) => s.id === studentId)) {
+        res = await api.updateStudent(studentId, payload);
+      } else if (payload?.id && opData?.students?.some((s) => s.id === payload.id)) {
+        res = await api.updateStudent(payload.id, payload);
       } else {
-        res = await api.addStudent(studentData);
+        res = await api.addStudent(payload);
       }
       addToast(
-        studentData.id
+        studentId || payload?.id
           ? "O'quvchi ma'lumotlari saqlandi"
           : "Yangi o'quvchi qo'shildi",
       );
@@ -1167,6 +1173,7 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
               }
               onDeleteStudent={handleDeleteStudent}
               onSaveStudent={handleSaveStudent}
+              onUpdateStudent={handleSaveStudent}
             />
           )}
 

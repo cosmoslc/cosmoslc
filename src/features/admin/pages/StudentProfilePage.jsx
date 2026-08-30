@@ -57,6 +57,7 @@ import {
 } from "../utils/helpers";
 import { opGroups } from "../utils/dataHelpers";
 import { SearchableGroupSelect } from "../../../shared/components/SearchableGroupSelect";
+import * as api from "../../../shared/api";
 
 function formatShortDate(val) {
   if (!val) return "—";
@@ -189,30 +190,75 @@ export function StudentProfilePage({
   const [errorMsg, setErrorMsg] = useState("");
   const [confirmModalState, setConfirmModalState] = useState(null);
 
+  // Reactive student state: sync with opData/directorData or local updates
+  const liveStudent = useMemo(() => {
+    const list = opData?.students || directorData?.students || [];
+    return list.find((s) => s.id === student?.id) || student;
+  }, [opData?.students, directorData?.students, student]);
+
+  const [localStudent, setLocalStudent] = useState(student);
+
+  useEffect(() => {
+    if (liveStudent) {
+      setLocalStudent((prev) => ({
+        ...prev,
+        ...liveStudent,
+      }));
+    }
+  }, [liveStudent]);
+
+  const currentStudent = localStudent || student;
+
   // Edit form state
   const [formData, setFormData] = useState({
-    name: student?.name || "",
-    phone: student?.phone || "",
-    parentPhone: student?.parentPhone || student?.phone2 || "",
-    parentName: student?.parentName || "",
-    grade: student?.grade || "",
-    school: student?.school || "",
-    birthDate: student?.birthDate || "",
-    gender: student?.gender || "male",
-    address: student?.address || "",
-    source: student?.source || "Tanish / Tavsiya",
-    targetCourse: student?.targetCourse || student?.interestedCourse || "",
-    branch: student?.branch || "Asosiy filial",
-    status: student?.status || "active",
-    balance: student?.balance || 0,
-    coins: student?.coins || 0,
-    note: student?.note || "",
+    name: currentStudent?.name || "",
+    phone: currentStudent?.phone || "",
+    parentPhone: currentStudent?.parentPhone || currentStudent?.phone2 || "",
+    parentName: currentStudent?.parentName || "",
+    grade: currentStudent?.grade || "",
+    school: currentStudent?.school || "",
+    birthDate: currentStudent?.birthDate || "",
+    gender: currentStudent?.gender || "male",
+    address: currentStudent?.address || "",
+    source: currentStudent?.source || "Tanish / Tavsiya",
+    targetCourse: currentStudent?.targetCourse || currentStudent?.interestedCourse || "",
+    branch: currentStudent?.branch || "Asosiy filial",
+    status: currentStudent?.status || "active",
+    balance: currentStudent?.balance || 0,
+    coins: currentStudent?.coins || 0,
+    note: currentStudent?.note || "",
   });
 
   // Discount form state
-  const [discountVal, setDiscountVal] = useState(student?.discount || 0);
-  const [discountType, setDiscountType] = useState(student?.discountType || "percent");
-  const [discountReason, setDiscountReason] = useState(student?.discountReason || "Oila a'zolari chegirmasi");
+  const [discountVal, setDiscountVal] = useState(currentStudent?.discount || 0);
+  const [discountType, setDiscountType] = useState(currentStudent?.discountType || "percent");
+  const [discountReason, setDiscountReason] = useState(currentStudent?.discountReason || "Oila a'zolari chegirmasi");
+
+  useEffect(() => {
+    if (currentStudent && !isEditing) {
+      setFormData({
+        name: currentStudent?.name || "",
+        phone: currentStudent?.phone || "",
+        parentPhone: currentStudent?.parentPhone || currentStudent?.phone2 || "",
+        parentName: currentStudent?.parentName || "",
+        grade: currentStudent?.grade || "",
+        school: currentStudent?.school || "",
+        birthDate: currentStudent?.birthDate || "",
+        gender: currentStudent?.gender || "male",
+        address: currentStudent?.address || "",
+        source: currentStudent?.source || "Tanish / Tavsiya",
+        targetCourse: currentStudent?.targetCourse || currentStudent?.interestedCourse || "",
+        branch: currentStudent?.branch || "Asosiy filial",
+        status: currentStudent?.status || "active",
+        balance: currentStudent?.balance || 0,
+        coins: currentStudent?.coins || 0,
+        note: currentStudent?.note || "",
+      });
+      setDiscountVal(currentStudent?.discount || 0);
+      setDiscountType(currentStudent?.discountType || "percent");
+      setDiscountReason(currentStudent?.discountReason || "Oila a'zolari chegirmasi");
+    }
+  }, [currentStudent, isEditing]);
 
   // Notes & timeline state
   const [newNoteText, setNewNoteText] = useState("");
@@ -290,35 +336,35 @@ export function StudentProfilePage({
 
   // Groups this student is enrolled in
   const assignedGroups = useMemo(() => {
-    const ids = (student?.groupIds || []).map(String);
+    const ids = (currentStudent?.groupIds || []).map(String);
     return allGroups.filter((g) => ids.includes(String(g.id)));
-  }, [allGroups, student?.groupIds]);
+  }, [allGroups, currentStudent?.groupIds]);
 
   // Debt calculation per group with Pro-rata support and Group Activation
   const groupDebts = useMemo(() => {
     return assignedGroups.map((g) => {
       let fullPrice = Number(g.price || 0);
-      if (student?.discount) {
-        if (student.discountType === "percent" || student.discountType === "%" || student.discountType === "foiz") {
-          fullPrice = Math.round(fullPrice * (1 - Number(student.discount) / 100));
+      if (currentStudent?.discount) {
+        if (currentStudent.discountType === "percent" || currentStudent.discountType === "%" || currentStudent.discountType === "foiz") {
+          fullPrice = Math.round(fullPrice * (1 - Number(currentStudent.discount) / 100));
         } else {
-          fullPrice = Math.max(0, fullPrice - Number(student.discount));
+          fullPrice = Math.max(0, fullPrice - Number(currentStudent.discount));
         }
       }
 
-      const membership = student?.groupMemberships?.[g.id] || student?.groupMemberships?.[String(g.id)];
+      const membership = currentStudent?.groupMemberships?.[g.id] || currentStudent?.groupMemberships?.[String(g.id)];
       const groupFeeInfo = calculateStudentGroupFee({
         fullMonthlyFee: fullPrice,
         groupDays: g.days || ["Dush", "Chor", "Juma"],
         monthStr: month,
         membership,
-        student,
+        student: currentStudent,
       });
 
       const effectivePrice = groupFeeInfo.calculatedFee;
 
       const groupPayments = allPayments.filter(
-        (p) => p.studentId === student?.id && p.groupId === g.id && p.month === month
+        (p) => p.studentId === currentStudent?.id && p.groupId === g.id && p.month === month
       );
       const paidSum = groupPayments.reduce(
         (sum, p) => sum + (Number(p.amount) || 0),
@@ -360,7 +406,7 @@ export function StudentProfilePage({
         status: paymentStatus,
       };
     });
-  }, [assignedGroups, allPayments, student, month]);
+  }, [assignedGroups, allPayments, currentStudent, month]);
 
   const totalDebt = useMemo(() => {
     return groupDebts.reduce((sum, d) => sum + (d.remainingDebt || 0), 0);
@@ -369,9 +415,9 @@ export function StudentProfilePage({
   // Student's payment history
   const studentPayments = useMemo(() => {
     return allPayments
-      .filter((p) => p.studentId === student?.id)
+      .filter((p) => p.studentId === currentStudent?.id)
       .sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0));
-  }, [allPayments, student?.id]);
+  }, [allPayments, currentStudent?.id]);
 
   const totalPaidSum = useMemo(() => {
     return studentPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
@@ -381,7 +427,7 @@ export function StudentProfilePage({
   const attendanceRecords = useMemo(() => {
     const list = [];
     allAttendance.forEach((rec) => {
-      const entry = (rec.entries || []).find((e) => e.studentId === student?.id);
+      const entry = (rec.entries || []).find((e) => e.studentId === currentStudent?.id);
       if (entry) {
         const grp = allGroups.find((g) => g.id === rec.groupId);
         list.push({
@@ -394,7 +440,7 @@ export function StudentProfilePage({
       }
     });
     return list.sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [allAttendance, student?.id, allGroups]);
+  }, [allAttendance, currentStudent?.id, allGroups]);
 
   const attendanceStats = useMemo(() => {
     const total = attendanceRecords.length;
@@ -409,7 +455,7 @@ export function StudentProfilePage({
 
   // Exams list
   const examRecords = useMemo(() => {
-    return student?.exams || [
+    return currentStudent?.exams || [
       {
         id: "ex_1",
         title: "IELTS Mock Test #1",
@@ -431,11 +477,11 @@ export function StudentProfilePage({
         comment: "Barcha lug'atlar yod olingan",
       }
     ];
-  }, [student?.exams, assignedGroups]);
+  }, [currentStudent?.exams, assignedGroups]);
 
   // Purchases list (Market / Coin store)
   const purchaseRecords = useMemo(() => {
-    return student?.purchases || [
+    return currentStudent?.purchases || [
       {
         id: "pur_1",
         item: "COSMOS Maxsus Dasturchi Bloknoti",
@@ -444,7 +490,7 @@ export function StudentProfilePage({
         status: "Topshirildi",
       }
     ];
-  }, [student?.purchases]);
+  }, [currentStudent?.purchases]);
 
   // Action Menu Items for 3-dots button (Uch nuqtada amallar menyusi)
   const actionMenuItems = [
@@ -455,9 +501,9 @@ export function StudentProfilePage({
       onClick: () => {
         setShowActionsMenu(false);
         if (openModal) {
-          openModal({ type: "recordPayment", student, studentId: student?.id });
+          openModal({ type: "recordPayment", student: currentStudent, studentId: currentStudent?.id });
         } else if (onRecordPayment) {
-          onRecordPayment({ studentId: student?.id });
+          onRecordPayment({ studentId: currentStudent?.id });
         } else {
           setActiveTab("payments");
         }
@@ -489,9 +535,9 @@ export function StudentProfilePage({
       onClick: () => {
         setShowActionsMenu(false);
         if (openModal) {
-          openModal({ type: "assignStudentToGroup", studentId: student?.id, student });
+          openModal({ type: "assignStudentToGroup", studentId: currentStudent?.id, student: currentStudent });
         } else if (onAssignStudentToGroup) {
-          onAssignStudentToGroup(student?.id);
+          onAssignStudentToGroup(currentStudent?.id);
         } else {
           setActiveTab("groups");
         }
@@ -504,12 +550,15 @@ export function StudentProfilePage({
       onClick: async () => {
         setShowActionsMenu(false);
         if (openModal) {
-          openModal({ type: "editStudentBalance", studentId: student?.id, student });
+          openModal({ type: "editStudentBalance", studentId: currentStudent?.id, student: currentStudent });
         } else {
-          const val = prompt("Yangi balans summasini kiriting (so'mda):", student?.balance || 0);
+          const val = prompt("Yangi balans summasini kiriting (so'mda):", currentStudent?.balance || 0);
           if (val !== null && !isNaN(val)) {
             try {
-              await onUpdateStudent?.(student?.id, { balance: Number(val) });
+              const newBal = Number(val);
+              setLocalStudent((prev) => ({ ...prev, balance: newBal }));
+              await api.updateStudent(currentStudent.id, { balance: newBal });
+              await onUpdateStudent?.(currentStudent?.id, { balance: newBal });
               setSaveSuccessMsg("Balans yangilandi!");
               setTimeout(() => setSaveSuccessMsg(""), 2500);
             } catch (e) {
@@ -526,7 +575,7 @@ export function StudentProfilePage({
       onClick: () => {
         setShowActionsMenu(false);
         if (openModal) {
-          openModal({ type: "transferBranch", studentId: student?.id, student });
+          openModal({ type: "transferBranch", studentId: currentStudent?.id, student: currentStudent });
         } else {
           alert("Boshqa filialga o'tkazish xizmati");
         }
@@ -539,7 +588,7 @@ export function StudentProfilePage({
       onClick: () => {
         setShowActionsMenu(false);
         if (openModal) {
-          openModal({ type: "refundPayment", studentId: student?.id, student });
+          openModal({ type: "refundPayment", studentId: currentStudent?.id, student: currentStudent });
         } else {
           alert("To'lovni qaytarish xizmati");
         }
@@ -553,10 +602,12 @@ export function StudentProfilePage({
         setShowActionsMenu(false);
         setConfirmModalState({
           title: "Lidga qaytarish",
-          message: `${student?.name || "O'quvchi"}ni qayta lidlar ro'yxatiga o'tkazasizmi?`,
+          message: `${currentStudent?.name || "O'quvchi"}ni qayta lidlar ro'yxatiga o'tkazasizmi?`,
           onConfirm: async () => {
             try {
-              await onUpdateStudent?.(student?.id, { status: "lead" });
+              setLocalStudent((prev) => ({ ...prev, status: "lead" }));
+              await api.updateStudent(currentStudent.id, { status: "lead" });
+              await onUpdateStudent?.(currentStudent?.id, { status: "lead" });
               setSaveSuccessMsg("O'quvchi lidga qaytarildi");
               setTimeout(() => setSaveSuccessMsg(""), 2500);
             } catch (e) {
@@ -592,9 +643,9 @@ export function StudentProfilePage({
         setShowActionsMenu(false);
         setConfirmModalState({
           title: "O'quvchini arxivlash / o'chirish",
-          message: `${student?.name || "O'quvchi"}ni o'chirish/arxivlashni tasdiqlaysizmi?`,
+          message: `${currentStudent?.name || "O'quvchi"}ni o'chirish/arxivlashni tasdiqlaysizmi?`,
           onConfirm: () => {
-            onDeleteStudent?.(student?.id);
+            onDeleteStudent?.(currentStudent?.id);
             onBack?.();
           },
         });
@@ -604,20 +655,20 @@ export function StudentProfilePage({
 
   // Notes & timeline list
   const notesList = useMemo(() => {
-    let list = Array.isArray(student?.notes) ? [...student.notes] : [];
-    if (list.length === 0 && student?.note) {
+    let list = Array.isArray(currentStudent?.notes) ? [...currentStudent.notes] : [];
+    if (list.length === 0 && currentStudent?.note) {
       list.push({
         id: "initial-note",
-        text: student.note,
+        text: currentStudent.note,
         type: "note",
-        createdAt: student.createdAt || new Date().toISOString(),
+        createdAt: currentStudent.createdAt || new Date().toISOString(),
         author: "Menejer",
       });
     }
     return list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-  }, [student?.notes, student?.note, student?.createdAt]);
+  }, [currentStudent?.notes, currentStudent?.note, currentStudent?.createdAt]);
 
-  const currentStatus = STUDENT_STATUSES.find((st) => st.id === (student?.status || "active")) || STUDENT_STATUSES[0];
+  const currentStatus = STUDENT_STATUSES.find((st) => st.id === (currentStudent?.status || "active")) || STUDENT_STATUSES[0];
 
   // Course name(s) assigned to student
   const assignedCourseNames = useMemo(() => {
@@ -632,10 +683,28 @@ export function StudentProfilePage({
   // Handlers
   const handleStatusChange = async (newStatus) => {
     try {
-      if (onUpdateStudent) {
-        await onUpdateStudent(student.id, { status: newStatus });
-      }
+      const currentMemberships = { ...(currentStudent?.groupMemberships || {}) };
+      Object.keys(currentMemberships).forEach((gid) => {
+        if (newStatus === "paused") {
+          currentMemberships[gid] = { ...(currentMemberships[gid] || {}), status: "paused" };
+        } else if (newStatus === "active" && currentMemberships[gid]?.status === "paused") {
+          currentMemberships[gid] = { ...(currentMemberships[gid] || {}), status: "active" };
+        }
+      });
+
+      const updatedData = {
+        status: newStatus,
+        groupMemberships: currentMemberships,
+      };
+
+      setLocalStudent((prev) => ({ ...prev, ...updatedData }));
       setFormData((prev) => ({ ...prev, status: newStatus }));
+
+      await api.updateStudent(currentStudent.id, updatedData);
+
+      if (onUpdateStudent) {
+        await onUpdateStudent(currentStudent.id, updatedData);
+      }
       setSaveSuccessMsg("O'quvchi holati yangilandi!");
       setTimeout(() => setSaveSuccessMsg(""), 2500);
     } catch (err) {
@@ -647,27 +716,32 @@ export function StudentProfilePage({
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     try {
+      const updatedData = {
+        name: formData.name,
+        phone: formData.phone,
+        parentPhone: formData.parentPhone,
+        phone2: formData.parentPhone,
+        parentName: formData.parentName,
+        grade: formData.grade,
+        school: formData.school,
+        birthDate: formData.birthDate,
+        gender: formData.gender,
+        address: formData.address,
+        source: formData.source,
+        targetCourse: formData.targetCourse,
+        interestedCourse: formData.targetCourse,
+        branch: formData.branch,
+        status: formData.status,
+        balance: Number(formData.balance) || 0,
+        coins: Number(formData.coins) || 0,
+        note: formData.note,
+      };
+
+      setLocalStudent((prev) => ({ ...prev, ...updatedData }));
+      await api.updateStudent(currentStudent.id, updatedData);
+
       if (onUpdateStudent) {
-        await onUpdateStudent(student.id, {
-          name: formData.name,
-          phone: formData.phone,
-          parentPhone: formData.parentPhone,
-          phone2: formData.parentPhone,
-          parentName: formData.parentName,
-          grade: formData.grade,
-          school: formData.school,
-          birthDate: formData.birthDate,
-          gender: formData.gender,
-          address: formData.address,
-          source: formData.source,
-          targetCourse: formData.targetCourse,
-          interestedCourse: formData.targetCourse,
-          branch: formData.branch,
-          status: formData.status,
-          balance: Number(formData.balance) || 0,
-          coins: Number(formData.coins) || 0,
-          note: formData.note,
-        });
+        await onUpdateStudent(currentStudent.id, updatedData);
       }
       setSaveSuccessMsg("O'quvchi ma'lumotlari muvaffaqiyatli saqlandi!");
       setIsEditing(false);
@@ -681,12 +755,17 @@ export function StudentProfilePage({
   const handleSaveDiscount = async (e) => {
     e.preventDefault();
     try {
+      const updatedData = {
+        discount: Number(discountVal) || 0,
+        discountType: discountType,
+        discountReason: discountReason,
+      };
+
+      setLocalStudent((prev) => ({ ...prev, ...updatedData }));
+      await api.updateStudent(currentStudent.id, updatedData);
+
       if (onUpdateStudent) {
-        await onUpdateStudent(student.id, {
-          discount: Number(discountVal) || 0,
-          discountType: discountType,
-          discountReason: discountReason,
-        });
+        await onUpdateStudent(currentStudent.id, updatedData);
       }
       setSaveSuccessMsg("Chegirma muvaffaqiyatli saqlandi!");
       setTimeout(() => setSaveSuccessMsg(""), 2500);
@@ -710,8 +789,11 @@ export function StudentProfilePage({
       };
       const updatedNotes = [noteItem, ...notesList.filter((n) => n.id !== "initial-note")];
 
+      setLocalStudent((prev) => ({ ...prev, notes: updatedNotes }));
+      await api.updateStudent(currentStudent.id, { notes: updatedNotes });
+
       if (onUpdateStudent) {
-        await onUpdateStudent(student.id, { notes: updatedNotes });
+        await onUpdateStudent(currentStudent.id, { notes: updatedNotes });
       }
 
       setNewNoteText("");
@@ -732,8 +814,11 @@ export function StudentProfilePage({
       onConfirm: async () => {
         try {
           const updatedNotes = notesList.filter((n) => n.id !== noteId);
+          setLocalStudent((prev) => ({ ...prev, notes: updatedNotes }));
+          await api.updateStudent(currentStudent.id, { notes: updatedNotes });
+
           if (onUpdateStudent) {
-            await onUpdateStudent(student.id, { notes: updatedNotes });
+            await onUpdateStudent(currentStudent.id, { notes: updatedNotes });
           }
           setSaveSuccessMsg("Izoh o'chirildi");
           setTimeout(() => setSaveSuccessMsg(""), 2500);
@@ -749,14 +834,17 @@ export function StudentProfilePage({
     e.preventDefault();
     if (coinAmount <= 0) return;
     try {
-      const currentCoins = Number(student.coins || 0);
+      const currentCoins = Number(currentStudent.coins || 0);
       const diff = coinActionType === "add" ? coinAmount : -coinAmount;
       const newCoins = Math.max(0, currentCoins + diff);
 
+      setLocalStudent((prev) => ({ ...prev, coins: newCoins }));
+      await api.updateStudent(currentStudent.id, { coins: newCoins });
+
       if (onAddCoins) {
-        await onAddCoins(student.id, diff, coinReason);
+        await onAddCoins(currentStudent.id, diff, coinReason);
       } else if (onUpdateStudent) {
-        await onUpdateStudent(student.id, { coins: newCoins });
+        await onUpdateStudent(currentStudent.id, { coins: newCoins });
       }
 
       setSaveSuccessMsg(
@@ -779,7 +867,7 @@ export function StudentProfilePage({
       date: new Date().toISOString().slice(0, 10),
       text: smsText,
       status: "Yuborildi",
-      phone: student.phone,
+      phone: currentStudent.phone,
     };
     setSentSmsLogs([newLog, ...sentSmsLogs]);
     setSmsText("");
@@ -798,21 +886,26 @@ export function StudentProfilePage({
     if (!groupId) return;
     try {
       const targetGid = String(groupId);
-      const newGroupIds = [...new Set([...(student?.groupIds || []).map(String), targetGid])];
-      const currentMemberships = { ...(student?.groupMemberships || {}) };
+      const newGroupIds = [...new Set([...(currentStudent?.groupIds || []).map(String), targetGid])];
+      const currentMemberships = { ...(currentStudent?.groupMemberships || {}) };
       currentMemberships[targetGid] = {
         status: "trial",
         enrolledAt: new Date().toISOString(),
       };
 
+      const updatedData = {
+        groupIds: newGroupIds,
+        groupMemberships: currentMemberships,
+      };
+
+      setLocalStudent((prev) => ({ ...prev, ...updatedData }));
+      await api.updateStudent(currentStudent.id, updatedData);
+
       if (onAssignStudentToGroup) {
-        await onAssignStudentToGroup(student.id, groupId);
+        await onAssignStudentToGroup(currentStudent.id, groupId);
       }
       if (onUpdateStudent) {
-        await onUpdateStudent(student.id, {
-          groupIds: newGroupIds,
-          groupMemberships: currentMemberships,
-        });
+        await onUpdateStudent(currentStudent.id, updatedData);
       }
       setGroupToAssign("");
       setSaveSuccessMsg("O'quvchi sinov holatida guruhga qo'shildi!");
@@ -826,7 +919,7 @@ export function StudentProfilePage({
   const handleActivateGroupSave = async ({ groupId, status, activationDate, notes }) => {
     try {
       const targetGid = String(groupId);
-      const currentMemberships = { ...(student?.groupMemberships || {}) };
+      const currentMemberships = { ...(currentStudent?.groupMemberships || {}) };
       currentMemberships[targetGid] = {
         ...(currentMemberships[targetGid] || {}),
         status: status || "active",
@@ -835,10 +928,20 @@ export function StudentProfilePage({
         updatedAt: new Date().toISOString(),
       };
 
+      const updatedData = {
+        status: status === "active" ? "active" : currentStudent?.status,
+        groupMemberships: currentMemberships,
+      };
+
+      setLocalStudent((prev) => ({
+        ...prev,
+        ...updatedData,
+      }));
+
+      await api.updateStudent(currentStudent.id, updatedData);
+
       if (onUpdateStudent) {
-        await onUpdateStudent(student.id, {
-          groupMemberships: currentMemberships,
-        });
+        await onUpdateStudent(currentStudent.id, updatedData);
       }
       setActivateModalData(null);
       setSaveSuccessMsg(
@@ -857,25 +960,35 @@ export function StudentProfilePage({
 
   const handleToggleFreezeStudent = async (groupId, currentIsPaused) => {
     try {
-      const isPaused = student?.status === "paused" || currentIsPaused;
+      const isPaused = currentStudent?.status === "paused" || currentIsPaused;
       const newStatus = isPaused ? "active" : "paused";
-      const currentMemberships = { ...(student?.groupMemberships || {}) };
+      const currentMemberships = { ...(currentStudent?.groupMemberships || {}) };
       if (groupId) {
         const targetGid = String(groupId);
         currentMemberships[targetGid] = {
           ...(currentMemberships[targetGid] || {}),
           status: newStatus,
+          activationDate: newStatus === "active" ? (currentMemberships[targetGid]?.activationDate || new Date().toISOString().slice(0, 10)) : null,
           updatedAt: new Date().toISOString(),
         };
       }
 
-      if (onUpdateStudent) {
-        await onUpdateStudent(student.id, {
-          status: newStatus,
-          groupMemberships: currentMemberships,
-        });
-      }
+      const updatedData = {
+        status: newStatus,
+        groupMemberships: currentMemberships,
+      };
+
+      setLocalStudent((prev) => ({
+        ...prev,
+        ...updatedData,
+      }));
       setFormData((prev) => ({ ...prev, status: newStatus }));
+
+      await api.updateStudent(currentStudent.id, updatedData);
+
+      if (onUpdateStudent) {
+        await onUpdateStudent(currentStudent.id, updatedData);
+      }
       setSaveSuccessMsg(isPaused ? "O'quvchi faollashtirildi!" : "O'quvchi muzlatildi!");
       setTimeout(() => setSaveSuccessMsg(""), 2500);
     } catch (err) {
@@ -887,7 +1000,7 @@ export function StudentProfilePage({
   const handleReturnToTrial = async (groupId) => {
     try {
       const targetGid = String(groupId);
-      const currentMemberships = { ...(student?.groupMemberships || {}) };
+      const currentMemberships = { ...(currentStudent?.groupMemberships || {}) };
       currentMemberships[targetGid] = {
         ...(currentMemberships[targetGid] || {}),
         status: "trial",
@@ -895,10 +1008,19 @@ export function StudentProfilePage({
         updatedAt: new Date().toISOString(),
       };
 
+      const updatedData = {
+        groupMemberships: currentMemberships,
+      };
+
+      setLocalStudent((prev) => ({
+        ...prev,
+        ...updatedData,
+      }));
+
+      await api.updateStudent(currentStudent.id, updatedData);
+
       if (onUpdateStudent) {
-        await onUpdateStudent(student.id, {
-          groupMemberships: currentMemberships,
-        });
+        await onUpdateStudent(currentStudent.id, updatedData);
       }
       setSaveSuccessMsg("Guruh holati 'Sinov darsiga' qaytarildi!");
       setTimeout(() => setSaveSuccessMsg(""), 2500);
@@ -912,10 +1034,10 @@ export function StudentProfilePage({
     try {
       const targetFromId = String(fromGroupId);
       const targetToId = String(toGroupId);
-      const remainingGroupIds = (student?.groupIds || []).map(String).filter((id) => id !== targetFromId);
+      const remainingGroupIds = (currentStudent?.groupIds || []).map(String).filter((id) => id !== targetFromId);
       const newGroupIds = [...new Set([...remainingGroupIds, targetToId])];
 
-      const currentMemberships = { ...(student?.groupMemberships || {}) };
+      const currentMemberships = { ...(currentStudent?.groupMemberships || {}) };
       delete currentMemberships[targetFromId];
       currentMemberships[targetToId] = {
         status: status || "trial",
@@ -923,11 +1045,20 @@ export function StudentProfilePage({
         enrolledAt: new Date().toISOString(),
       };
 
+      const updatedData = {
+        groupIds: newGroupIds,
+        groupMemberships: currentMemberships,
+      };
+
+      setLocalStudent((prev) => ({
+        ...prev,
+        ...updatedData,
+      }));
+
+      await api.updateStudent(currentStudent.id, updatedData);
+
       if (onUpdateStudent) {
-        await onUpdateStudent(student.id, {
-          groupIds: newGroupIds,
-          groupMemberships: currentMemberships,
-        });
+        await onUpdateStudent(currentStudent.id, updatedData);
       }
       setTransferModalData(null);
       setSaveSuccessMsg("O'quvchi boshqa guruhga muvaffaqiyatli o'tkazildi!");
@@ -945,18 +1076,27 @@ export function StudentProfilePage({
       onConfirm: async () => {
         try {
           const targetGid = String(groupId);
-          const remaining = (student.groupIds || []).map(String).filter((id) => id !== targetGid);
-          const currentMemberships = { ...(student?.groupMemberships || {}) };
+          const remaining = (currentStudent.groupIds || []).map(String).filter((id) => id !== targetGid);
+          const currentMemberships = { ...(currentStudent?.groupMemberships || {}) };
           delete currentMemberships[targetGid];
 
+          const updatedData = {
+            groupIds: remaining,
+            groupMemberships: currentMemberships,
+          };
+
+          setLocalStudent((prev) => ({
+            ...prev,
+            ...updatedData,
+          }));
+
+          await api.updateStudent(currentStudent.id, updatedData);
+
           if (onRemoveFromGroup) {
-            onRemoveFromGroup(student.id, groupId);
+            onRemoveFromGroup(currentStudent.id, groupId);
           }
           if (onUpdateStudent) {
-            await onUpdateStudent(student.id, {
-              groupIds: remaining,
-              groupMemberships: currentMemberships,
-            });
+            await onUpdateStudent(currentStudent.id, updatedData);
           }
           setSaveSuccessMsg("O'quvchi guruhdan chiqarildi");
           setTimeout(() => setSaveSuccessMsg(""), 2500);
@@ -1000,11 +1140,11 @@ export function StudentProfilePage({
             </button>
             <img
               className="avatar"
-              src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(student.name || "Bexruzbek")}&backgroundColor=f4c56b`}
+              src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(currentStudent.name || "Bexruzbek")}&backgroundColor=f4c56b`}
               alt="avatar"
             />
             <div className="name-block">
-              <h1>{student.name || "Xusanov Bexruzbek"}</h1>
+              <h1>{currentStudent.name || "Xusanov Bexruzbek"}</h1>
             </div>
             <button
               type="button"
@@ -1031,18 +1171,18 @@ export function StudentProfilePage({
           </div>
 
           <div className="balance-row">
-            <span className={`balance-pill ${Number(student.balance || 0) >= 0 ? "bg-[#16a34a]" : "bg-[#ef4444]"}`}>
-              {money(typeof student.balance === "number" ? student.balance : 0)}
+            <span className={`balance-pill ${Number(currentStudent.balance || 0) >= 0 ? "bg-[#16a34a]" : "bg-[#ef4444]"}`}>
+              {money(typeof currentStudent.balance === "number" ? currentStudent.balance : 0)}
             </span>
             <span className="balance-label">balans (so'm)</span>
             <span>
-              <span className="stat-pill yellow">{student.coins || 0}</span>ta tanga{" "}
+              <span className="stat-pill yellow">{currentStudent.coins || 0}</span>ta tanga{" "}
               <a className="stat-link" onClick={() => setActiveTab("coins")}>
                 &#9998;
               </a>
             </span>
             <span>
-              <span className="stat-pill green">{student.crystals || 0}</span>ta kristal{" "}
+              <span className="stat-pill green">{currentStudent.crystals || 0}</span>ta kristal{" "}
               <a className="stat-link" onClick={() => setActiveTab("coins")}>
                 &#9998;
               </a>
@@ -1051,15 +1191,15 @@ export function StudentProfilePage({
 
           <div className="info-line">
             <span className="label">Telefon raqam:</span>{" "}
-            <span className="value">+(998) {student.phone ? displayPhone(student.phone) : "—"}</span>
+            <span className="value">+(998) {currentStudent.phone ? displayPhone(currentStudent.phone) : "—"}</span>
           </div>
           <div className="info-line">
             <span className="label">Tug'ilgan sana:</span>{" "}
-            <span className="value">{student.birthDate ? formatDate(student.birthDate) : "Mavjud emas"}</span>
+            <span className="value">{currentStudent.birthDate ? formatDate(currentStudent.birthDate) : "Mavjud emas"}</span>
           </div>
           <div className="info-line">
             <span className="label">Talaba qo'shilgan sana :</span>{" "}
-            <span className="value">{student.joinedAt ? formatDate(student.joinedAt) : student.createdAt ? formatDate(student.createdAt.slice(0, 10)) : formatDate(new Date().toISOString().slice(0, 10))}</span>
+            <span className="value">{currentStudent.joinedAt ? formatDate(currentStudent.joinedAt) : currentStudent.createdAt ? formatDate(currentStudent.createdAt.slice(0, 10)) : formatDate(new Date().toISOString().slice(0, 10))}</span>
           </div>
 
           <div className="actions-row">
@@ -1071,7 +1211,7 @@ export function StudentProfilePage({
               type="button"
               className="icon-btn-mini"
               onClick={() => {
-                if (openModal) openModal({ type: "recordPayment", studentId: student.id });
+                if (openModal) openModal({ type: "recordPayment", studentId: currentStudent.id });
                 else setActiveTab("payments");
               }}
             >
@@ -1090,19 +1230,19 @@ export function StudentProfilePage({
               </div>
               <div className="row">
                 <div className="k">Qo'shimcha raqam</div>
-                <div className="v">{student.parentPhone || student.phone2 || "Kiritilmagan"}</div>
+                <div className="v">{currentStudent.parentPhone || currentStudent.phone2 || "Kiritilmagan"}</div>
               </div>
               <div className="row">
                 <div className="k">Sana</div>
-                <div className="v">{student.joinedAt ? formatDate(student.joinedAt) : student.createdAt ? formatDate(student.createdAt.slice(0, 10)) : "—"}</div>
+                <div className="v">{currentStudent.joinedAt ? formatDate(currentStudent.joinedAt) : currentStudent.createdAt ? formatDate(currentStudent.createdAt.slice(0, 10)) : "—"}</div>
               </div>
               <div className="row">
                 <div className="k">Biz haqqimizda qaerdan eshitdingiz</div>
-                <div className="v">{student.source || "Kiritilmagan"}</div>
+                <div className="v">{currentStudent.source || "Kiritilmagan"}</div>
               </div>
               <div className="row">
                 <div className="k">Qiziqqan kursi</div>
-                <div className="v">{student.targetCourse || student.interestedCourse || "—"}</div>
+                <div className="v">{currentStudent.targetCourse || currentStudent.interestedCourse || "—"}</div>
               </div>
             </div>
           )}
@@ -1243,10 +1383,27 @@ export function StudentProfilePage({
                                     <MoreVertical size={14} />
                                   </button>
 
-                                  {/* Dropdown Menu */}
+                                   {/* Dropdown Menu */}
                                   {isMenuOpen && (
                                     <div className="absolute right-0 top-full mt-1.5 w-56 bg-white dark:bg-slate-850 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-1.5 z-30 text-xs animate-in fade-in zoom-in-95">
-                                      {/* 1. To'lov qilish */}
+                                      {/* 1. Faollashtirish */}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setOpenGroupMenuId(null);
+                                          setActivateModalData({
+                                            group: grp,
+                                            membership,
+                                            fullPrice,
+                                          });
+                                        }}
+                                        className="w-full px-3.5 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-200 flex items-center gap-2.5 font-semibold transition-colors cursor-pointer"
+                                      >
+                                        <Zap size={14} className="text-amber-500 shrink-0" />
+                                        <span>Faollashtirish</span>
+                                      </button>
+
+                                      {/* 2. To'lov qilish */}
                                       <button
                                         type="button"
                                         onClick={() => {
@@ -1254,11 +1411,11 @@ export function StudentProfilePage({
                                           if (openModal) {
                                             openModal({
                                               type: "recordPayment",
-                                              studentId: student.id,
+                                              studentId: currentStudent.id,
                                               groupId: grp.id,
                                             });
                                           } else if (onRecordPayment) {
-                                            onRecordPayment({ studentId: student.id, groupId: grp.id });
+                                            onRecordPayment({ studentId: currentStudent.id, groupId: grp.id });
                                           }
                                         }}
                                         className="w-full px-3.5 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-200 flex items-center gap-2.5 font-semibold transition-colors cursor-pointer"
@@ -1267,7 +1424,7 @@ export function StudentProfilePage({
                                         <span>To'lov qilish</span>
                                       </button>
 
-                                      {/* 2. Muzlatish / Muzlatishdan chiqarish */}
+                                      {/* 3. Muzlatish / Muzlatishdan chiqarish */}
                                       <button
                                         type="button"
                                         onClick={() => {
@@ -1277,10 +1434,10 @@ export function StudentProfilePage({
                                         className="w-full px-3.5 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-200 flex items-center gap-2.5 font-semibold transition-colors cursor-pointer"
                                       >
                                         <Snowflake size={14} className="text-sky-500 shrink-0" />
-                                        <span>{student?.status === "paused" || isPaused ? "Muzlatishdan chiqarish" : "Muzlatish"}</span>
+                                        <span>{currentStudent?.status === "paused" || isPaused ? "Muzlatishdan chiqarish" : "Muzlatish"}</span>
                                       </button>
 
-                                      {/* 3. Sinov darsiga qaytarish */}
+                                      {/* 4. Sinov darsiga qaytarish */}
                                       <button
                                         type="button"
                                         onClick={() => {
@@ -1293,7 +1450,7 @@ export function StudentProfilePage({
                                         <span>Sinov darsiga qaytarish</span>
                                       </button>
 
-                                      {/* 4. Boshqa guruhga o'tkazish */}
+                                      {/* 5. Boshqa guruhga o'tkazish */}
                                       <button
                                         type="button"
                                         onClick={() => {
@@ -1308,7 +1465,7 @@ export function StudentProfilePage({
 
                                       <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
 
-                                      {/* 5. O'chirish */}
+                                      {/* 6. O'chirish */}
                                       <button
                                         type="button"
                                         onClick={() => {
@@ -1378,7 +1535,7 @@ export function StudentProfilePage({
                             <div className="flex items-center justify-between">
                               <span className="font-bold text-slate-800 dark:text-slate-200">Guruhga qo'shilgan sana:</span>
                               <span className="text-slate-600 dark:text-slate-300 font-medium text-right">
-                                {formatShortDate(membership?.enrolledAt || student?.joinedAt || student?.createdAt)}
+                                {formatShortDate(membership?.enrolledAt || currentStudent?.joinedAt || currentStudent?.createdAt)}
                               </span>
                             </div>
 
@@ -1386,7 +1543,7 @@ export function StudentProfilePage({
                             <div className="flex items-center justify-between">
                               <span className="font-bold text-slate-800 dark:text-slate-200">Boshlanish sanasi:</span>
                               <span className="text-slate-600 dark:text-slate-300 font-medium text-right">
-                                {formatShortDate(grp.startDate || grp.createdAt || student?.joinedAt)}
+                                {formatShortDate(grp.startDate || grp.createdAt || currentStudent?.joinedAt)}
                               </span>
                             </div>
 
@@ -1464,16 +1621,16 @@ export function StudentProfilePage({
                   <div>
                     <div className="text-xs font-bold text-slate-500 dark:text-slate-400">O'quvchi Balansi</div>
                     <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
-                      {money(student.balance || 0)} <span className="text-xs font-normal text-slate-400">so'm</span>
+                      {money(currentStudent.balance || 0)} <span className="text-xs font-normal text-slate-400">so'm</span>
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => {
                       if (openModal) {
-                        openModal({ type: "recordPayment", studentId: student.id });
+                        openModal({ type: "recordPayment", studentId: currentStudent.id });
                       } else if (onRecordPayment) {
-                        onRecordPayment({ studentId: student.id });
+                        onRecordPayment({ studentId: currentStudent.id });
                       }
                     }}
                     className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
@@ -1802,7 +1959,7 @@ export function StudentProfilePage({
                   <span className="absolute -left-8 top-1 w-3 h-3 rounded-full bg-emerald-500 ring-4 ring-white dark:ring-slate-850" />
                   <div className="text-xs font-bold text-slate-900 dark:text-white">Tizimga qo'shildi</div>
                   <div className="text-[11px] text-slate-400 font-mono">
-                    {student.createdAt ? formatDate(student.createdAt.slice(0, 10)) : "Yaqinda"}
+                    {currentStudent.createdAt ? formatDate(currentStudent.createdAt.slice(0, 10)) : "Yaqinda"}
                   </div>
                   <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
                     O'quvchi ro'yxatga olindi va shaxsiy kartoshkasi ochildi
@@ -1885,7 +2042,7 @@ export function StudentProfilePage({
                     <input
                       type="text"
                       disabled
-                      value={displayPhone(student.phone)}
+                      value={displayPhone(currentStudent.phone)}
                       className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono font-bold text-xs"
                     />
                   </div>
@@ -2030,7 +2187,7 @@ export function StudentProfilePage({
                       Cosmos Coin Balansi
                     </div>
                     <div className="text-4xl font-black flex items-center gap-2">
-                      <span>🪙 {student.coins || 0}</span>
+                      <span>🪙 {currentStudent.coins || 0}</span>
                       <span className="text-sm font-semibold text-amber-100">Cosmos Coin</span>
                     </div>
                     <p className="text-xs text-amber-100 pt-1">
@@ -2297,7 +2454,7 @@ export function StudentProfilePage({
           allGroups={allGroups}
           courses={courses}
           teachers={teachers}
-          assignedGroupIds={(student?.groupIds || []).map(String)}
+          assignedGroupIds={(currentStudent?.groupIds || []).map(String)}
           onSave={handleTransferGroupSave}
         />
       )}
@@ -2308,7 +2465,7 @@ export function StudentProfilePage({
           isOpen={Boolean(attendanceModalGroup)}
           onClose={() => setAttendanceModalGroup(null)}
           group={attendanceModalGroup}
-          student={student}
+          student={currentStudent}
           allAttendance={allAttendance}
           teachers={teachers}
           courses={courses}
@@ -2324,13 +2481,13 @@ export function StudentProfilePage({
             setGroupToAssign("");
           }}
           title="Guruhga biriktirish"
-          subtitle={`${student?.name || "O'quvchi"}ni yangi guruhga qo'shish`}
+          subtitle={`${currentStudent?.name || "O'quvchi"}ni yangi guruhga qo'shish`}
         >
           <div className="space-y-4">
             <div>
               <label className={LABEL_CLS}>Guruhni tanlang</label>
               <SearchableGroupSelect
-                groups={allGroups.filter((g) => !(student.groupIds || []).some((id) => String(id) === String(g.id)))}
+                groups={allGroups.filter((g) => !(currentStudent.groupIds || []).some((id) => String(id) === String(g.id)))}
                 courses={courses}
                 teachers={teachers}
                 students={opData?.students || []}
@@ -2438,9 +2595,9 @@ function ActivateGroupModal({
             </div>
             <div>
               <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
-                Guruhda faollashtirish va hisoblash
+                Guruhda faollashtirish
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                 {group.name} · {student?.name}
               </p>
             </div>
@@ -2455,47 +2612,47 @@ function ActivateGroupModal({
         </div>
 
         {/* Modal Body */}
-        <div className="p-5 space-y-5 text-xs flex-1">
+        <div className="p-5 space-y-4 text-xs flex-1">
           {/* Status Selection */}
           <div className="space-y-1.5">
-            <label className="font-extrabold text-slate-900 dark:text-white text-xs block">
-              Guruhdagi holati:
+            <label className="font-bold text-slate-800 dark:text-slate-200 text-xs block">
+              Guruhdagi holati
             </label>
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => setStatus("active")}
-                className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex flex-col items-center gap-1 transition-all cursor-pointer ${
+                className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                   status === "active"
                     ? "bg-emerald-50 border-emerald-500 text-emerald-700 dark:bg-emerald-950/50 dark:border-emerald-500 dark:text-emerald-300 ring-2 ring-emerald-500/20"
                     : "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
                 }`}
               >
-                <CheckCircle2 size={16} className="text-emerald-500" />
-                <span>Faol (Hisoblanadi)</span>
+                <CheckCircle2 size={15} className="text-emerald-500" />
+                <span>Faol</span>
               </button>
               <button
                 type="button"
                 onClick={() => setStatus("trial")}
-                className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex flex-col items-center gap-1 transition-all cursor-pointer ${
+                className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                   status === "trial"
                     ? "bg-amber-50 border-amber-500 text-amber-700 dark:bg-amber-950/50 dark:border-amber-500 dark:text-amber-300 ring-2 ring-amber-500/20"
                     : "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
                 }`}
               >
-                <Sparkles size={16} className="text-amber-500" />
-                <span>Sinovda (0 so'm)</span>
+                <Sparkles size={15} className="text-amber-500" />
+                <span>Sinovda</span>
               </button>
               <button
                 type="button"
                 onClick={() => setStatus("paused")}
-                className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex flex-col items-center gap-1 transition-all cursor-pointer ${
+                className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                   status === "paused"
                     ? "bg-sky-50 border-sky-500 text-sky-700 dark:bg-sky-950/50 dark:border-sky-500 dark:text-sky-300 ring-2 ring-sky-500/20"
                     : "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
                 }`}
               >
-                <Clock size={16} className="text-sky-500" />
+                <Clock size={15} className="text-sky-500" />
                 <span>Muzlatilgan</span>
               </button>
             </div>
@@ -2505,48 +2662,53 @@ function ActivateGroupModal({
             <>
               {/* Activation Date picker */}
               <div className="space-y-1.5">
-                <label className="font-extrabold text-slate-900 dark:text-white text-xs block">
-                  Faollashtirish sanasi (Shu sanadan boshlab darslar hisoblanadi):
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                    Faollashtirish sanasi
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleQuickDate(firstLesson)}
+                      className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:bg-violet-100 hover:text-violet-700 dark:hover:bg-violet-950 dark:hover:text-violet-300 cursor-pointer"
+                    >
+                      Oy boshi
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickDate(todayStr)}
+                      className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:bg-violet-100 hover:text-violet-700 dark:hover:bg-violet-950 dark:hover:text-violet-300 cursor-pointer"
+                    >
+                      Bugun
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickDate(nextLesson)}
+                      className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:bg-violet-100 hover:text-violet-700 dark:hover:bg-violet-950 dark:hover:text-violet-300 cursor-pointer"
+                    >
+                      Keyingi dars
+                    </button>
+                  </div>
+                </div>
                 <input
                   type="date"
                   value={activationDate}
                   onChange={(e) => setActivationDate(e.target.value)}
                   className={INPUT_CLS}
                 />
-                {/* Fast shortcuts */}
-                <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                  <span className="text-[11px] text-slate-400">Tezkor tanlash:</span>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickDate(todayStr)}
-                    className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:bg-violet-100 hover:text-violet-700 dark:hover:bg-violet-950 dark:hover:text-violet-300 cursor-pointer"
-                  >
-                    Bugun
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickDate(firstLesson)}
-                    className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:bg-violet-100 hover:text-violet-700 dark:hover:bg-violet-950 dark:hover:text-violet-300 cursor-pointer"
-                  >
-                    Oy boshi (1-dars)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickDate(nextLesson)}
-                    className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:bg-violet-100 hover:text-violet-700 dark:hover:bg-violet-950 dark:hover:text-violet-300 cursor-pointer"
-                  >
-                    Keyingi dars
-                  </button>
-                </div>
               </div>
 
               {/* Lesson breakdown in current month */}
               <div className="space-y-1.5">
-                <label className="font-extrabold text-slate-900 dark:text-white text-xs block">
-                  Joriy oydagi darslar taqvimi ({totalLessons} ta dars):
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-44 overflow-y-auto p-2 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200/80 dark:border-slate-700">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                    Oydagi darslar taqvimi
+                  </span>
+                  <span className="text-slate-500 dark:text-slate-400 font-semibold text-xs">
+                    Jami {totalLessons} ta dars · {attendedLessons} ta hisoblanadi
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-36 overflow-y-auto p-2 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200/80 dark:border-slate-700">
                   {allLessonDates.map((dateStr, idx) => {
                     const isBefore = dateStr < activationDate;
                     return (
@@ -2571,27 +2733,27 @@ function ActivateGroupModal({
               </div>
 
               {/* Real-time Calculation Summary Block */}
-              <div className="p-4 bg-violet-50/70 dark:bg-violet-950/30 rounded-xl border border-violet-200 dark:border-violet-800/80 space-y-2.5">
+              <div className="p-3.5 bg-violet-50/70 dark:bg-violet-950/30 rounded-xl border border-violet-200 dark:border-violet-800/80 space-y-2">
                 <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
-                  <span>Guruhning oylik to'liq narxi:</span>
+                  <span>Guruh narxi</span>
                   <span className="font-bold text-slate-900 dark:text-white">{money(price)} so'm</span>
                 </div>
                 <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
-                  <span>1 ta dars qiymati ({price.toLocaleString()} / {totalLessons}):</span>
+                  <span>1 ta dars qiymati</span>
                   <span className="font-semibold text-slate-700 dark:text-slate-300">{money(pricePerLesson)} so'm</span>
                 </div>
                 <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
-                  <span>Faollashtirishdan oldingi o'tgan darslar:</span>
-                  <span className="font-bold text-slate-500 line-through">{missedLessons} ta dars (0 so'm)</span>
+                  <span>O'tgan darslar</span>
+                  <span className="font-medium text-slate-500 line-through">{missedLessons} ta dars (0 so'm)</span>
                 </div>
                 <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
-                  <span>Hisoblanadigan darslar soni:</span>
+                  <span>Hisoblanadigan darslar</span>
                   <span className="font-bold text-emerald-600 dark:text-emerald-400">{attendedLessons} ta dars</span>
                 </div>
                 <div className="h-px bg-violet-200 dark:bg-violet-800 my-1" />
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-extrabold text-violet-950 dark:text-violet-200">
-                    Joriy oy uchun hisoblangan to'lov:
+                    Hisoblangan to'lov
                   </span>
                   <span className="font-black text-violet-700 dark:text-violet-300 text-base">
                     {money(calculatedFee)} so'm
@@ -2602,39 +2764,35 @@ function ActivateGroupModal({
           )}
 
           {status === "trial" && (
-            <div className="p-4 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 space-y-1.5">
-              <div className="font-bold flex items-center gap-1.5 text-xs">
-                <Sparkles size={14} className="text-amber-500" />
-                <span>Sinov holati tanlandi</span>
-              </div>
-              <p className="text-[11px] leading-relaxed opacity-90">
-                O'quvchi ushbu guruhda sinov darslarida qatnashadi. U uchun hozircha to'lov yoki qarz hisoblanmaydi. Keyinchalik "Faollashtirish" bosilib sana kiritilganda, shu sanadan keyingi darslar avtomatik to'lovga hisoblanadi.
-              </p>
+            <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 flex items-center justify-between text-xs font-semibold">
+              <span className="flex items-center gap-1.5">
+                <Sparkles size={15} className="text-amber-500" />
+                Sinov darsi holati
+              </span>
+              <span className="font-bold text-amber-900 dark:text-amber-100">0 so'm (To'lovsiz)</span>
             </div>
           )}
 
           {status === "paused" && (
-            <div className="p-4 bg-sky-50 dark:bg-sky-950/40 rounded-xl border border-sky-200 dark:border-sky-800 text-sky-800 dark:text-sky-200 space-y-1.5">
-              <div className="font-bold flex items-center gap-1.5 text-xs">
-                <Clock size={14} className="text-sky-500" />
-                <span>Guruh muzlatildi</span>
-              </div>
-              <p className="text-[11px] leading-relaxed opacity-90">
-                O'quvchining ushbu guruhdagi ishtiroki vaqtinchalik muzlatiladi va to'lov hisoblanmaydi.
-              </p>
+            <div className="p-3.5 bg-sky-50 dark:bg-sky-950/40 rounded-xl border border-sky-200 dark:border-sky-800 text-sky-800 dark:text-sky-200 flex items-center justify-between text-xs font-semibold">
+              <span className="flex items-center gap-1.5">
+                <Clock size={15} className="text-sky-500" />
+                Guruh muzlatilgan
+              </span>
+              <span className="font-bold text-sky-900 dark:text-sky-100">0 so'm</span>
             </div>
           )}
 
           {/* Notes */}
           <div className="space-y-1">
             <label className="font-semibold text-slate-700 dark:text-slate-300 text-xs block">
-              Izoh / Eslatma (ixtiyoriy):
+              Izoh
             </label>
             <input
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Masalan: 3-darsdan sinovsiz to'liq qatnashadi"
+              placeholder="Izoh yozing..."
               className={INPUT_CLS}
             />
           </div>
@@ -2662,7 +2820,7 @@ function ActivateGroupModal({
             className="px-5 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold shadow-md shadow-violet-600/20 transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <Save size={14} />
-            <span>Saqlash va tasdiqlash</span>
+            <span>Saqlash</span>
           </button>
         </div>
       </div>

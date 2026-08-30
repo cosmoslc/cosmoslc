@@ -258,16 +258,20 @@ export function calculateStudentGroupFee({
   const isStudentPaused = student?.status === "paused";
 
   // Determine membership status
-  let status = "trial";
+  let status = "active";
   if (isStudentPaused || membership?.status === "paused") {
     status = "paused";
-  } else if (membership?.status === "active" || (membership?.activationDate && membership?.status !== "trial")) {
-    status = "active";
   } else if (membership?.status === "trial") {
     status = "trial";
-  } else {
-    // Default to trial for unactivated memberships
+  } else if (membership?.status === "active" || membership?.activationDate) {
+    status = "active";
+  } else if (student?.status === "trial") {
     status = "trial";
+  } else if (student?.status === "paused") {
+    status = "paused";
+  } else {
+    // Default to active for existing or regular students
+    status = "active";
   }
 
   const isTrial = status === "trial";

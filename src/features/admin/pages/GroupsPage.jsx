@@ -21,7 +21,7 @@ import {
   FileSpreadsheet,
   Download,
 } from "lucide-react";
-import { BTN_GHOST, INPUT_CLS, PrimaryButton } from "../theme/tokens";
+import { BTN_GHOST, INPUT_CLS, PrimaryButton, ExcelButton } from "../theme/tokens";
 import { money, thisMonthKey } from "../utils/helpers";
 import { filterGroupsByBranch, opGroupStudentCount, opGroups, opRooms } from "../utils/dataHelpers";
 import { EmptyState } from "../components/primitives";
@@ -160,17 +160,15 @@ export function GroupsPage({
             <button
               type="button"
               onClick={handleExportExcel}
-              className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center gap-2 border border-slate-200/80 dark:border-slate-700 cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center gap-2 border border-slate-200/80 dark:border-slate-700 cursor-pointer"
             >
-              <Download size={15} /> Export (Excel)
+              <Download size={16} /> Export (Excel)
             </button>
-            <button
-              type="button"
+            <ExcelButton
               onClick={() => openModal({ type: "importGroups" })}
-              className="px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 font-bold text-xs hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all flex items-center gap-2 shadow-xs cursor-pointer"
             >
-              <FileSpreadsheet size={15} /> Import (Excel)
-            </button>
+              <FileSpreadsheet size={16} /> Import (Excel)
+            </ExcelButton>
             <PrimaryButton onClick={() => openModal({ type: "groupForm" })}>
               <Plus size={16} /> Yangi guruh ochish
             </PrimaryButton>

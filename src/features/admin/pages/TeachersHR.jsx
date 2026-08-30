@@ -30,7 +30,7 @@ import {
   Download,
 } from "lucide-react";
 import * as XLSX from "xlsx";
-import { PrimaryButton, INPUT_CLS, LABEL_CLS, BTN_GHOST } from "../theme/tokens";
+import { PrimaryButton, ExcelButton, INPUT_CLS, LABEL_CLS, BTN_GHOST } from "../theme/tokens";
 import { Avatar, EmptyState, Modal } from "../components/primitives";
 import { displayPhone, money, thisMonthKey } from "../utils/helpers";
 import {
@@ -466,17 +466,15 @@ export function TeachersHR({
             <button
               type="button"
               onClick={handleExportExcel}
-              className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center gap-2 border border-slate-200/80 dark:border-slate-700 cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-all flex items-center gap-2 border border-slate-200/80 dark:border-slate-700 cursor-pointer"
             >
-              <Download size={15} /> Export (Excel)
+              <Download size={16} /> Export (Excel)
             </button>
-            <button
-              type="button"
+            <ExcelButton
               onClick={() => openModal({ type: "importTeachers" })}
-              className="px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 font-bold text-xs hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all flex items-center gap-2 shadow-xs cursor-pointer"
             >
-              <FileSpreadsheet size={15} /> Import (Excel)
-            </button>
+              <FileSpreadsheet size={16} /> Import (Excel)
+            </ExcelButton>
             <PrimaryButton
               onClick={() =>
                 openModal({
@@ -486,9 +484,8 @@ export function TeachersHR({
                       : "teacherHRForm",
                 })
               }
-              className="!px-4 !py-2.5 shadow-md shadow-indigo-500/10 flex items-center gap-2 shrink-0 cursor-pointer"
             >
-              <Plus size={18} />{" "}
+              <Plus size={16} />{" "}
               {activeTab === "assistants"
                 ? "Support ustoz qo'shish"
                 : "Yangi ustoz qo'shish"}
