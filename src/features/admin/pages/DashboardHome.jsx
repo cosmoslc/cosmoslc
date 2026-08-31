@@ -275,9 +275,6 @@ export function DashboardHome({
       }
     });
 
-    if (total === 0 && activeStudents > 0) {
-      total = activeStudents * 550000;
-    }
     return Math.round(total);
   }, [opData, directorData, selectedBranch, branchIds, activeStudents, grossIncome]);
 

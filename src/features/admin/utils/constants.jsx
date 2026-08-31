@@ -261,6 +261,9 @@ export const NAV_ICON_COLORS = {
   profile: "#8b5cf6",
   centerSettings: "#7f8c8d",
   settings: "#db2777",
+  office: "#e74c6f",
+  academic: "#f97316",
+  education: "#f97316",
   reports: "#0ea5e9",
   notifications: "#00bcd4",
 };

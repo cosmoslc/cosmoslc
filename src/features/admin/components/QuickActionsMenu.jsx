@@ -17,13 +17,13 @@ export function QuickActionsMenu({ onAction }) {
   return (
     <div className="relative">
       <button
+        id="topbar-quick-actions-btn"
         ref={btnRef}
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center justify-center gap-0 sm:gap-2 h-[38px] w-[38px] sm:w-auto px-0 sm:px-3.5 rounded-xl border border-indigo-500/30 text-xs font-semibold text-white transition-all active:scale-95 shadow-sm shrink-0 cursor-pointer"
-        style={{ background: theme.accent1 }}
+        className="flex items-center justify-center gap-0 sm:gap-2 h-[38px] w-[38px] sm:w-auto px-0 sm:px-3.5 rounded-xl border border-indigo-400/30 text-xs font-semibold text-white bg-gradient-to-r from-indigo-600 via-indigo-500 to-sky-500 hover:from-indigo-700 hover:via-indigo-600 hover:to-sky-600 shadow-sm shadow-indigo-500/25 transition-all duration-200 active:scale-95 shrink-0 cursor-pointer"
         title="Tezkor amallar"
       >
-        <Zap size={15} />{" "}
+        <Zap size={15} className="fill-white/20" />{" "}
         <span className="hidden sm:inline font-semibold">Tezkor amallar</span>{" "}
         <ChevronDown size={13} className={`hidden sm:inline transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
