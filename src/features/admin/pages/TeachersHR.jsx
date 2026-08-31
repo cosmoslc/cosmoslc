@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { MorphDropdown } from "../../../shared/components/MorphDropdown";
 import {
   GraduationCap,
   Users,
@@ -892,122 +893,14 @@ export function TeachersHR({
                       </td>
 
                       {/* Amallar (3 dots) */}
-                      <td className={`py-3 px-4 text-right relative ${isMenuOpen ? "z-40" : ""}`}>
-                        <div className="inline-block text-left">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setOpenActionMenuId(
-                                isMenuOpen ? null : t.id,
-                              )
-                            }
-                            className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all cursor-pointer"
-                            title="Amallar"
-                          >
-                            <MoreVertical size={16} />
-                          </button>
-
-                          {/* Action Dropdown Menu */}
-                          {isMenuOpen && (
-                            <>
-                              <div
-                                className="fixed inset-0 z-40"
-                                onClick={() => setOpenActionMenuId(null)}
-                              />
-                              <div className="absolute right-4 top-10 z-[100] w-44 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl p-1 space-y-0.5 text-xs text-left">
-                                {canEdit && (
-                                  <button
-                                    onClick={() => {
-                                      setOpenActionMenuId(null);
-                                      openModal({
-                                        type:
-                                          activeTab === "assistants" ||
-                                          t.isAssistant
-                                            ? "supportTeacherForm"
-                                            : "teacherHRForm",
-                                        editing: t,
-                                        teacher: t,
-                                      });
-                                    }}
-                                    className="w-full px-2.5 py-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium flex items-center gap-2 cursor-pointer"
-                                  >
-                                    <Pencil size={13} className="text-indigo-500" />
-                                    Tahrirlash
-                                  </button>
-                                )}
-
-                                <button
-                                  onClick={() => {
-                                    setOpenActionMenuId(null);
-                                    setSmsTeacher(t);
-                                  }}
-                                  className="w-full px-2.5 py-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium flex items-center gap-2 cursor-pointer"
-                                >
-                                  <MessageSquare size={13} className="text-sky-500" />
-                                  SMS yuborish
-                                </button>
-
-                                <button
-                                  onClick={() => {
-                                    setOpenActionMenuId(null);
-                                    openModal({
-                                      type: "teacherPayroll",
-                                      teacherId: t.id,
-                                      teacher: t,
-                                    });
-                                  }}
-                                  className="w-full px-2.5 py-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium flex items-center gap-2 cursor-pointer"
-                                >
-                                  <Wallet size={13} className="text-emerald-500" />
-                                  Maosh to'lash
-                                </button>
-
-                                {canEdit && (
-                                  <button
-                                    onClick={() => {
-                                      setOpenActionMenuId(null);
-                                      openModal({
-                                        type:
-                                          activeTab === "assistants" ||
-                                          t.isAssistant
-                                            ? "supportTeacherForm"
-                                            : "teacherHRForm",
-                                        editing: { ...t, passwordReset: true },
-                                        teacher: { ...t, passwordReset: true },
-                                      });
-                                    }}
-                                    className="w-full px-2.5 py-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium flex items-center gap-2 cursor-pointer"
-                                  >
-                                    <Lock size={13} className="text-amber-500" />
-                                    Parol tiklash
-                                  </button>
-                                )}
-
-                                {canEdit && (
-                                  <div className="border-t border-slate-100 dark:border-slate-800 pt-0.5">
-                                    <button
-                                      onClick={() => {
-                                        setOpenActionMenuId(null);
-                                        openModal({
-                                          type: "confirm",
-                                          message: `"${t.name}" ustozni ro'yxatdan o'chirishni tasdiqlaysizmi?`,
-                                          action: {
-                                            kind: "deleteTeacherHR",
-                                            teacherHRId: t.id,
-                                          },
-                                        });
-                                      }}
-                                      className="w-full px-2.5 py-1.5 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-medium flex items-center gap-2 cursor-pointer"
-                                    >
-                                      <Trash2 size={13} />
-                                      O'chirish
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            </>
-                          )}
-                        </div>
+                      <td className="py-3 px-4 text-right relative">
+                        <TeacherActionMenu
+                          t={t}
+                          canEdit={canEdit}
+                          activeTab={activeTab}
+                          openModal={openModal}
+                          setSmsTeacher={setSmsTeacher}
+                        />
                       </td>
                     </tr>
                   );
@@ -1078,6 +971,123 @@ export function TeachersHR({
           onClose={() => setSmsTeacher(null)}
         />
       )}
+    </div>
+  );
+}
+
+function TeacherActionMenu({ t, canEdit, activeTab, openModal, setSmsTeacher }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const btnRef = useRef(null);
+
+  return (
+    <div className="inline-block text-left">
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all cursor-pointer"
+        title="Amallar"
+      >
+        <MoreVertical size={16} />
+      </button>
+
+      <MorphDropdown
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
+        triggerRef={btnRef}
+        align="right"
+        className="w-44 p-1"
+      >
+        <div className="space-y-0.5 text-xs text-left">
+          {canEdit && (
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                openModal({
+                  type:
+                    activeTab === "assistants" || t.isAssistant
+                      ? "supportTeacherForm"
+                      : "teacherHRForm",
+                  editing: t,
+                  teacher: t,
+                });
+              }}
+              className="morph-menu-item w-full px-2.5 py-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium flex items-center gap-2 cursor-pointer"
+            >
+              <Pencil size={13} className="text-indigo-500" />
+              Tahrirlash
+            </button>
+          )}
+
+          <button
+            onClick={() => {
+              setIsOpen(false);
+              setSmsTeacher(t);
+            }}
+            className="morph-menu-item w-full px-2.5 py-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium flex items-center gap-2 cursor-pointer"
+          >
+            <MessageSquare size={13} className="text-sky-500" />
+            SMS yuborish
+          </button>
+
+          <button
+            onClick={() => {
+              setIsOpen(false);
+              openModal({
+                type: "teacherPayroll",
+                teacherId: t.id,
+                teacher: t,
+              });
+            }}
+            className="morph-menu-item w-full px-2.5 py-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium flex items-center gap-2 cursor-pointer"
+          >
+            <Wallet size={13} className="text-emerald-500" />
+            Maosh to'lash
+          </button>
+
+          {canEdit && (
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                openModal({
+                  type:
+                    activeTab === "assistants" || t.isAssistant
+                      ? "supportTeacherForm"
+                      : "teacherHRForm",
+                  editing: { ...t, passwordReset: true },
+                  teacher: { ...t, passwordReset: true },
+                });
+              }}
+              className="morph-menu-item w-full px-2.5 py-1.5 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium flex items-center gap-2 cursor-pointer"
+            >
+              <Lock size={13} className="text-amber-500" />
+              Parol tiklash
+            </button>
+          )}
+
+          {canEdit && (
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-0.5">
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  openModal({
+                    type: "confirm",
+                    message: `"${t.name}" ustozni ro'yxatdan o'chirishni tasdiqlaysizmi?`,
+                    action: {
+                      kind: "deleteTeacherHR",
+                      teacherHRId: t.id,
+                    },
+                  });
+                }}
+                className="morph-menu-item w-full px-2.5 py-1.5 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-medium flex items-center gap-2 cursor-pointer"
+              >
+                <Trash2 size={13} />
+                O'chirish
+              </button>
+            </div>
+          )}
+        </div>
+      </MorphDropdown>
     </div>
   );
 }

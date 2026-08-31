@@ -1,28 +1,17 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import {
   Building2,
   GraduationCap,
   BookOpen,
-  LayoutGrid,
   ChevronDown,
   ArrowRight,
   ExternalLink,
-  Sparkles,
 } from "lucide-react";
+import { MorphDropdown } from "./MorphDropdown";
 
-export function PortalSwitcher({ currentPortal = "admin", compact = false }) {
+export function PortalSwitcher({ currentPortal = "admin" }) {
   const [open, setOpen] = useState(false);
-  const dropdownRef = useRef(null);
-
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  const btnRef = useRef(null);
 
   const portals = [
     {
@@ -61,8 +50,9 @@ export function PortalSwitcher({ currentPortal = "admin", compact = false }) {
   const CurrentIcon = current.icon;
 
   return (
-    <div className="relative inline-block text-left" ref={dropdownRef}>
+    <div className="relative inline-block text-left">
       <button
+        ref={btnRef}
         type="button"
         id="portal-switcher-btn"
         onClick={() => setOpen((prev) => !prev)}
@@ -85,67 +75,71 @@ export function PortalSwitcher({ currentPortal = "admin", compact = false }) {
         />
       </button>
 
-      {open && (
-        <div className="absolute right-0 top-11 z-50 w-72 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-2 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
-          <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800/80 mb-1.5 flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-              Ekotizim Portallari
-            </span>
-            <a
-              href="/index.html"
-              className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
-            >
-              Bosh sahifa <ExternalLink size={10} />
-            </a>
-          </div>
+      <MorphDropdown
+        isOpen={open}
+        onClose={() => setOpen(false)}
+        triggerRef={btnRef}
+        align="right"
+        className="w-72"
+      >
+        <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800/80 mb-1.5 flex items-center justify-between">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+            Ekotizim Portallari
+          </span>
+          <a
+            href="/index.html"
+            className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+          >
+            Bosh sahifa <ExternalLink size={10} />
+          </a>
+        </div>
 
-          <div className="space-y-1">
-            {portals.map((portal) => {
-              const Icon = portal.icon;
-              const isSelected = portal.id === currentPortal;
-              return (
-                <a
-                  key={portal.id}
-                  href={portal.url}
-                  className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs transition-all no-underline ${
-                    isSelected
-                      ? `${portal.activeBg} font-bold ring-1 ring-inset ring-slate-300 dark:ring-slate-700`
-                      : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium"
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div
-                      className={`w-7 h-7 rounded-lg flex items-center justify-center text-white bg-gradient-to-br ${portal.color} shadow-xs shrink-0`}
-                    >
-                      <Icon size={14} />
+        <div className="space-y-1">
+          {portals.map((portal) => {
+            const Icon = portal.icon;
+            const isSelected = portal.id === currentPortal;
+            return (
+              <a
+                key={portal.id}
+                href={portal.url}
+                className={`morph-menu-item w-full flex items-center justify-between p-2.5 rounded-xl text-xs transition-all no-underline ${
+                  isSelected
+                    ? `${portal.activeBg} font-bold ring-1 ring-inset ring-slate-300 dark:ring-slate-700`
+                    : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center text-white bg-gradient-to-br ${portal.color} shadow-xs shrink-0`}
+                  >
+                    <Icon size={14} />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-xs font-bold leading-tight text-slate-900 dark:text-slate-100">
+                      {portal.label}
                     </div>
-                    <div className="text-left">
-                      <div className="text-xs font-bold leading-tight text-slate-900 dark:text-slate-100">
-                        {portal.label}
-                      </div>
-                      <div className="text-[10px] text-slate-400 font-normal leading-tight mt-0.5">
-                        {portal.sublabel}
-                      </div>
+                    <div className="text-[10px] text-slate-400 font-normal leading-tight mt-0.5">
+                      {portal.sublabel}
                     </div>
                   </div>
-                  {isSelected ? (
-                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-white/80 dark:bg-slate-800 shadow-2xs">
-                      Hozirgi
-                    </span>
-                  ) : (
-                    <ArrowRight size={14} className="text-slate-400 opacity-60" />
-                  )}
-                </a>
-              );
-            })}
-          </div>
-
-          <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 px-2 py-1 flex items-center justify-between text-[11px] text-slate-400">
-            <span>Yagona Supabase bazasi</span>
-            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
-          </div>
+                </div>
+                {isSelected ? (
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-white/80 dark:bg-slate-800 shadow-2xs">
+                    Hozirgi
+                  </span>
+                ) : (
+                  <ArrowRight size={14} className="text-slate-400 opacity-60" />
+                )}
+              </a>
+            );
+          })}
         </div>
-      )}
+
+        <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 px-2 py-1 flex items-center justify-between text-[11px] text-slate-400">
+          <span>Yagona Supabase bazasi</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
+        </div>
+      </MorphDropdown>
     </div>
   );
 }

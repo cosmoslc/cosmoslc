@@ -1,4 +1,5 @@
-import { useState, useEffect, isValidElement } from "react";
+import { useState, useEffect, useRef, isValidElement } from "react";
+import { MorphDropdown } from "../../../shared/components/MorphDropdown";
 import {
   LogOut,
   Menu,
@@ -41,6 +42,7 @@ function BranchSelector({
   directorData,
 }) {
   const [open, setOpen] = useState(false);
+  const btnRef = useRef(null);
 
   const branches =
     scopeBranches && scopeBranches.length > 0
@@ -58,6 +60,7 @@ function BranchSelector({
   return (
     <div className="relative">
       <button
+        ref={btnRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         className="h-[38px] px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-all flex items-center gap-2 shadow-2xs cursor-pointer group"
@@ -89,94 +92,95 @@ function BranchSelector({
         />
       </button>
 
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 sm:left-auto sm:right-0 top-11 z-50 w-64 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-1.5 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-            <div className="px-3 py-2.5 border-b border-slate-100 dark:border-slate-800/80 mb-1 flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                Filiallar ro'yxati
-              </span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 font-semibold">
-                {branches.length} ta filial
-              </span>
-            </div>
+      <MorphDropdown
+        isOpen={open}
+        onClose={() => setOpen(false)}
+        triggerRef={btnRef}
+        align="left"
+        className="w-64 p-1.5"
+      >
+        <div className="px-3 py-2.5 border-b border-slate-100 dark:border-slate-800/80 mb-1 flex items-center justify-between">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+            Filiallar ro'yxati
+          </span>
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 font-semibold">
+            {branches.length} ta filial
+          </span>
+        </div>
 
-            <div className="max-h-60 overflow-y-auto space-y-0.5 pr-0.5 custom-scrollbar">
+        <div className="max-h-60 overflow-y-auto space-y-0.5 pr-0.5 custom-scrollbar">
+          <button
+            type="button"
+            onClick={() => {
+              if (onSelectBranch) onSelectBranch("all");
+              setOpen(false);
+            }}
+            className={`morph-menu-item w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all text-left cursor-pointer ${
+              currentBranchId === "all"
+                ? "bg-indigo-50/90 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-300 font-semibold"
+                : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="w-6 h-6 rounded-xl bg-indigo-500 text-white flex items-center justify-center font-bold text-[11px] shadow-2xs">
+                <Globe size={13} />
+              </span>
+              <div>
+                <div className="font-semibold text-slate-800 dark:text-slate-100">
+                  Barcha filiallar
+                </div>
+                <div className="text-[10px] text-slate-400">
+                  Markaziy umumiy ko'rinish
+                </div>
+              </div>
+            </div>
+            {currentBranchId === "all" && (
+              <Check size={14} className="text-indigo-600 dark:text-indigo-400" />
+            )}
+          </button>
+
+          {branches.map((b) => {
+            const isSelected = currentBranchId === b.id;
+            return (
               <button
+                key={b.id}
                 type="button"
                 onClick={() => {
-                  if (onSelectBranch) onSelectBranch("all");
+                  if (onSelectBranch) onSelectBranch(b.id);
                   setOpen(false);
                 }}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all text-left ${
-                  currentBranchId === "all"
+                className={`morph-menu-item w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all text-left cursor-pointer ${
+                  isSelected
                     ? "bg-indigo-50/90 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-300 font-semibold"
                     : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                 }`}
               >
-                <div className="flex items-center gap-2.5">
-                  <span className="w-6 h-6 rounded-xl bg-indigo-500 text-white flex items-center justify-center font-bold text-[11px] shadow-2xs">
-                    <Globe size={13} />
+                <div className="flex items-center gap-2.5 truncate">
+                  <span
+                    className="w-6 h-6 rounded-xl text-white flex items-center justify-center font-bold text-[11px] shadow-2xs shrink-0"
+                    style={{ background: b.color || "#3f6df6" }}
+                  >
+                    <Building2 size={13} />
                   </span>
-                  <div>
-                    <div className="font-semibold text-slate-800 dark:text-slate-100">
-                      Barcha filiallar
+                  <div className="truncate">
+                    <div className="font-semibold text-slate-800 dark:text-slate-100 truncate">
+                      {b.name}
                     </div>
-                    <div className="text-[10px] text-slate-400">
-                      Markaziy umumiy ko'rinish
-                    </div>
+                    {b.address && (
+                      <div className="text-[10px] text-slate-400 truncate max-w-[140px]">
+                        {b.address}
+                      </div>
+                    )}
                   </div>
                 </div>
-                {currentBranchId === "all" && (
-                  <Check size={14} className="text-indigo-600 dark:text-indigo-400" />
+                {isSelected && (
+                  <Check size={14} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
                 )}
               </button>
-
-              {branches.map((b) => {
-                const isSelected = currentBranchId === b.id;
-                return (
-                  <button
-                    key={b.id}
-                    type="button"
-                    onClick={() => {
-                      if (onSelectBranch) onSelectBranch(b.id);
-                      setOpen(false);
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all text-left ${
-                      isSelected
-                        ? "bg-indigo-50/90 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-300 font-semibold"
-                        : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 truncate">
-                      <span
-                        className="w-6 h-6 rounded-xl text-white flex items-center justify-center font-bold text-[11px] shadow-2xs shrink-0"
-                        style={{ background: b.color || "#3f6df6" }}
-                      >
-                        <Building2 size={13} />
-                      </span>
-                      <div className="truncate">
-                        <div className="font-semibold text-slate-800 dark:text-slate-100 truncate">
-                          {b.name}
-                        </div>
-                        {b.address && (
-                          <div className="text-[10px] text-slate-400 truncate max-w-[140px]">
-                            {b.address}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    {isSelected && (
-                      <Check size={14} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </>
-      )}
+            );
+          })}
+        </div>
+      </MorphDropdown>
     </div>
   );
 }
@@ -209,6 +213,7 @@ export function AppShell({
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const profileBtnRef = useRef(null);
   const [isDark, setIsDark] = useState(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("theme");
@@ -480,7 +485,8 @@ export function AppShell({
             {/* User Profile Pill */}
             <div className="relative">
               <div
-                className="profile-chip"
+                ref={profileBtnRef}
+                className="profile-chip cursor-pointer"
                 onClick={() => setProfileOpen((p) => !p)}
               >
                 <div className="avatar-mark">
@@ -501,92 +507,92 @@ export function AppShell({
               </div>
 
               {/* Profile Dropdown Popup */}
-              {profileOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-40"
-                    onClick={() => setProfileOpen(false)}
-                  />
-                  <div className="absolute right-0 top-12 z-50 w-60 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-2 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-                    <div className="px-3 py-2.5 border-b border-slate-100 dark:border-slate-800 mb-1">
-                      <p className="font-semibold text-slate-900 dark:text-white text-xs truncate">
-                        {displayName}
-                      </p>
-                      <p className="text-[11px] text-slate-400 truncate">
-                        {displayRoleLabel}
-                      </p>
-                    </div>
+              <MorphDropdown
+                isOpen={profileOpen}
+                onClose={() => setProfileOpen(false)}
+                triggerRef={profileBtnRef}
+                align="right"
+                className="w-60 p-2"
+              >
+                <div className="px-3 py-2.5 border-b border-slate-100 dark:border-slate-800 mb-1">
+                  <p className="font-semibold text-slate-900 dark:text-white text-xs truncate">
+                    {displayName}
+                  </p>
+                  <p className="text-[11px] text-slate-400 truncate">
+                    {displayRoleLabel}
+                  </p>
+                </div>
 
-                    <button
-                      onClick={() => {
-                        goTo("profile");
-                        setProfileOpen(false);
-                      }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-left"
-                    >
-                      <UserCircle2 size={15} className="text-slate-400" />
-                      Mening profilim
-                    </button>
+                <div className="space-y-0.5 text-left">
+                  <button
+                    onClick={() => {
+                      goTo("profile");
+                      setProfileOpen(false);
+                    }}
+                    className="morph-menu-item w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-left cursor-pointer"
+                  >
+                    <UserCircle2 size={15} className="text-slate-400" />
+                    Mening profilim
+                  </button>
 
-                    <button
-                      onClick={() => {
-                        goTo(role === "director" ? "centerSettings" : "settings");
-                        setProfileOpen(false);
-                      }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-left"
-                    >
-                      <Settings size={15} className="text-slate-400" />
-                      Sozlamalar
-                    </button>
+                  <button
+                    onClick={() => {
+                      goTo(role === "director" ? "centerSettings" : "settings");
+                      setProfileOpen(false);
+                    }}
+                    className="morph-menu-item w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-left cursor-pointer"
+                  >
+                    <Settings size={15} className="text-slate-400" />
+                    Sozlamalar
+                  </button>
 
-                    <button
-                      onClick={() => {
-                        goTo("security");
-                        setProfileOpen(false);
-                      }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-left"
-                    >
-                      <ShieldCheck size={15} className="text-slate-400" />
-                      Xavfsizlik
-                    </button>
+                  <button
+                    onClick={() => {
+                      goTo("security");
+                      setProfileOpen(false);
+                    }}
+                    className="morph-menu-item w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-left cursor-pointer"
+                  >
+                    <ShieldCheck size={15} className="text-slate-400" />
+                    Xavfsizlik
+                  </button>
 
-                    <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+                  <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
 
-                    <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                      Portallarga o'tish
-                    </div>
-
-                    <a
-                      href="/teacher.html"
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all text-left no-underline"
-                    >
-                      <BookOpen size={15} />
-                      Ustoz Kabineti
-                    </a>
-
-                    <a
-                      href="/student.html"
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-all text-left no-underline"
-                    >
-                      <GraduationCap size={15} />
-                      O'quvchi Portali
-                    </a>
-
-                    <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
-
-                    <button
-                      onClick={() => {
-                        setProfileOpen(false);
-                        onLogout();
-                      }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all text-left"
-                    >
-                      <LogOut size={15} />
-                      Chiqish
-                    </button>
+                  <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Portallarga o'tish
                   </div>
-                </>
-              )}
+
+                  <a
+                    href="/teacher.html"
+                    className="morph-menu-item w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all text-left no-underline"
+                  >
+                    <BookOpen size={15} />
+                    Ustoz Kabineti
+                  </a>
+
+                  <a
+                    href="/student.html"
+                    className="morph-menu-item w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-all text-left no-underline"
+                  >
+                    <GraduationCap size={15} />
+                    O'quvchi Portali
+                  </a>
+
+                  <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+
+                  <button
+                    onClick={() => {
+                      setProfileOpen(false);
+                      onLogout();
+                    }}
+                    className="morph-menu-item w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all text-left cursor-pointer"
+                  >
+                    <LogOut size={15} />
+                    Chiqish
+                  </button>
+                </div>
+              </MorphDropdown>
             </div>
           </div>
         </div>

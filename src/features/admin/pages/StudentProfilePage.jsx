@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
+import { MorphDropdown } from "../../../shared/components/MorphDropdown";
 import {
   ArrowLeft,
   User,
@@ -1245,6 +1246,7 @@ export function StudentProfilePage({
               <h1>{currentStudent.name || "Xusanov Bexruzbek"}</h1>
             </div>
             <button
+              ref={actionsMenuRef}
               type="button"
               className="menu-btn"
               id="menuToggle"
@@ -1254,19 +1256,34 @@ export function StudentProfilePage({
               <MoreVertical size={16} />
             </button>
 
-            <div className={`dropdown ${showActionsMenu ? "open" : ""}`} ref={actionsMenuRef}>
-              {actionMenuItems.map((item) => (
-                <button
-                  key={item.key}
-                  type="button"
-                  className={item.key === "delete" ? "danger" : ""}
-                  onClick={item.onClick}
-                >
-                  <span className="icon">{item.icon}</span>
-                  <span>{item.label}</span>
-                </button>
-              ))}
-            </div>
+            <MorphDropdown
+              isOpen={showActionsMenu}
+              onClose={() => setShowActionsMenu(false)}
+              triggerRef={actionsMenuRef}
+              align="right"
+              className="w-56"
+            >
+              <div className="space-y-0.5">
+                {actionMenuItems.map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => {
+                      setShowActionsMenu(false);
+                      item.onClick();
+                    }}
+                    className={`morph-menu-item w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all ${
+                      item.key === "delete"
+                        ? "text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
+                        : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    }`}
+                  >
+                    <span className="icon flex items-center justify-center shrink-0">{item.icon}</span>
+                    <span>{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            </MorphDropdown>
           </div>
 
           {/* 1-Qatorda Ixcham Ko'rsatkichlar (Balans, Tanga, Kristal) */}

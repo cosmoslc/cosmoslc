@@ -1643,6 +1643,24 @@ html.dark body {
   margin-left: auto;
 }
 
+:root {
+  --ease-ios: cubic-bezier(.32, .72, 0, 1);
+}
+
+.morph-menu-item,
+.dropdown button {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: background 0.15s, opacity 0.22s var(--ease-ios), transform 0.22s var(--ease-ios);
+}
+
+.content-in .morph-menu-item,
+.content-in button,
+.content-in a {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .dropdown {
   position: absolute;
   top: 40px;
