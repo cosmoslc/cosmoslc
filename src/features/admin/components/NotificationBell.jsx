@@ -31,8 +31,8 @@ export function NotificationBell({ notifLog = [], onClear, onMarkRead, onMarkAll
         align="right"
         className="w-80 sm:w-96 max-h-[70vh] flex flex-col p-3"
       >
-        <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             <h4 className="font-semibold text-slate-900 dark:text-white text-xs">
               Bildirishnomalar
             </h4>
@@ -42,9 +42,10 @@ export function NotificationBell({ notifLog = [], onClear, onMarkRead, onMarkAll
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0">
             {unreadCount > 0 && onMarkAllRead && (
               <button
+                type="button"
                 onClick={onMarkAllRead}
                 className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-xs flex items-center gap-1 cursor-pointer"
                 title="Barchasini o'qilgan deb belgilash"
@@ -54,6 +55,7 @@ export function NotificationBell({ notifLog = [], onClear, onMarkRead, onMarkAll
             )}
             {notifLog.length > 0 && onClear && (
               <button
+                type="button"
                 onClick={onClear}
                 className="p-1 rounded-lg text-slate-400 hover:text-rose-600 text-xs flex items-center gap-1 cursor-pointer"
                 title="Tozalash"
@@ -62,15 +64,17 @@ export function NotificationBell({ notifLog = [], onClear, onMarkRead, onMarkAll
               </button>
             )}
             <button
+              type="button"
               onClick={() => setOpen(false)}
-              className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+              title="Yopish"
             >
-              <X size={14} />
+              <X size={15} />
             </button>
           </div>
         </div>
 
-        <div className="overflow-y-auto flex-1 divide-y divide-slate-100 dark:divide-slate-800 py-1 space-y-0.5 custom-scrollbar">
+        <div className="overflow-y-auto flex-1 divide-y divide-slate-100 dark:divide-slate-800 py-1 space-y-0.5 custom-scrollbar min-h-[80px]">
           {notifLog.length === 0 ? (
             <div className="py-8 text-center text-slate-400 text-xs font-medium">
               Bildirishnomalar yo'q

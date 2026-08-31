@@ -1,13 +1,16 @@
 import { supabase } from './supabaseClient';
+import { getCachedData, setCachedData, isNetworkError } from './cacheHelper';
 
 export async function fetchCourses() {
   try {
     const { data, error } = await supabase.from('courses').select('*');
     if (error) {
-      console.error('Supabase fetchCourses error:', error);
-      return [];
+      if (!isNetworkError(error)) {
+        console.warn('Supabase fetchCourses warning:', error.message || error);
+      }
+      return getCachedData('courses', []);
     }
-    return (data || []).map(c => ({
+    const result = (data || []).map(c => ({
       id: c.id,
       branchId: c.branch_id,
       name: c.name,
@@ -15,9 +18,13 @@ export async function fetchCourses() {
       durationMonths: c.duration_months,
       color: c.color || '#8b5cf6',
     }));
+    setCachedData('courses', result);
+    return result;
   } catch (err) {
-    console.error('Supabase fetchCourses exception:', err);
-    return [];
+    if (!isNetworkError(err)) {
+      console.warn('Supabase fetchCourses exception:', err.message || err);
+    }
+    return getCachedData('courses', []);
   }
 }
 
@@ -30,28 +37,41 @@ export async function addCourse(payload) {
     color: payload.color || '#8b5cf6',
   };
 
-  let { data, error } = await supabase.from('courses')
-    .insert(fullPayload)
-    .select().single();
-
-  if (error && (error.code === 'PGRST204' || error.message?.includes('color'))) {
-    const { color, ...corePayload } = fullPayload;
-    const res = await supabase.from('courses')
-      .insert(corePayload)
+  try {
+    let { data, error } = await supabase.from('courses')
+      .insert(fullPayload)
       .select().single();
-    data = res.data;
-    error = res.error;
-  }
 
-  if (error) throw error;
-  return {
-    id: data.id,
-    branchId: data.branch_id,
-    name: data.name,
-    price: data.price,
-    durationMonths: data.duration_months,
-    color: data.color || payload.color || '#8b5cf6',
-  };
+    if (error && (error.code === 'PGRST204' || error.message?.includes('color'))) {
+      const { color, ...corePayload } = fullPayload;
+      const res = await supabase.from('courses')
+        .insert(corePayload)
+        .select().single();
+      data = res.data;
+      error = res.error;
+    }
+
+    if (error) throw error;
+    const row = {
+      id: data.id,
+      branchId: data.branch_id,
+      name: data.name,
+      price: data.price,
+      durationMonths: data.duration_months,
+      color: data.color || payload.color || '#8b5cf6',
+    };
+    const cached = getCachedData('courses', []);
+    setCachedData('courses', [...cached, row]);
+    return row;
+  } catch (err) {
+    const localRow = {
+      id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+      ...payload,
+    };
+    const cached = getCachedData('courses', []);
+    setCachedData('courses', [...cached, localRow]);
+    return localRow;
+  }
 }
 
 export async function updateCourse(id, payload) {
@@ -63,23 +83,32 @@ export async function updateCourse(id, payload) {
     color: payload.color || '#8b5cf6',
   };
 
-  let { error } = await supabase.from('courses')
-    .update(fullPayload)
-    .eq('id', id);
-
-  if (error && (error.code === 'PGRST204' || error.message?.includes('color'))) {
-    const { color, ...corePayload } = fullPayload;
-    const res = await supabase.from('courses')
-      .update(corePayload)
+  try {
+    let { error } = await supabase.from('courses')
+      .update(fullPayload)
       .eq('id', id);
-    error = res.error;
-  }
 
-  if (error) console.error('Supabase updateCourse error:', error);
+    if (error && (error.code === 'PGRST204' || error.message?.includes('color'))) {
+      const { color, ...corePayload } = fullPayload;
+      const res = await supabase.from('courses')
+        .update(corePayload)
+        .eq('id', id);
+      error = res.error;
+    }
+
+    if (error && !isNetworkError(error)) console.warn('Supabase updateCourse warning:', error.message || error);
+  } catch {}
+
+  const cached = getCachedData('courses', []);
+  setCachedData('courses', cached.map(c => c.id === id ? { ...c, ...payload } : c));
 }
 
 export async function deleteCourse(id) {
-  const { error } = await supabase.from('courses').delete().eq('id', id);
-  if (error) console.error('Supabase deleteCourse error:', error);
+  try {
+    const { error } = await supabase.from('courses').delete().eq('id', id);
+    if (error && !isNetworkError(error)) console.warn('Supabase deleteCourse warning:', error.message || error);
+  } catch {}
+  const cached = getCachedData('courses', []);
+  setCachedData('courses', cached.filter(c => c.id !== id));
 }
 

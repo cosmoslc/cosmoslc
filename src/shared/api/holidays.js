@@ -1,13 +1,16 @@
 import { supabase } from './supabaseClient';
+import { getCachedData, setCachedData, isNetworkError } from './cacheHelper';
 
 export async function fetchHolidays() {
   try {
     const { data, error } = await supabase.from('holidays').select('*');
     if (error) {
-      console.error('Supabase fetchHolidays error:', error);
-      return [];
+      if (!isNetworkError(error)) {
+        console.warn('Supabase fetchHolidays warning:', error.message || error);
+      }
+      return getCachedData('holidays', []);
     }
-    return (data || []).map(h => ({
+    const result = (data || []).map(h => ({
       id: h.id,
       directorId: h.director_id || h.directorId,
       name: h.name,
@@ -18,34 +21,58 @@ export async function fetchHolidays() {
       isAllBranches: h.isAllBranches !== false,
       note: h.note,
     }));
+    setCachedData('holidays', result);
+    return result;
   } catch (err) {
-    console.error('Supabase fetchHolidays exception:', err);
-    return [];
+    if (!isNetworkError(err)) {
+      console.warn('Supabase fetchHolidays exception:', err.message || err);
+    }
+    return getCachedData('holidays', []);
   }
 }
 
 export async function addHoliday(payload) {
-  const { data, error } = await supabase.from('holidays').insert({
-    director_id: payload.directorId,
-    name: payload.name,
-    date: payload.startDate || payload.date,
-    note: payload.note || '',
-  }).select().single();
-  if (error) throw error;
-  return {
-    id: data.id,
-    directorId: data.director_id,
-    name: data.name,
-    date: data.date,
-    startDate: payload.startDate || data.date,
-    endDate: payload.endDate || payload.startDate || data.date,
-    branchId: payload.branchId || 'all',
-    isAllBranches: payload.isAllBranches !== false,
-    note: data.note,
-  };
+  try {
+    const { data, error } = await supabase.from('holidays').insert({
+      director_id: payload.directorId,
+      name: payload.name,
+      date: payload.startDate || payload.date,
+      note: payload.note || '',
+    }).select().single();
+    if (error) throw error;
+    const row = {
+      id: data.id,
+      directorId: data.director_id,
+      name: data.name,
+      date: data.date,
+      startDate: payload.startDate || data.date,
+      endDate: payload.endDate || payload.startDate || data.date,
+      branchId: payload.branchId || 'all',
+      isAllBranches: payload.isAllBranches !== false,
+      note: data.note,
+    };
+    const cached = getCachedData('holidays', []);
+    setCachedData('holidays', [...cached, row]);
+    return row;
+  } catch (err) {
+    const localRow = {
+      id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+      ...payload,
+      date: payload.startDate || payload.date,
+      startDate: payload.startDate || payload.date,
+      endDate: payload.endDate || payload.startDate || payload.date,
+    };
+    const cached = getCachedData('holidays', []);
+    setCachedData('holidays', [...cached, localRow]);
+    return localRow;
+  }
 }
 
 export async function removeHoliday(id) {
-  const { error } = await supabase.from('holidays').delete().eq('id', id);
-  if (error) console.error('Supabase removeHoliday error:', error);
+  try {
+    const { error } = await supabase.from('holidays').delete().eq('id', id);
+    if (error && !isNetworkError(error)) console.warn('Supabase removeHoliday warning:', error.message || error);
+  } catch {}
+  const cached = getCachedData('holidays', []);
+  setCachedData('holidays', cached.filter(h => h.id !== id));
 }

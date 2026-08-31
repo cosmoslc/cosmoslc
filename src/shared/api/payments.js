@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { getCachedData, setCachedData, isNetworkError } from './cacheHelper';
 
 function fromRow(p) {
   return {
@@ -25,13 +26,19 @@ export async function fetchPayments() {
   try {
     const { data, error } = await supabase.from('payments').select('*');
     if (error) {
-      console.error('Supabase fetchPayments error:', error);
-      return [];
+      if (!isNetworkError(error)) {
+        console.warn('Supabase fetchPayments warning:', error.message || error);
+      }
+      return getCachedData('payments', []);
     }
-    return (data || []).map(fromRow);
+    const result = (data || []).map(fromRow);
+    setCachedData('payments', result);
+    return result;
   } catch (err) {
-    console.error('Supabase fetchPayments exception:', err);
-    return [];
+    if (!isNetworkError(err)) {
+      console.warn('Supabase fetchPayments exception:', err.message || err);
+    }
+    return getCachedData('payments', []);
   }
 }
 

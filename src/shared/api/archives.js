@@ -1,11 +1,14 @@
 import { supabase } from './supabaseClient';
+import { getCachedData, setCachedData, isNetworkError } from './cacheHelper';
 
 export async function fetchArchives() {
   try {
     const { data, error } = await supabase.from('archive').select('*').order('archived_at', { ascending: false });
     if (error) {
-      console.error('Supabase fetchArchives error:', error);
-      return { groups: [], students: [], leads: [], courses: [] };
+      if (!isNetworkError(error)) {
+        console.warn('Supabase fetchArchives warning:', error.message || error);
+      }
+      return getCachedData('archives', { groups: [], students: [], leads: [], courses: [] });
     }
     const result = {
       groups: [],
@@ -34,10 +37,13 @@ export async function fetchArchives() {
         result[type] = [item];
       }
     });
+    setCachedData('archives', result);
     return result;
   } catch (err) {
-    console.error('Supabase fetchArchives exception:', err);
-    return { groups: [], students: [], leads: [], courses: [] };
+    if (!isNetworkError(err)) {
+      console.warn('Supabase fetchArchives exception:', err.message || err);
+    }
+    return getCachedData('archives', { groups: [], students: [], leads: [], courses: [] });
   }
 }
 

@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { getCachedData, setCachedData, isNetworkError } from './cacheHelper';
 
 function fromRow(t) {
   let extraMeta = {};
@@ -45,18 +46,23 @@ export async function fetchTeachersHR() {
   try {
     const { data, error } = await supabase.from('teachers_hr').select('*');
     if (error) {
-      console.error('Supabase fetchTeachersHR error:', error);
-      return [];
+      if (!isNetworkError(error)) {
+        console.warn('Supabase fetchTeachersHR warning:', error.message || error);
+      }
+      return getCachedData('teachers_hr', []);
     }
-    return (data || []).map(fromRow);
+    const result = (data || []).map(fromRow);
+    setCachedData('teachers_hr', result);
+    return result;
   } catch (err) {
-    console.error('Supabase fetchTeachersHR exception:', err);
-    return [];
+    if (!isNetworkError(err)) {
+      console.warn('Supabase fetchTeachersHR exception:', err.message || err);
+    }
+    return getCachedData('teachers_hr', []);
   }
 }
 
 export async function addTeacherHR(payload) {
-  // Store structured extra meta in note if needed to guarantee persistence across schema versions
   const metaObj = {
     userNote: payload.note || '',
     gender: payload.gender,
@@ -92,9 +98,22 @@ export async function addTeacherHR(payload) {
     photo: payload.photo || null,
   };
 
-  const { data, error } = await supabase.from('teachers_hr').insert(insertData).select().single();
-  if (error) throw error;
-  return fromRow(data);
+  try {
+    const { data, error } = await supabase.from('teachers_hr').insert(insertData).select().single();
+    if (error) throw error;
+    const teacher = fromRow(data);
+    const cached = getCachedData('teachers_hr', []);
+    setCachedData('teachers_hr', [...cached, teacher]);
+    return teacher;
+  } catch (err) {
+    const localTeacher = {
+      id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+      ...payload,
+    };
+    const cached = getCachedData('teachers_hr', []);
+    setCachedData('teachers_hr', [...cached, localTeacher]);
+    return localTeacher;
+  }
 }
 
 export async function updateTeacherHR(id, payload) {
@@ -132,23 +151,37 @@ export async function updateTeacherHR(id, payload) {
   if (payload.subject !== undefined) patch.subject = payload.subject;
   if (payload.color !== undefined) patch.color = payload.color;
   if (payload.photo !== undefined) patch.photo = payload.photo;
-  const { error } = await supabase.from('teachers_hr').update(patch).eq('id', id);
-  if (error) console.error('Supabase updateTeacherHR error:', error);
+  try {
+    const { error } = await supabase.from('teachers_hr').update(patch).eq('id', id);
+    if (error && !isNetworkError(error)) console.warn('Supabase updateTeacherHR warning:', error.message || error);
+  } catch (err) {
+    // ignore
+  }
+  const cached = getCachedData('teachers_hr', []);
+  setCachedData('teachers_hr', cached.map(t => t.id === id ? { ...t, ...payload } : t));
 }
 
 export async function deleteTeacherHR(id) {
-  const { error } = await supabase.from('teachers_hr').delete().eq('id', id);
-  if (error) console.error('Supabase deleteTeacherHR error:', error);
+  try {
+    const { error } = await supabase.from('teachers_hr').delete().eq('id', id);
+    if (error && !isNetworkError(error)) console.warn('Supabase deleteTeacherHR warning:', error.message || error);
+  } catch (err) {
+    // ignore
+  }
+  const cached = getCachedData('teachers_hr', []);
+  setCachedData('teachers_hr', cached.filter(t => t.id !== id));
 }
 
 export async function fetchTeacherPayments() {
   try {
     const { data, error } = await supabase.from('teacher_payments').select('*');
     if (error) {
-      console.error('Supabase fetchTeacherPayments error:', error);
-      return [];
+      if (!isNetworkError(error)) {
+        console.warn('Supabase fetchTeacherPayments warning:', error.message || error);
+      }
+      return getCachedData('teacher_payments', []);
     }
-    return (data || []).map(p => ({
+    const result = (data || []).map(p => ({
       id: p.id,
       teacherHRId: p.teacher_hr_id,
       type: p.type,
@@ -158,22 +191,40 @@ export async function fetchTeacherPayments() {
       note: p.note,
       createdAt: new Date(p.created_at).getTime(),
     }));
+    setCachedData('teacher_payments', result);
+    return result;
   } catch (err) {
-    console.error('Supabase fetchTeacherPayments exception:', err);
-    return [];
+    if (!isNetworkError(err)) {
+      console.warn('Supabase fetchTeacherPayments exception:', err.message || err);
+    }
+    return getCachedData('teacher_payments', []);
   }
 }
 
 export async function addTeacherPayment(payload) {
-  const { data, error } = await supabase.from('teacher_payments').insert({
-    teacher_hr_id: payload.teacherHRId,
-    type: payload.type,
-    amount: payload.amount,
-    month: payload.month,
-    date: payload.date,
-    note: payload.note,
-  }).select().single();
-  if (error) throw error;
-  return { ...payload, id: data.id, createdAt: new Date(data.created_at).getTime() };
+  try {
+    const { data, error } = await supabase.from('teacher_payments').insert({
+      teacher_hr_id: payload.teacherHRId,
+      type: payload.type,
+      amount: payload.amount,
+      month: payload.month,
+      date: payload.date,
+      note: payload.note,
+    }).select().single();
+    if (error) throw error;
+    const payment = { ...payload, id: data.id, createdAt: new Date(data.created_at).getTime() };
+    const cached = getCachedData('teacher_payments', []);
+    setCachedData('teacher_payments', [...cached, payment]);
+    return payment;
+  } catch (err) {
+    const localPayment = {
+      id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+      ...payload,
+      createdAt: Date.now(),
+    };
+    const cached = getCachedData('teacher_payments', []);
+    setCachedData('teacher_payments', [...cached, localPayment]);
+    return localPayment;
+  }
 }
 

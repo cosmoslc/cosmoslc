@@ -1,4 +1,5 @@
-import { useState, useEffect, isValidElement } from "react";
+import { useState, useEffect, useRef, isValidElement } from "react";
+import { useNavIndicator, NavIndicator } from "../../../shared/components/NavIndicator";
 import {
   LogOut,
   Menu,
@@ -15,11 +16,11 @@ import {
 } from "lucide-react";
 import { MONTHS_UZ, JS_DAY_NAMES, NAV_ICON_COLORS } from "../utils/constants";
 
-function renderNavIcon(icon, size = 16) {
+function renderNavIcon(icon, size = 18) {
   if (!icon) return null;
   if (isValidElement(icon)) return icon;
   const IconComp = icon;
-  return <IconComp size={size} />;
+  return <IconComp size={size} strokeWidth={1.8} />;
 }
 
 export function AppShell({
@@ -38,6 +39,8 @@ export function AppShell({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isSimulatedFs, setIsSimulatedFs] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const navContainerRef = useRef(null);
+  const indicatorRef = useNavIndicator([view, collapsed], navContainerRef);
 
   useEffect(() => {
     function handleFsChange() {
@@ -348,97 +351,101 @@ export function AppShell({
               <X size={18} />
             </button>
           </div>
-          {/* Core Navigation */}
-          {coreItems.length > 0 && (
-            <>
-              <div className="nav-divider">ASOSIY</div>
-              <ul className="nav-group">
-                {coreItems.map((item) => {
-                  const isActive = view === item.id;
-                  return (
-                    <li key={item.id}>
-                      <button
-                        onClick={() => {
-                          goTo(item.id);
-                          setMobileOpen(false);
-                        }}
-                        className={`nav-item ${isActive ? "active" : ""}`}
-                        title={collapsed ? item.label : undefined}
-                      >
-                        <span className="ic">{renderNavIcon(item.icon, 16)}</span>
-                        {!collapsed && (
-                          <span className="label">{item.label}</span>
-                        )}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </>
-          )}
+          {/* Nav Container with Sliding Indicator */}
+          <div ref={navContainerRef} className="relative flex-1">
+            <NavIndicator indicatorRef={indicatorRef} />
+            {/* Core Navigation */}
+            {coreItems.length > 0 && (
+              <>
+                <div className="nav-divider">ASOSIY</div>
+                <ul className="nav-group">
+                  {coreItems.map((item) => {
+                    const isActive = view === item.id;
+                    return (
+                      <li key={item.id}>
+                        <button
+                          onClick={() => {
+                            goTo(item.id);
+                            setMobileOpen(false);
+                          }}
+                          className={`nav-item ${isActive ? "active" : ""}`}
+                          title={collapsed ? item.label : undefined}
+                        >
+                          <span className="ic">{renderNavIcon(item.icon, 16)}</span>
+                          {!collapsed && (
+                            <span className="label">{item.label}</span>
+                          )}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            )}
 
-          {/* Learning Navigation */}
-          {learningItems.length > 0 && (
-            <>
-              <div className="nav-divider">O'QISH VA MASHQLAR</div>
-              <ul className="nav-group">
-                {learningItems.map((item) => {
-                  const isActive = view === item.id;
-                  return (
-                    <li key={item.id}>
-                      <button
-                        onClick={() => {
-                          goTo(item.id);
-                          setMobileOpen(false);
-                        }}
-                        className={`nav-item ${isActive ? "active" : ""}`}
-                        title={collapsed ? item.label : undefined}
-                      >
-                        <span className="ic">{renderNavIcon(item.icon, 16)}</span>
-                        {!collapsed && (
-                          <span className="label">{item.label}</span>
-                        )}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </>
-          )}
+            {/* Learning Navigation */}
+            {learningItems.length > 0 && (
+              <>
+                <div className="nav-divider">O'QISH VA MASHQLAR</div>
+                <ul className="nav-group">
+                  {learningItems.map((item) => {
+                    const isActive = view === item.id;
+                    return (
+                      <li key={item.id}>
+                        <button
+                          onClick={() => {
+                            goTo(item.id);
+                            setMobileOpen(false);
+                          }}
+                          className={`nav-item ${isActive ? "active" : ""}`}
+                          title={collapsed ? item.label : undefined}
+                        >
+                          <span className="ic">{renderNavIcon(item.icon, 16)}</span>
+                          {!collapsed && (
+                            <span className="label">{item.label}</span>
+                          )}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            )}
 
-          {/* Account Navigation */}
-          {accountItems.length > 0 && (
-            <>
-              <div className="nav-divider">MOLIYA VA PROFIL</div>
-              <ul className="nav-group">
-                {accountItems.map((item) => {
-                  const isActive = view === item.id;
-                  return (
-                    <li key={item.id}>
-                      <button
-                        onClick={() => {
-                          goTo(item.id);
-                          setMobileOpen(false);
-                        }}
-                        className={`nav-item ${isActive ? "active" : ""}`}
-                        title={collapsed ? item.label : undefined}
-                      >
-                        <span className="ic">{renderNavIcon(item.icon, 16)}</span>
-                        {!collapsed && (
-                          <span className="label">{item.label}</span>
-                        )}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </>
-          )}
+            {/* Account Navigation */}
+            {accountItems.length > 0 && (
+              <>
+                <div className="nav-divider">MOLIYA VA PROFIL</div>
+                <ul className="nav-group">
+                  {accountItems.map((item) => {
+                    const isActive = view === item.id;
+                    return (
+                      <li key={item.id}>
+                        <button
+                          onClick={() => {
+                            goTo(item.id);
+                            setMobileOpen(false);
+                          }}
+                          className={`nav-item ${isActive ? "active" : ""}`}
+                          title={collapsed ? item.label : undefined}
+                        >
+                          <span className="ic">{renderNavIcon(item.icon, 16)}</span>
+                          {!collapsed && (
+                            <span className="label">{item.label}</span>
+                          )}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            )}
+          </div>
         </aside>
 
         {/* Main Content Area */}
         <main className="main-content-scroll">
-          <div className="p-4 md:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-24 md:pb-8">
+          <div key={view} className="p-4 md:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-24 md:pb-8 animate-page-in">
             {children}
           </div>
         </main>

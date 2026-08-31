@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient";
+import { getCachedData, setCachedData, isNetworkError } from "./cacheHelper";
 
 export function parseGroupIds(s) {
   if (!s) return [];
@@ -82,13 +83,19 @@ export async function fetchStudents() {
   try {
     const { data, error } = await supabase.from("students").select("*");
     if (error) {
-      console.error("Supabase fetchStudents error:", error);
-      return [];
+      if (!isNetworkError(error)) {
+        console.warn("Supabase fetchStudents warning:", error.message || error);
+      }
+      return getCachedData("students", []);
     }
-    return (data || []).map(fromRow);
+    const result = (data || []).map(fromRow);
+    setCachedData("students", result);
+    return result;
   } catch (err) {
-    console.error("Supabase fetchStudents exception:", err);
-    return [];
+    if (!isNetworkError(err)) {
+      console.warn("Supabase fetchStudents exception:", err.message || err);
+    }
+    return getCachedData("students", []);
   }
 }
 

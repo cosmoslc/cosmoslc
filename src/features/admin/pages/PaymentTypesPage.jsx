@@ -12,6 +12,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { INPUT_CLS, LABEL_CLS, PrimaryButton, GLASS, BTN_GHOST } from "../theme/tokens";
+import { ConfirmModal } from "../components/primitives";
 
 const INITIAL_PAYMENT_TYPES = [
   { id: "pt_1", name: "Naqd pul", createdAt: "2025-01-01", isDefault: true, status: "active" },
@@ -370,35 +371,18 @@ export function PaymentTypesPage({ addNotification }) {
 
       {/* DELETE CONFIRMATION MODAL */}
       {deletingId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-2xl space-y-4 text-center">
-            <div className="w-12 h-12 mx-auto rounded-full bg-rose-100 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center">
-              <Trash2 size={24} />
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                To'lov turini o'chirish
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Ushbu to'lov turini o'chirmoqchimisiz? Ushbu amalni ortga qaytarib bo'lmaydi.
-              </p>
-            </div>
-            <div className="flex items-center justify-center gap-3 pt-2">
-              <button
-                onClick={() => setDeletingId(null)}
-                className={BTN_GHOST}
-              >
-                Bekor qilish
-              </button>
-              <button
-                onClick={() => handleDelete(deletingId)}
-                className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-medium text-xs transition-colors"
-              >
-                Ha, o'chirish
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmModal
+          title="To'lov turini o'chirish"
+          message="Ushbu to'lov turini o'chirmoqchimisiz? Ushbu amalni ortga qaytarib bo'lmaydi."
+          confirmText="Ha, o'chirish"
+          cancelText="Bekor qilish"
+          danger={true}
+          onConfirm={() => {
+            handleDelete(deletingId);
+            setDeletingId(null);
+          }}
+          onCancel={() => setDeletingId(null)}
+        />
       )}
     </div>
   );

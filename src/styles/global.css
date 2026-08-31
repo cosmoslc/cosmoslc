@@ -20,10 +20,11 @@ html {
   --bg: #f4f6fb;
   --surface: #ffffff;
   --danger: #f0506e;
-  --topbar-h: 74px;
-  --sidebar-w: 280px;
-  --sidebar-collapsed-w: 68px;
+  --topbar-h: 70px;
+  --sidebar-w: 250px;
+  --sidebar-collapsed-w: 74px;
   --radius: 14px;
+  --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 html.dark,
@@ -37,6 +38,7 @@ html.dark,
   --bg: #030712;
   --surface: #0f172a;
   --danger: #fb7185;
+  --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 html,
@@ -321,7 +323,7 @@ html.dark body {
   flex-shrink: 0;
   background: var(--surface);
   border-right: 1px solid var(--line);
-  padding: 16px 12px 24px;
+  padding: 22px 14px 24px;
   overflow-y: auto;
   max-height: calc(100vh - var(--topbar-h));
   position: relative;
@@ -331,7 +333,7 @@ html.dark body {
 }
 .app-sidebar.collapsed {
   width: var(--sidebar-collapsed-w);
-  padding: 16px 8px 24px;
+  padding: 22px 10px 24px;
 }
 .app-sidebar::-webkit-scrollbar {
   width: 4px;
@@ -351,10 +353,11 @@ html.dark body {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 11px;
-  padding: 8.5px 11px;
-  margin-bottom: 2.5px;
-  border-radius: 12px;
+  gap: 12px;
+  height: 40px;
+  padding: 0 12px;
+  margin-bottom: 3px;
+  border-radius: 11px;
   font-size: 13.5px;
   font-weight: 600;
   color: #3d4457;
@@ -364,24 +367,27 @@ html.dark body {
   text-align: left;
   border: none;
   background: transparent;
-  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+  transform-origin: left center;
+  position: relative;
+  z-index: 2;
+  transition: color 0.25s var(--ease-ios), background 0.25s var(--ease-ios);
 }
 .app-sidebar.collapsed .nav-item {
-  padding: 8px;
+  padding: 0;
   justify-content: center;
   gap: 0;
 }
 .nav-item .ic {
-  width: 30px;
-  height: 30px;
-  border-radius: 12px;
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
   background: transparent !important;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #6a7286;
   flex-shrink: 0;
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), color 0.15s ease;
+  transition: transform 0.2s var(--ease-ios), color 0.25s var(--ease-ios);
 }
 .nav-item span.label {
   flex: 1;
@@ -391,16 +397,45 @@ html.dark body {
 }
 .nav-item .chev {
   color: #a6adbd;
-  transition: transform 0.25s ease, color 0.15s ease;
+  transition: transform 0.25s var(--ease-ios), color 0.25s var(--ease-ios);
+}
+
+.nav-group {
+  position: relative;
+}
+
+.nav-indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: linear-gradient(135deg, var(--primary), #5b63f2);
+  border-radius: 11px;
+  box-shadow: 0 8px 20px -4px rgba(63, 109, 246, 0.45);
+  transition: opacity 0.25s var(--ease-ios);
+  opacity: 0;
+  will-change: transform, height, width, opacity;
+  transform-origin: center center;
+}
+
+.dark .nav-indicator {
+  background: linear-gradient(135deg, #4338ca, #6366f1);
+  box-shadow: 0 8px 20px -4px rgba(99, 102, 241, 0.4);
 }
 
 .nav-item:hover:not(.active) {
   background: #f5f7fb;
   color: var(--ink);
-  transform: translateX(2px);
+  animation: navSquish 0.38s var(--ease-ios);
+}
+.dark .nav-item:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  animation: navSquish 0.38s var(--ease-ios);
 }
 .app-sidebar.collapsed .nav-item:hover:not(.active) {
-  transform: none;
+  animation: none;
 }
 .nav-item:hover:not(.active) .ic {
   background: transparent !important;
@@ -412,9 +447,9 @@ html.dark body {
 
 .nav-item.active,
 .nav-parent-item.has-active-child {
-  background: linear-gradient(135deg, var(--primary), #5b63f2) !important;
   color: #fff !important;
-  box-shadow: 0 8px 18px -4px rgba(63, 109, 246, 0.45);
+  position: relative;
+  z-index: 2;
 }
 .nav-item.active .ic,
 .nav-parent-item.has-active-child span.ic {
@@ -423,9 +458,7 @@ html.dark body {
 }
 .nav-item.active:hover,
 .nav-parent-item.has-active-child:hover {
-  background: linear-gradient(135deg, var(--primary-dark), #4650e0) !important;
-  box-shadow: 0 12px 22px -4px rgba(63, 109, 246, 0.6);
-  transform: translateX(2px);
+  color: #fff !important;
 }
 .app-sidebar.collapsed .nav-item.active:hover,
 .app-sidebar.collapsed .nav-parent-item.has-active-child:hover {
@@ -458,9 +491,10 @@ html.dark body {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 11px;
-  padding: 8.5px 11px;
-  border-radius: 12px;
+  gap: 12px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 11px;
   font-size: 13.5px;
   font-weight: 600;
   color: #3d4457;
@@ -469,7 +503,8 @@ html.dark body {
   text-align: left;
   border: 1px solid transparent;
   background: transparent;
-  transition: all 0.15s ease;
+  transform-origin: left center;
+  transition: all 0.25s var(--ease-ios);
   position: relative;
 }
 
@@ -477,13 +512,13 @@ html.dark body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 12px;
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
   background: transparent !important;
   color: #6a7286;
   flex-shrink: 0;
-  transition: transform 0.2s ease, color 0.15s ease;
+  transition: transform 0.2s var(--ease-ios), color 0.15s ease;
 }
 
 .nav-parent-item span.label {
@@ -493,13 +528,18 @@ html.dark body {
   text-overflow: ellipsis;
 }
 
-.nav-parent-item:hover {
+.nav-parent-item:hover:not(.has-active-child) {
   background: #f5f7fb;
   color: var(--ink);
-  transform: translateX(2px);
+  animation: navSquish 0.38s var(--ease-ios);
+}
+.dark .nav-parent-item:hover:not(.has-active-child) {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  animation: navSquish 0.38s var(--ease-ios);
 }
 .app-sidebar.collapsed .nav-parent-item:hover {
-  transform: none;
+  animation: none;
 }
 
 .nav-parent-item:hover span.ic {
@@ -536,6 +576,40 @@ html.dark body {
   flex-direction: column;
   gap: 2px;
   animation: slideDown 0.18s ease-out;
+}
+
+@keyframes navSquish {
+  0% { transform: scaleX(1); }
+  35% { transform: scaleX(0.93); }
+  100% { transform: scaleX(1); }
+}
+
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pageOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+.animate-page-in,
+.page-entering {
+  animation: pageIn 0.48s var(--ease-ios) both;
+  will-change: transform, opacity;
 }
 
 @keyframes slideDown {
@@ -580,10 +654,11 @@ html.dark body {
 .nav-sub-item {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 6.5px 10px;
-  border-radius: 12px;
-  font-size: 12.5px;
+  gap: 10px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 9px;
+  font-size: 13px;
   font-weight: 500;
   color: #555e75;
   background: transparent;
@@ -591,7 +666,8 @@ html.dark body {
   width: 100%;
   text-align: left;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transform-origin: left center;
+  transition: all 0.25s var(--ease-ios);
   position: relative;
 }
 
@@ -600,13 +676,20 @@ html.dark body {
   height: 5px;
   border-radius: 50%;
   background: #cbd5e1;
-  transition: all 0.15s ease;
+  transition: all 0.2s var(--ease-ios);
   flex-shrink: 0;
 }
 
-.nav-sub-item:hover {
+.nav-sub-item:hover:not(.active) {
   background: #f1f4fc;
   color: var(--primary-dark);
+  animation: navSquish 0.38s var(--ease-ios);
+}
+
+.dark .nav-sub-item:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  animation: navSquish 0.38s var(--ease-ios);
 }
 
 .nav-sub-item:hover .sub-dot {
@@ -846,11 +929,11 @@ html.dark body {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 10px 6px 8px;
-  font-size: 10px;
-  font-weight: 800;
+  margin: 16px 6px 8px;
+  font-size: 10.5px;
+  font-weight: 700;
   letter-spacing: 0.08em;
-  color: #b3b9c8;
+  color: #9aa3b5;
   text-transform: uppercase;
 }
 .app-sidebar.collapsed .nav-divider {
@@ -1647,18 +1730,38 @@ html.dark body {
   --ease-ios: cubic-bezier(.32, .72, 0, 1);
 }
 
-.morph-menu-item,
-.dropdown button {
+.morph-menu-item {
   opacity: 0;
   transform: translateY(6px);
   transition: background 0.15s, opacity 0.22s var(--ease-ios), transform 0.22s var(--ease-ios);
 }
 
-.content-in .morph-menu-item,
-.content-in button,
-.content-in a {
+.content-in .morph-menu-item {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* Hide scrollbars during morph animation to prevent scroll line artifacts */
+.morph-dropdown-panel {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.morph-dropdown-panel::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.morph-dropdown-panel.is-animating,
+.morph-dropdown-panel.is-animating * {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  overflow: hidden !important;
+}
+.morph-dropdown-panel.is-animating *::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 .dropdown {

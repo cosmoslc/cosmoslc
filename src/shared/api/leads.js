@@ -1,13 +1,16 @@
 import { supabase } from './supabaseClient';
+import { getCachedData, setCachedData, isNetworkError } from './cacheHelper';
 
 export async function fetchLeads() {
   try {
     const { data, error } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
     if (error) {
-      console.error('Supabase fetchLeads error:', error);
-      return [];
+      if (!isNetworkError(error)) {
+        console.warn('Supabase fetchLeads warning:', error.message || error);
+      }
+      return getCachedData('leads', []);
     }
-    return (data || []).map(l => {
+    const result = (data || []).map(l => {
     let rejectionReason = l.rejection_reason || null;
     let rejectionNote = l.rejection_note || null;
     let courseId = l.course_id || null;
@@ -113,9 +116,13 @@ export async function fetchLeads() {
       createdAt: l.created_at,
     };
   });
+    setCachedData('leads', result);
+    return result;
   } catch (err) {
-    console.error('Supabase fetchLeads exception:', err);
-    return [];
+    if (!isNetworkError(err)) {
+      console.warn('Supabase fetchLeads exception:', err);
+    }
+    return getCachedData('leads', []);
   }
 }
 

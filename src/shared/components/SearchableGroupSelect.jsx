@@ -167,7 +167,8 @@ export function SearchableGroupSelect({
         onClose={() => setIsOpen(false)}
         triggerRef={btnRef}
         align="left"
-        className="w-full min-w-[280px]"
+        matchTriggerWidth={true}
+        className="min-w-[280px]"
       >
         {/* Search Box Header */}
         <div className="p-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60">

@@ -79,7 +79,7 @@ export function BranchesPage({
   };
 
   const myBranches = useMemo(() => {
-    if (scopeBranches && scopeBranches.length > 0) return scopeBranches;
+    if (Array.isArray(scopeBranches)) return scopeBranches;
     const all = directorData?.branches || [];
     if (director?.id) {
       return all.filter((b) => !b.directorId || b.directorId === director.id);

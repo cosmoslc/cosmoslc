@@ -1,5 +1,67 @@
-import { isValidElement } from "react";
+import { isValidElement, useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { Loader2, X, Bell, Star, Trash2, AlertTriangle } from "lucide-react";
+
+let lastTriggerInfo = {
+  element: null,
+  rect: null,
+  radius: "16px",
+  timestamp: 0,
+};
+
+if (typeof window !== "undefined") {
+  const recordTrigger = (e) => {
+    try {
+      const rawTarget = e.target;
+      if (!(rawTarget instanceof HTMLElement || rawTarget instanceof SVGElement)) return;
+
+      const target = rawTarget instanceof HTMLElement ? rawTarget : rawTarget.parentElement;
+      if (!target) return;
+
+      // Strictly IGNORE any interactions inside modals, dialogs, overlays, popups, or backdrops
+      if (
+        target.closest(
+          "[data-modal], [data-confirm-modal], [role='dialog'], [aria-modal='true'], .confirm-modal-overlay, .confirm-modal-panel, .fixed.z-\\[100\\], .fixed.z-\\[101\\], .fixed.z-\\[60\\]"
+        )
+      ) {
+        return;
+      }
+
+      // Find the interactive element or clickable container
+      const trigger =
+        target.closest(
+          "button, a, [role='button'], input[type='button'], .cursor-pointer, [data-action], [data-trigger]"
+        ) || (target instanceof HTMLElement ? target : null);
+
+      if (trigger && trigger.isConnected) {
+        const rect = trigger.getBoundingClientRect();
+        // Ensure rect has valid non-zero dimensions on screen
+        if (rect && rect.width > 0 && rect.height > 0) {
+          const computed = window.getComputedStyle(trigger);
+          lastTriggerInfo = {
+            element: trigger,
+            rect: {
+              top: rect.top,
+              left: rect.left,
+              width: rect.width,
+              height: rect.height,
+              right: rect.right,
+              bottom: rect.bottom,
+            },
+            radius: computed.borderRadius || "16px",
+            timestamp: Date.now(),
+          };
+        }
+      }
+    } catch {
+      // ignore errors
+    }
+  };
+
+  // Listen in capture phase for all interaction types
+  window.addEventListener("pointerdown", recordTrigger, true);
+  window.addEventListener("mousedown", recordTrigger, true);
+  window.addEventListener("touchstart", recordTrigger, true);
+}
 import { useTheme } from "../theme/ThemeContext";
 import {
   GLASS,
@@ -292,62 +354,304 @@ export function Modal({ title, onClose, children, wide, position = "right" }) {
 }
 
 export function ConfirmModal({
-  title = "Tasdiqlash",
-  message = "Haqiqatan ham ushbu amalni bajarmoqchimisiz?",
+  title = "Elementni o'chirasizmi?",
+  message = "Bu amalni ortga qaytarib bo'lmaydi. Element butunlay o'chiriladi va uni tiklab bo'lmaydi.",
   confirmText = "Ha, o'chirish",
   cancelText = "Bekor qilish",
   danger = true,
   onConfirm,
   onCancel,
+  originEl: propOriginEl,
 }) {
+  const panelRef = useRef(null);
+  const contentRef = useRef(null);
+  const overlayRef = useRef(null);
+  const [closing, setClosing] = useState(false);
+  const [contentIn, setContentIn] = useState(false);
+  const originRectRef = useRef(null);
+  const originRadiusRef = useRef("16px");
+
+  useLayoutEffect(() => {
+    let originRect = null;
+    let originRadius = "16px";
+
+    // 1. Try propOriginEl first
+    if (propOriginEl && propOriginEl instanceof HTMLElement && propOriginEl.isConnected) {
+      const r = propOriginEl.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) {
+        originRect = { top: r.top, left: r.left, width: r.width, height: r.height };
+        originRadius = window.getComputedStyle(propOriginEl).borderRadius || "16px";
+      }
+    }
+
+    // 2. Try last captured trigger if still connected and not inside a modal
+    if (!originRect && lastTriggerInfo.element && lastTriggerInfo.element.isConnected) {
+      if (
+        !lastTriggerInfo.element.closest(
+          "[data-modal], [data-confirm-modal], [role='dialog'], .confirm-modal-overlay, .confirm-modal-panel, .fixed.z-\\[100\\], .fixed.z-\\[101\\]"
+        )
+      ) {
+        const r = lastTriggerInfo.element.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) {
+          originRect = { top: r.top, left: r.left, width: r.width, height: r.height };
+          originRadius =
+            window.getComputedStyle(lastTriggerInfo.element).borderRadius ||
+            lastTriggerInfo.radius ||
+            "16px";
+        }
+      }
+    }
+
+    // 3. If element was just detached/re-rendered on click, use the snapshot captured at pointerdown
+    if (!originRect && lastTriggerInfo.rect && Date.now() - lastTriggerInfo.timestamp < 3000) {
+      originRect = { ...lastTriggerInfo.rect };
+      originRadius = lastTriggerInfo.radius || "16px";
+    }
+
+    // 4. Fallback to document.activeElement if outside modals
+    if (!originRect && document.activeElement instanceof HTMLElement && document.activeElement !== document.body) {
+      if (
+        !document.activeElement.closest(
+          "[data-modal], [data-confirm-modal], [role='dialog'], .confirm-modal-overlay, .confirm-modal-panel, .fixed.z-\\[100\\], .fixed.z-\\[101\\]"
+        )
+      ) {
+        const r = document.activeElement.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) {
+          originRect = { top: r.top, left: r.left, width: r.width, height: r.height };
+          originRadius = window.getComputedStyle(document.activeElement).borderRadius || "16px";
+        }
+      }
+    }
+
+    // Clear consumed trigger so old positions won't linger
+    lastTriggerInfo.element = null;
+    lastTriggerInfo.rect = null;
+    lastTriggerInfo.timestamp = 0;
+
+    originRectRef.current = originRect;
+    originRadiusRef.current = originRadius;
+
+    const overlay = overlayRef.current;
+    const panel = panelRef.current;
+    const content = contentRef.current;
+
+    if (!panel || !content || !overlay) return;
+
+    // Save previous body overflow
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    // Show overlay
+    requestAnimationFrame(() => {
+      overlay.classList.add("visible");
+    });
+
+    // 1. Lay out panel at natural open size first to measure target rect
+    panel.style.transition = "none";
+    panel.style.top = "50%";
+    panel.style.left = "50%";
+    panel.style.width = "min(420px, 90vw)";
+    panel.style.height = "auto";
+    panel.style.transform = "translate(-50%, -50%)";
+    panel.classList.add("visible");
+
+    const finalRect = panel.getBoundingClientRect();
+
+    // 2. Pin content wrapper width to target rect width
+    content.style.width = finalRect.width + "px";
+
+    if (originRect && originRect.width > 0 && originRect.height > 0) {
+      const sx = originRect.width / finalRect.width;
+      const sy = originRect.height / finalRect.height;
+      const s = Math.sqrt(sx * sy);
+
+      // 3. Snap panel to origin button's position & size
+      panel.style.transform = "none";
+      panel.style.top = originRect.top + "px";
+      panel.style.left = originRect.left + "px";
+      panel.style.width = originRect.width + "px";
+      panel.style.height = originRect.height + "px";
+      panel.style.borderRadius = originRadius || "16px";
+      panel.style.opacity = "1";
+
+      content.style.transition = "none";
+      content.style.transform = `scale(${s})`;
+
+      // Force reflow
+      void panel.offsetHeight;
+
+      // 4. Animate panel to target rect
+      const DURATION = 460;
+      const EASE = `${DURATION}ms cubic-bezier(.32,.72,0,1)`;
+
+      panel.style.transition = `top ${EASE}, left ${EASE}, width ${EASE}, height ${EASE}, border-radius ${EASE}`;
+      panel.style.top = finalRect.top + "px";
+      panel.style.left = finalRect.left + "px";
+      panel.style.width = finalRect.width + "px";
+      panel.style.height = finalRect.height + "px";
+      panel.style.borderRadius = "26px";
+
+      content.style.transition = `transform ${EASE}`;
+      content.style.transform = "scale(1)";
+    } else {
+      // Fallback center scale-in
+      panel.style.transform = "translate(-50%, -50%) scale(0.92)";
+      panel.style.top = "50%";
+      panel.style.left = "50%";
+      panel.style.borderRadius = "26px";
+      panel.style.opacity = "0";
+
+      void panel.offsetHeight;
+
+      const DURATION = 350;
+      const EASE = `${DURATION}ms cubic-bezier(.32,.72,0,1)`;
+      panel.style.transition = `transform ${EASE}, opacity ${EASE}`;
+      panel.style.transform = "translate(-50%, -50%) scale(1)";
+      panel.style.opacity = "1";
+
+      content.style.transform = "scale(1)";
+    }
+
+    requestAnimationFrame(() => setContentIn(true));
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [propOriginEl]);
+
+  const handleClose = useCallback(
+    (actionCallback) => {
+      if (closing) return;
+      setClosing(true);
+      setContentIn(false);
+
+      const overlay = overlayRef.current;
+      const panel = panelRef.current;
+      const content = contentRef.current;
+
+      if (overlay) overlay.classList.remove("visible");
+
+      const originRect = originRectRef.current;
+      const originRadius = originRadiusRef.current;
+
+      if (panel && content && originRect && originRect.width > 0 && originRect.height > 0) {
+        const finalRect = panel.getBoundingClientRect();
+        const sx = originRect.width / finalRect.width;
+        const sy = originRect.height / finalRect.height;
+        const s = Math.sqrt(sx * sy);
+
+        const DURATION = 440;
+        const EASE = `${DURATION}ms cubic-bezier(.32,.72,0,1)`;
+
+        panel.style.transition = `top ${EASE}, left ${EASE}, width ${EASE}, height ${EASE}, border-radius ${EASE}, opacity ${DURATION * 0.4}ms ease-in ${DURATION * 0.6}ms`;
+        panel.style.top = originRect.top + "px";
+        panel.style.left = originRect.left + "px";
+        panel.style.width = originRect.width + "px";
+        panel.style.height = originRect.height + "px";
+        panel.style.borderRadius = originRadius || "16px";
+        panel.style.opacity = "0";
+
+        content.style.transition = `transform ${EASE}`;
+        content.style.transform = `scale(${s})`;
+
+        setTimeout(() => {
+          if (actionCallback) actionCallback();
+        }, DURATION);
+      } else if (panel) {
+        const DURATION = 280;
+        const EASE = `${DURATION}ms cubic-bezier(.32,.72,0,1)`;
+        panel.style.transition = `transform ${EASE}, opacity ${EASE}`;
+        panel.style.transform = "translate(-50%, -50%) scale(0.92)";
+        panel.style.opacity = "0";
+
+        setTimeout(() => {
+          if (actionCallback) actionCallback();
+        }, DURATION);
+      } else {
+        if (actionCallback) actionCallback();
+      }
+    },
+    [closing]
+  );
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") {
+        handleClose(onCancel);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [handleClose, onCancel]);
+
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-150"
-      onClick={onCancel}
-    >
+    <div data-confirm-modal="true">
       <div
+        ref={overlayRef}
+        data-confirm-modal="true"
+        className="confirm-modal-overlay fixed inset-0 z-[100] bg-slate-950/60 dark:bg-slate-950/75 backdrop-blur-md opacity-0 invisible transition-all duration-350 ease-[cubic-bezier(.32,.72,0,1)] [&.visible]:opacity-100 [&.visible]:visible"
+        onClick={() => handleClose(onCancel)}
+      />
+      <div
+        ref={panelRef}
+        data-confirm-modal="true"
         onClick={(e) => e.stopPropagation()}
-        className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4 animate-in zoom-in-95 duration-150"
+        className="confirm-modal-panel fixed z-[101] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-[26px] overflow-hidden opacity-0 pointer-events-none flex items-center justify-center shadow-[0_30px_70px_-20px_rgba(15,20,28,0.4)] [&.visible]:pointer-events-auto"
       >
-        <div className="flex items-start gap-3.5">
+        <div ref={contentRef} className="shrink-0 origin-center">
           <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-              danger
-                ? "bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50"
-                : "bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50"
+            className={`p-7 sm:p-8 text-center transition-opacity duration-220 ease-[cubic-bezier(.32,.72,0,1)] ${
+              contentIn ? "opacity-100 delay-140" : "opacity-0"
             }`}
           >
-            {danger ? <Trash2 size={20} /> : <AlertTriangle size={20} />}
-          </div>
-          <div className="space-y-1">
-            <h3 className="font-bold text-base text-slate-900 dark:text-white">
+            <div
+              className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 ${
+                danger
+                  ? "bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400"
+                  : "bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400"
+              }`}
+            >
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m-9 0 1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+
+            <h2 className="font-bold text-lg sm:text-xl text-slate-900 dark:text-white mb-2.5">
               {title}
-            </h3>
-            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-6 max-w-xs mx-auto">
               {message}
             </p>
-          </div>
-        </div>
 
-        <div className="flex items-center gap-2 pt-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="flex-1 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer"
-          >
-            {cancelText}
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className={`flex-1 px-4 py-2.5 rounded-xl text-white text-xs font-bold transition-all shadow-sm cursor-pointer ${
-              danger
-                ? "bg-rose-600 hover:bg-rose-700 active:bg-rose-800 shadow-rose-600/20"
-                : "bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 shadow-indigo-600/20"
-            }`}
-          >
-            {confirmText}
-          </button>
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                data-confirm-modal="true"
+                onClick={() => handleClose(onCancel)}
+                className="flex-1 px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs sm:text-sm border border-slate-200/80 dark:border-slate-700/80 transition-transform active:scale-95 cursor-pointer"
+              >
+                {cancelText}
+              </button>
+              <button
+                type="button"
+                data-confirm-modal="true"
+                onClick={() => handleClose(onConfirm)}
+                className={`flex-1 px-4 py-3 rounded-xl text-white font-bold text-xs sm:text-sm transition-transform active:scale-95 shadow-md cursor-pointer ${
+                  danger
+                    ? "bg-rose-600 hover:bg-rose-700 active:bg-rose-800 shadow-rose-600/20"
+                    : "bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 shadow-indigo-600/20"
+                }`}
+              >
+                {confirmText}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

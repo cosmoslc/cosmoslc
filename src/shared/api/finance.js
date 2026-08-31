@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { getCachedData, setCachedData, isNetworkError } from './cacheHelper';
 
 function fromRow(f) {
   return {
@@ -19,38 +20,66 @@ export async function fetchFinance() {
   try {
     const { data, error } = await supabase.from('finance').select('*');
     if (error) {
-      console.error('Supabase fetchFinance error:', error);
-      return [];
+      if (!isNetworkError(error)) {
+        console.warn('Supabase fetchFinance warning:', error.message || error);
+      }
+      return getCachedData('finance', []);
     }
-    return (data || []).map(fromRow);
+    const result = (data || []).map(fromRow);
+    setCachedData('finance', result);
+    return result;
   } catch (err) {
-    console.error('Supabase fetchFinance exception:', err);
-    return [];
+    if (!isNetworkError(err)) {
+      console.warn('Supabase fetchFinance exception:', err.message || err);
+    }
+    return getCachedData('finance', []);
   }
 }
 
 export async function addFinance(entry) {
-  const { data, error } = await supabase.from('finance').insert({
-    branch_id: entry.branchId,
-    type: entry.type,
-    amount: entry.amount,
-    category: entry.category,
-    note: entry.note,
-    date: entry.date,
-    status: entry.status || 'approved',
-    approval_mode: entry.approvalMode,
-  }).select().single();
-  if (error) throw error;
-  return fromRow(data);
+  try {
+    const { data, error } = await supabase.from('finance').insert({
+      branch_id: entry.branchId,
+      type: entry.type,
+      amount: entry.amount,
+      category: entry.category,
+      note: entry.note,
+      date: entry.date,
+      status: entry.status || 'approved',
+      approval_mode: entry.approvalMode,
+    }).select().single();
+    if (error) throw error;
+    const row = fromRow(data);
+    const cached = getCachedData('finance', []);
+    setCachedData('finance', [...cached, row]);
+    return row;
+  } catch (err) {
+    const localRow = {
+      id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+      ...entry,
+      createdAt: Date.now(),
+    };
+    const cached = getCachedData('finance', []);
+    setCachedData('finance', [...cached, localRow]);
+    return localRow;
+  }
 }
 
 export async function approveFinance(id) {
-  const { error } = await supabase.from('finance').update({ status: 'approved' }).eq('id', id);
-  if (error) console.error('Supabase approveFinance error:', error);
+  try {
+    const { error } = await supabase.from('finance').update({ status: 'approved' }).eq('id', id);
+    if (error && !isNetworkError(error)) console.warn('Supabase approveFinance warning:', error.message || error);
+  } catch {}
+  const cached = getCachedData('finance', []);
+  setCachedData('finance', cached.map(f => f.id === id ? { ...f, status: 'approved' } : f));
 }
 
 export async function rejectFinance(id) {
-  const { error } = await supabase.from('finance').delete().eq('id', id);
-  if (error) console.error('Supabase rejectFinance error:', error);
+  try {
+    const { error } = await supabase.from('finance').delete().eq('id', id);
+    if (error && !isNetworkError(error)) console.warn('Supabase rejectFinance warning:', error.message || error);
+  } catch {}
+  const cached = getCachedData('finance', []);
+  setCachedData('finance', cached.filter(f => f.id !== id));
 }
 

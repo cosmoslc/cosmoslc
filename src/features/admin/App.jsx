@@ -354,26 +354,15 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
     return session?.allowedPages || DEFAULT_MANAGER_PAGES;
   }, [isDirector, session]);
 
-  // Default fallback branches if no branches in database yet
-  const defaultFallbackBranches = useMemo(
-    () => [
-      { id: "branch_default", name: "Asosiy Filial", address: "Toshkent sh., Markaz-1", color: "#3f6df6" },
-      { id: "branch_chilonzor", name: "Chilonzor Filiali", address: "Chilonzor t., 9-mavze", color: "#10b981" },
-      { id: "branch_yunusobod", name: "Yunusobod Filiali", address: "Yunusobod t., 14-mavze", color: "#8b5cf6" },
-    ],
-    [],
-  );
-
   // Scoped Branches
   const scopeBranches = useMemo(() => {
     const raw = directorData?.branches || [];
-    const allBranches = raw.length > 0 ? raw : defaultFallbackBranches;
-    if (isDirector) return allBranches;
+    if (isDirector) return raw;
     const managerBranchIds =
       session?.branchIds || (session?.branchId ? [session.branchId] : []);
-    if (managerBranchIds.length === 0) return allBranches;
-    return allBranches.filter((b) => managerBranchIds.includes(b.id));
-  }, [directorData?.branches, defaultFallbackBranches, isDirector, session]);
+    if (managerBranchIds.length === 0) return raw;
+    return raw.filter((b) => managerBranchIds.includes(b.id));
+  }, [directorData?.branches, isDirector, session]);
 
   // Active Scope Branches (Filtered when currentBranchId is specific)
   const activeScopeBranches = useMemo(() => {
@@ -429,7 +418,7 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
 
   const handleDeleteBranch = async (branchId) => {
     try {
-      await api.deleteBranch(branchId);
+      // Optimistically update local state immediately
       setDirectorData((prev) => {
         if (!prev) return prev;
         return {
@@ -440,6 +429,8 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
       if (String(currentBranchId) === String(branchId)) {
         setCurrentBranchId("all");
       }
+
+      await api.deleteBranch(branchId);
       addToast("Filial o'chirildi");
       await refreshData();
     } catch (e) {
@@ -1747,7 +1738,7 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
                       break;
                     case "deleteTeacher":
                     case "deleteTeacherHR":
-                      await handleDeleteTeacherHR(params.teacherId);
+                      await handleDeleteTeacherHR(params.teacherId || params.teacherHRId);
                       break;
                     case "deleteCourse":
                       await handleDeleteCourse(params.courseId);

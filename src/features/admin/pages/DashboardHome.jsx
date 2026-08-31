@@ -275,8 +275,8 @@ export function DashboardHome({
       }
     });
 
-    if (total === 0) {
-      total = Math.max(activeStudents * 550000, grossIncome * 1.25);
+    if (total === 0 && activeStudents > 0) {
+      total = activeStudents * 550000;
     }
     return Math.round(total);
   }, [opData, directorData, selectedBranch, branchIds, activeStudents, grossIncome]);
@@ -329,13 +329,8 @@ export function DashboardHome({
       });
     });
 
-    if (totalDebt === 0) {
-      totalDebt = Math.max(0, expectedRevenue - collectedRevenue);
-      count = Math.max(1, Math.round(totalDebt / 520000));
-    }
-
     return { count, totalDebt };
-  }, [opData, directorData, selectedBranch, branchIds, selectedYear, selectedMonth, expectedRevenue, collectedRevenue]);
+  }, [opData, directorData, selectedBranch, branchIds, selectedYear, selectedMonth]);
 
   // Markaz Balansi (Net Balance: Cash + Bank Accounts)
   const balanceSummary = useMemo(() => {

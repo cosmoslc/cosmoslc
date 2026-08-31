@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, isValidElement } from "react";
 import { MorphDropdown } from "../../../shared/components/MorphDropdown";
+import { useNavIndicator, NavIndicator } from "../../../shared/components/NavIndicator";
 import {
   LogOut,
   Menu,
@@ -258,6 +259,8 @@ export function AppShell({
   });
 
   const [pinnedFlyout, setPinnedFlyout] = useState(null);
+  const navGroupRef = useRef(null);
+  const indicatorRef = useNavIndicator([view, collapsed, openMenus, pinnedFlyout], navGroupRef);
 
   const toggleMenu = (key) => {
     if (collapsed) {
@@ -628,7 +631,8 @@ export function AppShell({
             </button>
           </div>
 
-          <ul className="nav-group">
+          <ul className="nav-group" ref={navGroupRef}>
+            <NavIndicator indicatorRef={indicatorRef} />
             {/* 1. ASOSIY BO'LIM (ONLY MENUS WITHOUT SUBMENU) */}
             {!collapsed && (
               <li className="nav-divider">
@@ -1659,7 +1663,7 @@ export function AppShell({
 
         {/* ======================= MAIN CONTENT VIEW ======================= */}
         <div className="main-content-scroll" id="main-content-area">
-          <main className="p-4 sm:p-6 lg:p-8 flex-1">
+          <main key={view} className="p-4 sm:p-6 lg:p-8 flex-1 animate-page-in">
             {children}
           </main>
         </div>

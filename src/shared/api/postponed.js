@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { getCachedData, setCachedData, isNetworkError } from './cacheHelper';
 
 function fromRow(p) {
   return {
@@ -14,29 +15,52 @@ export async function fetchPostponed() {
   try {
     const { data, error } = await supabase.from('postponed').select('*');
     if (error) {
-      console.error('Supabase fetchPostponed error:', error);
-      return [];
+      if (!isNetworkError(error)) {
+        console.warn('Supabase fetchPostponed warning:', error.message || error);
+      }
+      return getCachedData('postponed', []);
     }
-    return (data || []).map(fromRow);
+    const result = (data || []).map(fromRow);
+    setCachedData('postponed', result);
+    return result;
   } catch (err) {
-    console.error('Supabase fetchPostponed exception:', err);
-    return [];
+    if (!isNetworkError(err)) {
+      console.warn('Supabase fetchPostponed exception:', err.message || err);
+    }
+    return getCachedData('postponed', []);
   }
 }
 
 export async function addPostponed(payload) {
-  const { data, error } = await supabase.from('postponed').insert({
-    group_id: payload.groupId,
-    original_date: payload.originalDate,
-    new_date: payload.newDate,
-    note: payload.note,
-  }).select().single();
-  if (error) throw error;
-  return fromRow(data);
+  try {
+    const { data, error } = await supabase.from('postponed').insert({
+      group_id: payload.groupId,
+      original_date: payload.originalDate,
+      new_date: payload.newDate,
+      note: payload.note,
+    }).select().single();
+    if (error) throw error;
+    const row = fromRow(data);
+    const cached = getCachedData('postponed', []);
+    setCachedData('postponed', [...cached, row]);
+    return row;
+  } catch (err) {
+    const localRow = {
+      id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+      ...payload,
+    };
+    const cached = getCachedData('postponed', []);
+    setCachedData('postponed', [...cached, localRow]);
+    return localRow;
+  }
 }
 
 export async function deletePostponed(id) {
-  const { error } = await supabase.from('postponed').delete().eq('id', id);
-  if (error) console.error('Supabase deletePostponed error:', error);
+  try {
+    const { error } = await supabase.from('postponed').delete().eq('id', id);
+    if (error && !isNetworkError(error)) console.warn('Supabase deletePostponed warning:', error.message || error);
+  } catch {}
+  const cached = getCachedData('postponed', []);
+  setCachedData('postponed', cached.filter(p => p.id !== id));
 }
 
