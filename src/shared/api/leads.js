@@ -1,12 +1,13 @@
 import { supabase } from './supabaseClient';
 
 export async function fetchLeads() {
-  const { data, error } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
-  if (error) {
-    console.error('Supabase fetchLeads error:', error);
-    return [];
-  }
-  return (data || []).map(l => {
+  try {
+    const { data, error } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
+    if (error) {
+      console.error('Supabase fetchLeads error:', error);
+      return [];
+    }
+    return (data || []).map(l => {
     let rejectionReason = l.rejection_reason || null;
     let rejectionNote = l.rejection_note || null;
     let courseId = l.course_id || null;
@@ -112,6 +113,10 @@ export async function fetchLeads() {
       createdAt: l.created_at,
     };
   });
+  } catch (err) {
+    console.error('Supabase fetchLeads exception:', err);
+    return [];
+  }
 }
 
 function buildLeadNote(payload) {
@@ -256,19 +261,24 @@ export async function deleteLead(id) {
 // ---------- Lead forms ----------
 
 export async function fetchLeadForms() {
-  const { data, error } = await supabase.from('lead_forms').select('*').order('created_at', { ascending: false });
-  if (error) {
-    console.error('Supabase fetchLeadForms error:', error);
+  try {
+    const { data, error } = await supabase.from('lead_forms').select('*').order('created_at', { ascending: false });
+    if (error) {
+      console.error('Supabase fetchLeadForms error:', error);
+      return [];
+    }
+    return (data || []).map(f => ({
+      id: f.id,
+      directorId: f.director_id,
+      name: f.name,
+      fields: f.fields || ['name', 'phone'],
+      active: f.active,
+      createdAt: f.created_at,
+    }));
+  } catch (err) {
+    console.error('Supabase fetchLeadForms exception:', err);
     return [];
   }
-  return (data || []).map(f => ({
-    id: f.id,
-    directorId: f.director_id,
-    name: f.name,
-    fields: f.fields || ['name', 'phone'],
-    active: f.active,
-    createdAt: f.created_at,
-  }));
 }
 
 export async function addLeadForm(payload) {

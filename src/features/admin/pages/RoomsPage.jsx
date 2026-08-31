@@ -16,11 +16,15 @@ import {
   GraduationCap,
 } from 'lucide-react';
 import { BTN_GHOST, INPUT_CLS, PrimaryButton } from '../theme/tokens';
-import { opGroups, opRooms } from '../utils/dataHelpers';
+import { filterGroupsByBranch, filterRoomsByBranch, opGroups, opRooms } from '../utils/dataHelpers';
 import { EmptyState } from '../components/primitives';
 
 export function RoomsPage({
   opData,
+  directorData,
+  scopeBranches = [],
+  scopeBranchIds: passedScopeBranchIds = [],
+  currentBranchId,
   openModal = () => {},
   openRoomModal,
   canEdit = true,
@@ -28,8 +32,16 @@ export function RoomsPage({
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'grid'
   const [searchQuery, setSearchQuery] = useState('');
 
-  const rooms = opRooms(opData) || [];
-  const allGroups = opGroups(opData) || [];
+  const allBranchesCount = (directorData?.branches || scopeBranches || []).length;
+  const scopeBranchIds = useMemo(() => {
+    if (currentBranchId && currentBranchId !== "all") return [currentBranchId];
+    if (passedScopeBranchIds && passedScopeBranchIds.length > 0) return passedScopeBranchIds;
+    return (scopeBranches || []).map((b) => b.id);
+  }, [currentBranchId, passedScopeBranchIds, scopeBranches]);
+
+  const allRooms = opRooms(opData) || [];
+  const rooms = filterRoomsByBranch(allRooms, scopeBranchIds, allBranchesCount);
+  const allGroups = filterGroupsByBranch(opGroups(opData) || [], scopeBranchIds, directorData?.courses || [], allBranchesCount);
 
   const bigRooms = rooms.filter((r) => (r.capacity || 0) >= 25).length;
   const totalCapacity = rooms.reduce((sum, r) => sum + (r.capacity || 0), 0);

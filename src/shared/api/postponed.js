@@ -11,12 +11,17 @@ function fromRow(p) {
 }
 
 export async function fetchPostponed() {
-  const { data, error } = await supabase.from('postponed').select('*');
-  if (error) {
-    console.error('Supabase fetchPostponed error:', error);
+  try {
+    const { data, error } = await supabase.from('postponed').select('*');
+    if (error) {
+      console.error('Supabase fetchPostponed error:', error);
+      return [];
+    }
+    return (data || []).map(fromRow);
+  } catch (err) {
+    console.error('Supabase fetchPostponed exception:', err);
     return [];
   }
-  return (data || []).map(fromRow);
 }
 
 export async function addPostponed(payload) {

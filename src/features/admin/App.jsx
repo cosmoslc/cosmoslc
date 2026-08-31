@@ -530,6 +530,11 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
   // Teachers HR
   const handleSaveTeacherHR = async (teacherData) => {
     try {
+      if (!teacherData.branchId || teacherData.branchId === "all") {
+        if (currentBranchId && currentBranchId !== "all") {
+          teacherData.branchId = currentBranchId;
+        }
+      }
       let res;
       if (teacherData.id && directorData?.teachersHR?.some((t) => String(t.id) === String(teacherData.id))) {
         res = await api.updateTeacherHR(teacherData.id, teacherData);
@@ -586,6 +591,11 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
   // Courses
   const handleSaveCourse = async (courseData) => {
     try {
+      if (!courseData.branchId || courseData.branchId === "all") {
+        if (currentBranchId && currentBranchId !== "all") {
+          courseData.branchId = currentBranchId;
+        }
+      }
       let res;
       if (courseData.id && directorData?.courses?.some((c) => c.id === courseData.id)) {
         res = await api.updateCourse(courseData.id, courseData);
@@ -627,6 +637,11 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
   // Groups
   const handleSaveGroup = async (groupData) => {
     try {
+      if (!groupData.branchId || groupData.branchId === "all") {
+        if (currentBranchId && currentBranchId !== "all") {
+          groupData.branchId = currentBranchId;
+        }
+      }
       let res;
       if (groupData.id && opData?.groups?.some((g) => String(g.id) === String(groupData.id))) {
         res = await api.updateGroup(groupData.id, groupData);
@@ -672,6 +687,11 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
   // Rooms
   const handleSaveRoom = async (roomData) => {
     try {
+      if (!roomData.branchId || roomData.branchId === "all") {
+        if (currentBranchId && currentBranchId !== "all") {
+          roomData.branchId = currentBranchId;
+        }
+      }
       let res;
       if (roomData.id && opData?.rooms?.some((r) => r.id === roomData.id)) {
         res = await api.updateRoom(roomData.id, roomData);
@@ -708,6 +728,12 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
       const studentId = isIdFirst ? arg1 : arg1?.id;
       const payload = isIdFirst ? arg2 : arg1;
 
+      if (!payload.branchId || payload.branchId === "all") {
+        if (currentBranchId && currentBranchId !== "all") {
+          payload.branchId = currentBranchId;
+        }
+      }
+
       if (studentId && opData?.students?.some((s) => s.id === studentId)) {
         res = await api.updateStudent(studentId, payload);
       } else if (payload?.id && opData?.students?.some((s) => s.id === payload.id)) {
@@ -742,6 +768,11 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
   // Payments & Finance
   const handleSavePayment = async (paymentData) => {
     try {
+      if (!paymentData.branchId || paymentData.branchId === "all") {
+        if (currentBranchId && currentBranchId !== "all") {
+          paymentData.branchId = currentBranchId;
+        }
+      }
       let res;
       if (paymentData.id && directorData?.payments?.some((p) => p.id === paymentData.id)) {
         res = await api.updatePayment(paymentData.id, paymentData);
@@ -770,6 +801,11 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
 
   const handleSaveFinanceRecord = async (financeData) => {
     try {
+      if (!financeData.branchId || financeData.branchId === "all") {
+        if (currentBranchId && currentBranchId !== "all") {
+          financeData.branchId = currentBranchId;
+        }
+      }
       await api.addFinance(financeData);
       addToast("Moliya yozuvi saqlandi");
       await refreshData();
@@ -871,9 +907,19 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
       }
 
       if (isUpdate && targetId) {
+        if (!finalLead.branchId || finalLead.branchId === "all") {
+          if (currentBranchId && currentBranchId !== "all") {
+            finalLead.branchId = currentBranchId;
+          }
+        }
         await api.updateLead(targetId, finalLead);
         addToast("Lid saqlandi");
       } else {
+        if (!finalLead.branchId || finalLead.branchId === "all") {
+          if (currentBranchId && currentBranchId !== "all") {
+            finalLead.branchId = currentBranchId;
+          }
+        }
         await api.addLead(finalLead);
         addToast("Yangi lid qo'shildi");
       }
@@ -998,6 +1044,7 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
                 opData={opData}
                 scopeBranches={scopeBranches}
                 scopeBranchIds={scopeBranchIds}
+                currentBranchId={currentBranchId}
                 now={now}
                 goTo={goTo}
                 onQuickAction={handleQuickAction}
@@ -1137,6 +1184,7 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
               opData={opData}
               scopeBranches={scopeBranches}
               scopeBranchIds={scopeBranchIds}
+              currentBranchId={currentBranchId}
               canEdit={canEdit}
               openModal={(m) => setModal(m)}
               openGroupModal={(group) =>
@@ -1154,6 +1202,8 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
               directorData={directorData}
               opData={opData}
               scopeBranches={scopeBranches}
+              scopeBranchIds={scopeBranchIds}
+              currentBranchId={currentBranchId}
               openModal={(m) => setModal(m)}
               openAddStudentModal={() => setModal({ type: "addStudent" })}
               openStudentProfile={(student) =>
@@ -1229,6 +1279,8 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
               directorData={directorData}
               opData={opData}
               scopeBranches={scopeBranches}
+              scopeBranchIds={scopeBranchIds}
+              currentBranchId={currentBranchId}
               openModal={(m) => setModal(m)}
               openRoomModal={(room) => setModal({ type: "roomForm", room })}
               onDeleteRoom={handleDeleteRoom}
@@ -1242,6 +1294,7 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
               opData={opData}
               scopeBranches={scopeBranches}
               scopeBranchIds={scopeBranchIds}
+              currentBranchId={currentBranchId}
               openModal={(m) => setModal(m)}
               openPaymentModal={() => setModal({ type: "recordPayment" })}
               onDeletePayment={handleDeletePayment}

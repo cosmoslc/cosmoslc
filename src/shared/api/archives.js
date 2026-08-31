@@ -1,39 +1,44 @@
 import { supabase } from './supabaseClient';
 
 export async function fetchArchives() {
-  const { data, error } = await supabase.from('archive').select('*').order('archived_at', { ascending: false });
-  if (error) {
-    console.error('Supabase fetchArchives error:', error);
+  try {
+    const { data, error } = await supabase.from('archive').select('*').order('archived_at', { ascending: false });
+    if (error) {
+      console.error('Supabase fetchArchives error:', error);
+      return { groups: [], students: [], leads: [], courses: [] };
+    }
+    const result = {
+      groups: [],
+      students: [],
+      leads: [],
+      courses: [],
+    };
+    (data || []).forEach((row) => {
+      const type = row.entity_type === 'student' ? 'students'
+        : row.entity_type === 'group' ? 'groups'
+        : row.entity_type === 'lead' ? 'leads'
+        : row.entity_type === 'course' ? 'courses'
+        : row.entity_type;
+      
+      const itemData = row.data || {};
+      const item = {
+        ...itemData,
+        id: row.entity_id || row.id,
+        archiveRowId: row.id,
+        deletedAt: row.archived_at,
+      };
+
+      if (result[type]) {
+        result[type].push(item);
+      } else {
+        result[type] = [item];
+      }
+    });
+    return result;
+  } catch (err) {
+    console.error('Supabase fetchArchives exception:', err);
     return { groups: [], students: [], leads: [], courses: [] };
   }
-  const result = {
-    groups: [],
-    students: [],
-    leads: [],
-    courses: [],
-  };
-  (data || []).forEach((row) => {
-    const type = row.entity_type === 'student' ? 'students'
-      : row.entity_type === 'group' ? 'groups'
-      : row.entity_type === 'lead' ? 'leads'
-      : row.entity_type === 'course' ? 'courses'
-      : row.entity_type;
-    
-    const itemData = row.data || {};
-    const item = {
-      ...itemData,
-      id: row.entity_id || row.id,
-      archiveRowId: row.id,
-      deletedAt: row.archived_at,
-    };
-
-    if (result[type]) {
-      result[type].push(item);
-    } else {
-      result[type] = [item];
-    }
-  });
-  return result;
 }
 
 export async function archiveRecord(type, item, options = {}) {

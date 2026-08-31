@@ -35,6 +35,7 @@ import { PrimaryButton, ExcelButton, INPUT_CLS, LABEL_CLS, BTN_GHOST } from "../
 import { Avatar, EmptyState, Modal } from "../components/primitives";
 import { displayPhone, money, thisMonthKey } from "../utils/helpers";
 import {
+  filterTeachersByBranch,
   getTeacherPayStats,
   opGroups,
   opStudentsInGroups,
@@ -226,12 +227,23 @@ export function TeachersHR({
     return Math.min(99, Math.max(65, Math.round(base)));
   }
 
+  const allBranchesCount = (directorData?.branches || scopeBranches || []).length;
+  const effectiveScopeBranchIds = useMemo(() => {
+    if (selectedBranchId && selectedBranchId !== "all") return [selectedBranchId];
+    if (currentBranchId && currentBranchId !== "all") return [currentBranchId];
+    return scopeBranches.map((b) => b.id);
+  }, [selectedBranchId, currentBranchId, scopeBranches]);
+
   // All scoped teachers
   const allScopedTeachers = useMemo(() => {
-    return (directorData.teachersHR || []).filter((t) =>
-      scopeIds.length === 0 || !t.branchId ? true : scopeIds.includes(t.branchId),
+    return filterTeachersByBranch(
+      directorData.teachersHR || [],
+      effectiveScopeBranchIds,
+      opGroups(opData),
+      directorData.courses || [],
+      allBranchesCount
     );
-  }, [directorData.teachersHR, scopeIds]);
+  }, [directorData.teachersHR, effectiveScopeBranchIds, opData, directorData.courses, allBranchesCount]);
 
   // Separate main teachers vs support/assistant teachers
   const tabTeachers = useMemo(() => {

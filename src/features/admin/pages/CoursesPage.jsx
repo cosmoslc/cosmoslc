@@ -20,6 +20,7 @@ import {
 import { GLASS, BTN_GHOST, BTN_ICON, PrimaryButton, INPUT_CLS, LABEL_CLS } from "../theme/tokens";
 import { EmptyState } from "../components/primitives";
 import {
+  filterCoursesByBranch,
   opGroups,
   opGroupStudentCount,
   opStudentsInGroups,
@@ -45,13 +46,16 @@ export function CoursesPage({
   const [expandedCourses, setExpandedCourses] = useState({});
   const [sortBy, setSortBy] = useState("default"); // default, students, groups, revenue
 
-  const scopeIds = useMemo(() => scopeBranches.map((b) => b.id), [scopeBranches]);
+  const allBranchesCount = (directorData?.branches || scopeBranches || []).length;
+  const effectiveScopeIds = useMemo(() => {
+    if (selectedBranchId && selectedBranchId !== "all") return [selectedBranchId];
+    if (currentBranchId && currentBranchId !== "all") return [currentBranchId];
+    return scopeBranches.map((b) => b.id);
+  }, [selectedBranchId, currentBranchId, scopeBranches]);
   
   const allScopedCourses = useMemo(() => {
-    return (directorData.courses || []).filter((c) =>
-      scopeIds.length === 0 || !c.branchId ? true : scopeIds.includes(c.branchId),
-    );
-  }, [directorData.courses, scopeIds]);
+    return filterCoursesByBranch(directorData.courses || [], effectiveScopeIds, allBranchesCount);
+  }, [directorData.courses, effectiveScopeIds, allBranchesCount]);
 
   const month = thisMonthKey();
 

@@ -1,22 +1,27 @@
 import { supabase } from './supabaseClient';
 
 export async function fetchHolidays() {
-  const { data, error } = await supabase.from('holidays').select('*');
-  if (error) {
-    console.error('Supabase fetchHolidays error:', error);
+  try {
+    const { data, error } = await supabase.from('holidays').select('*');
+    if (error) {
+      console.error('Supabase fetchHolidays error:', error);
+      return [];
+    }
+    return (data || []).map(h => ({
+      id: h.id,
+      directorId: h.director_id || h.directorId,
+      name: h.name,
+      date: h.date || h.startDate,
+      startDate: h.startDate || h.date,
+      endDate: h.endDate || h.date,
+      branchId: h.branchId || h.branch_id || 'all',
+      isAllBranches: h.isAllBranches !== false,
+      note: h.note,
+    }));
+  } catch (err) {
+    console.error('Supabase fetchHolidays exception:', err);
     return [];
   }
-  return (data || []).map(h => ({
-    id: h.id,
-    directorId: h.director_id || h.directorId,
-    name: h.name,
-    date: h.date || h.startDate,
-    startDate: h.startDate || h.date,
-    endDate: h.endDate || h.date,
-    branchId: h.branchId || h.branch_id || 'all',
-    isAllBranches: h.isAllBranches !== false,
-    note: h.note,
-  }));
 }
 
 export async function addHoliday(payload) {

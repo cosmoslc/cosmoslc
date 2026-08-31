@@ -16,12 +16,17 @@ function fromRow(f) {
 }
 
 export async function fetchFinance() {
-  const { data, error } = await supabase.from('finance').select('*');
-  if (error) {
-    console.error('Supabase fetchFinance error:', error);
+  try {
+    const { data, error } = await supabase.from('finance').select('*');
+    if (error) {
+      console.error('Supabase fetchFinance error:', error);
+      return [];
+    }
+    return (data || []).map(fromRow);
+  } catch (err) {
+    console.error('Supabase fetchFinance exception:', err);
     return [];
   }
-  return (data || []).map(fromRow);
 }
 
 export async function addFinance(entry) {

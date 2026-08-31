@@ -14,12 +14,17 @@ function fromRow(t) {
 }
 
 export async function fetchTasks() {
-  const { data, error } = await supabase.from('tasks').select('*');
-  if (error) {
-    console.error('Supabase fetchTasks error:', error);
+  try {
+    const { data, error } = await supabase.from('tasks').select('*');
+    if (error) {
+      console.error('Supabase fetchTasks error:', error);
+      return [];
+    }
+    return (data || []).map(fromRow);
+  } catch (err) {
+    console.error('Supabase fetchTasks exception:', err);
     return [];
   }
-  return (data || []).map(fromRow);
 }
 
 export async function addTask(payload) {

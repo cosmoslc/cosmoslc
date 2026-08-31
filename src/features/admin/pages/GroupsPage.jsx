@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { BTN_GHOST, INPUT_CLS, PrimaryButton, ExcelButton } from "../theme/tokens";
 import { money, thisMonthKey } from "../utils/helpers";
-import { filterGroupsByBranch, opGroupStudentCount, opGroups, opRooms, opStudentsInGroups } from "../utils/dataHelpers";
+import { filterCoursesByBranch, filterGroupsByBranch, opGroupStudentCount, opGroups, opRooms, opStudentsInGroups } from "../utils/dataHelpers";
 import { calculateStudentGroupFee } from "../../../shared/utils/prorata";
 import { EmptyState } from "../components/primitives";
 
@@ -31,15 +31,22 @@ export function GroupsPage({
   directorData,
   opData,
   openModal = () => {},
-  scopeBranchIds = [],
+  scopeBranchIds: passedScopeBranchIds = [],
+  scopeBranches = [],
+  currentBranchId,
   canEdit = true,
 }) {
+  const allBranchesCount = (directorData?.branches || scopeBranches || []).length;
+  const scopeBranchIds = useMemo(() => {
+    if (currentBranchId && currentBranchId !== "all") return [currentBranchId];
+    if (passedScopeBranchIds && passedScopeBranchIds.length > 0) return passedScopeBranchIds;
+    return (scopeBranches || []).map((b) => b.id);
+  }, [currentBranchId, passedScopeBranchIds, scopeBranches]);
+
   const currentMonth = thisMonthKey();
   const allGroups = opGroups(opData);
   const allCourses = directorData?.courses || [];
-  const courses = (scopeBranchIds && scopeBranchIds.length > 0)
-    ? allCourses.filter((c) => !c.branchId || c.branchId === "all" || scopeBranchIds.includes(c.branchId))
-    : allCourses;
+  const courses = filterCoursesByBranch(allCourses, scopeBranchIds, allBranchesCount);
   const courseIds = courses.map((c) => c.id);
   const teachers = directorData?.teachersHR || directorData?.teachers || opData?.teachers || [];
   const rooms = opRooms(opData) || directorData?.rooms || [];
@@ -49,7 +56,7 @@ export function GroupsPage({
   const [courseFilter, setCourseFilter] = useState("all");
   const [dayFilter, setDayFilter] = useState("all");
 
-  const groups = filterGroupsByBranch(allGroups, scopeBranchIds, allCourses);
+  const groups = filterGroupsByBranch(allGroups, scopeBranchIds, allCourses, allBranchesCount);
 
   const rawRows = groups
     .map((g) => {

@@ -9,7 +9,7 @@ export function opFrozenStudents(opData) {
 export function opGroups(opData) {
   return opData?.groups || [];
 }
-export function filterGroupsByBranch(allGroups, scopeBranchIds, allCourses = []) {
+export function filterGroupsByBranch(allGroups, scopeBranchIds, allCourses = [], allBranchesCount = 0) {
   if (!allGroups || !Array.isArray(allGroups)) return [];
   if (!scopeBranchIds || scopeBranchIds.length === 0) return allGroups;
 
@@ -27,7 +27,140 @@ export function filterGroupsByBranch(allGroups, scopeBranchIds, allCourses = [])
         return stringBranchIds.includes(String(course.branchId));
       }
     }
-    // 3. If neither group nor course is locked to a specific branch, include it
+    if (g.branchId === "all") return true;
+    if (stringBranchIds.length === 1 && allBranchesCount > 1) {
+      return false;
+    }
+    return true;
+  });
+}
+
+export function filterStudentsByBranch(allStudents, scopeBranchIds, allGroups = [], allCourses = [], allBranchesCount = 0) {
+  if (!allStudents || !Array.isArray(allStudents)) return [];
+  if (!scopeBranchIds || scopeBranchIds.length === 0) return allStudents;
+
+  const stringBranchIds = scopeBranchIds.map(String);
+  const scopedGroups = filterGroupsByBranch(allGroups, scopeBranchIds, allCourses, allBranchesCount);
+  const scopedGroupIdsSet = new Set(scopedGroups.map((g) => String(g.id)));
+
+  return allStudents.filter((s) => {
+    // 1. Direct branchId on student
+    if (s.branchId && s.branchId !== "all") {
+      return stringBranchIds.includes(String(s.branchId));
+    }
+    // 2. Student belongs to group(s)
+    const gIds = (s.groupIds || []).map(String);
+    if (gIds.length > 0) {
+      return gIds.some((gid) => scopedGroupIdsSet.has(gid));
+    }
+    if (s.branchId === "all") return true;
+    if (stringBranchIds.length === 1 && allBranchesCount > 1) {
+      return false;
+    }
+    return true;
+  });
+}
+
+export function filterTeachersByBranch(allTeachers, scopeBranchIds, allGroups = [], allCourses = [], allBranchesCount = 0) {
+  if (!allTeachers || !Array.isArray(allTeachers)) return [];
+  if (!scopeBranchIds || scopeBranchIds.length === 0) return allTeachers;
+
+  const stringBranchIds = scopeBranchIds.map(String);
+  const scopedGroups = filterGroupsByBranch(allGroups, scopeBranchIds, allCourses, allBranchesCount);
+  const scopedGroupIdsSet = new Set(scopedGroups.map((g) => String(g.id)));
+
+  return allTeachers.filter((t) => {
+    if (t.branchId && t.branchId !== "all") {
+      return stringBranchIds.includes(String(t.branchId));
+    }
+    const teachesGroup = allGroups.some((g) => {
+      const isTeacherOfGroup = String(g.teacherHrId || g.teacherId) === String(t.id);
+      return isTeacherOfGroup && scopedGroupIdsSet.has(String(g.id));
+    });
+    if (teachesGroup) return true;
+    if (t.branchId === "all") return true;
+
+    if (stringBranchIds.length === 1 && allBranchesCount > 1) {
+      return false;
+    }
+    return true;
+  });
+}
+
+export function filterCoursesByBranch(allCourses, scopeBranchIds, allBranchesCount = 0) {
+  if (!allCourses || !Array.isArray(allCourses)) return [];
+  if (!scopeBranchIds || scopeBranchIds.length === 0) return allCourses;
+
+  const stringBranchIds = scopeBranchIds.map(String);
+
+  return allCourses.filter((c) => {
+    if (c.branchId && c.branchId !== "all") {
+      return stringBranchIds.includes(String(c.branchId));
+    }
+    if (c.branchId === "all") return true;
+    if (stringBranchIds.length === 1 && allBranchesCount > 1) {
+      return false;
+    }
+    return true;
+  });
+}
+
+export function filterPaymentsByBranch(allPayments, scopeBranchIds, allStudents = [], allGroups = [], allCourses = [], allBranchesCount = 0) {
+  if (!allPayments || !Array.isArray(allPayments)) return [];
+  if (!scopeBranchIds || scopeBranchIds.length === 0) return allPayments;
+
+  const stringBranchIds = scopeBranchIds.map(String);
+  const scopedStudentIdsSet = new Set(
+    filterStudentsByBranch(allStudents, scopeBranchIds, allGroups, allCourses, allBranchesCount).map((s) => String(s.id))
+  );
+
+  return allPayments.filter((p) => {
+    if (p.branchId && p.branchId !== "all") {
+      return stringBranchIds.includes(String(p.branchId));
+    }
+    if (p.studentId && scopedStudentIdsSet.has(String(p.studentId))) {
+      return true;
+    }
+    if (p.branchId === "all") return true;
+    if (stringBranchIds.length === 1 && allBranchesCount > 1) {
+      return false;
+    }
+    return true;
+  });
+}
+
+export function filterLeadsByBranch(allLeads, scopeBranchIds, allBranchesCount = 0) {
+  if (!allLeads || !Array.isArray(allLeads)) return [];
+  if (!scopeBranchIds || scopeBranchIds.length === 0) return allLeads;
+
+  const stringBranchIds = scopeBranchIds.map(String);
+
+  return allLeads.filter((l) => {
+    if (l.branchId && l.branchId !== "all") {
+      return stringBranchIds.includes(String(l.branchId));
+    }
+    if (l.branchId === "all") return true;
+    if (stringBranchIds.length === 1 && allBranchesCount > 1) {
+      return false;
+    }
+    return true;
+  });
+}
+
+export function filterRoomsByBranch(allRooms, scopeBranchIds, allBranchesCount = 0) {
+  if (!allRooms || !Array.isArray(allRooms)) return [];
+  if (!scopeBranchIds || scopeBranchIds.length === 0) return allRooms;
+
+  const stringBranchIds = scopeBranchIds.map(String);
+
+  return allRooms.filter((r) => {
+    if (r.branchId && r.branchId !== "all") {
+      return stringBranchIds.includes(String(r.branchId));
+    }
+    if (r.branchId === "all") return true;
+    if (stringBranchIds.length === 1 && allBranchesCount > 1) {
+      return false;
+    }
     return true;
   });
 }

@@ -33,7 +33,7 @@ import {
 import { INPUT_CLS, PrimaryButton, GLASS } from "../theme/tokens";
 import { money, formatDate, normalizePhone, thisMonthKey } from "../utils/helpers";
 import { calculateStudentGroupFee } from "../../../shared/utils/prorata";
-import { opGroups, opStudentsInGroups } from "../utils/dataHelpers";
+import { filterCoursesByBranch, filterGroupsByBranch, filterPaymentsByBranch, filterStudentsByBranch, opGroups, opStudentsInGroups } from "../utils/dataHelpers";
 import { Avatar, EmptyState } from "../components/primitives";
 import * as api from "../../../shared/api";
 
@@ -72,6 +72,8 @@ const STATUS_OPTIONS = [
 
 export function PaymentsPage({
   scopeBranches = [],
+  currentBranchId,
+  scopeBranchIds: passedScopeBranchIds = [],
   directorData = {},
   opData = {},
   openModal = () => {},
@@ -105,31 +107,34 @@ export function PaymentsPage({
   const [deleting, setDeleting] = useState(false);
 
   // Base datasets
-  const scopeIds = useMemo(() => scopeBranches.map((b) => b.id), [scopeBranches]);
+  const allBranchesCount = (directorData?.branches || scopeBranches || []).length;
+  const scopeBranchIds = useMemo(() => {
+    if (currentBranchId && currentBranchId !== "all") return [currentBranchId];
+    if (passedScopeBranchIds && passedScopeBranchIds.length > 0) return passedScopeBranchIds;
+    return (scopeBranches || []).map((b) => b.id);
+  }, [currentBranchId, passedScopeBranchIds, scopeBranches]);
+
   const courses = useMemo(() => {
-    return (directorData?.courses || []).filter((c) =>
-      scopeIds.length === 0 || scopeIds.includes(c.branchId)
-    );
-  }, [directorData?.courses, scopeIds]);
+    return filterCoursesByBranch(directorData?.courses || [], scopeBranchIds, allBranchesCount);
+  }, [directorData?.courses, scopeBranchIds, allBranchesCount]);
 
   const courseIds = useMemo(() => courses.map((c) => c.id), [courses]);
 
   const groups = useMemo(() => {
-    return opGroups(opData).filter(
-      (g) => courseIds.length === 0 || courseIds.includes(g.courseId)
-    );
-  }, [opData, courseIds]);
+    return filterGroupsByBranch(opGroups(opData), scopeBranchIds, directorData?.courses || [], allBranchesCount);
+  }, [opData, scopeBranchIds, directorData?.courses, allBranchesCount]);
 
   const allStudents = useMemo(() => {
-    return opData?.students || [];
-  }, [opData?.students]);
+    return filterStudentsByBranch(opData?.students || [], scopeBranchIds, opGroups(opData), directorData?.courses || [], allBranchesCount);
+  }, [opData?.students, scopeBranchIds, opData, directorData?.courses, allBranchesCount]);
 
   const allPayments = useMemo(() => {
-    return (directorData?.payments || opData?.payments || []).map((p) => ({
+    const raw = (directorData?.payments || opData?.payments || []).map((p) => ({
       ...p,
       amount: Number(p.amount || 0),
     }));
-  }, [directorData?.payments, opData?.payments]);
+    return filterPaymentsByBranch(raw, scopeBranchIds, opData?.students || [], opGroups(opData), directorData?.courses || [], allBranchesCount);
+  }, [directorData?.payments, opData?.payments, scopeBranchIds, opData, directorData?.courses, allBranchesCount]);
 
   // Handle Quick Presets
   function applyPreset(preset) {

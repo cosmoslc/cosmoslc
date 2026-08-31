@@ -79,12 +79,17 @@ function fromRow(s) {
 }
 
 export async function fetchStudents() {
-  const { data, error } = await supabase.from("students").select("*");
-  if (error) {
-    console.error("Supabase fetchStudents error:", error);
+  try {
+    const { data, error } = await supabase.from("students").select("*");
+    if (error) {
+      console.error("Supabase fetchStudents error:", error);
+      return [];
+    }
+    return (data || []).map(fromRow);
+  } catch (err) {
+    console.error("Supabase fetchStudents exception:", err);
     return [];
   }
-  return (data || []).map(fromRow);
 }
 
 export async function addStudent(payload) {

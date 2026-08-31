@@ -1,22 +1,27 @@
 import { supabase } from './supabaseClient';
 
 export async function fetchEmployeeAttendance() {
-  const { data, error } = await supabase.from('employee_attendance').select('*').order('date', { ascending: false });
-  if (error) {
-    console.error('Supabase fetchEmployeeAttendance error:', error);
+  try {
+    const { data, error } = await supabase.from('employee_attendance').select('*').order('date', { ascending: false });
+    if (error) {
+      console.error('Supabase fetchEmployeeAttendance error:', error);
+      return [];
+    }
+    return (data || []).map(e => ({
+      id: e.id,
+      branchId: e.branch_id,
+      employeeType: e.employee_type,
+      employeeId: e.employee_id,
+      date: e.date,
+      status: e.status,
+      checkIn: e.check_in,
+      checkOut: e.check_out,
+      createdAt: e.created_at,
+    }));
+  } catch (err) {
+    console.error('Supabase fetchEmployeeAttendance exception:', err);
     return [];
   }
-  return (data || []).map(e => ({
-    id: e.id,
-    branchId: e.branch_id,
-    employeeType: e.employee_type,
-    employeeId: e.employee_id,
-    date: e.date,
-    status: e.status,
-    checkIn: e.check_in,
-    checkOut: e.check_out,
-    createdAt: e.created_at,
-  }));
 }
 
 export async function addEmployeeAttendance(payload) {

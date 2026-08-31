@@ -24,7 +24,17 @@ import {
 } from "lucide-react";
 import { money, thisMonthKey, todayISO, formatDate } from "../utils/helpers";
 import { calculateStudentGroupFee } from "../../../shared/utils/prorata";
-import { filterGroupsByBranch, opGroups, opStudentsInGroups, opAttendance, attendanceStatus } from "../utils/dataHelpers";
+import {
+  filterCoursesByBranch,
+  filterGroupsByBranch,
+  filterPaymentsByBranch,
+  filterRoomsByBranch,
+  filterStudentsByBranch,
+  filterTeachersByBranch,
+  opAttendance,
+  opGroups,
+  opStudentsInGroups,
+} from "../utils/dataHelpers";
 import { GLASS, GLASS_SOFT, INPUT_CLS, BTN_PRIMARY_BASE, BTN_GHOST } from "../theme/tokens";
 import { MONTHS_UZ, JS_DAY_NAMES } from "../utils/constants";
 
@@ -33,6 +43,7 @@ export function TodayWorkbench({
   opData,
   scopeBranchIds = [],
   scopeBranches = [],
+  currentBranchId,
   goTo,
   openModal = () => {},
   onUpdateAttendance,
@@ -65,18 +76,42 @@ export function TodayWorkbench({
   ][now.getDay()];
   const formattedTodayDate = `${now.getDate()}-${MONTHS_UZ[now.getMonth()]}, ${now.getFullYear()} (${dayNameUz})`;
 
-  // 1. Scoped groups and courses
+  // 1. Scoped datasets
+  const allBranchesCount = (directorData?.branches || scopeBranches || []).length;
+  const effectiveScopeBranchIds = useMemo(() => {
+    if (currentBranchId && currentBranchId !== "all") return [currentBranchId];
+    if (scopeBranchIds && scopeBranchIds.length > 0) return scopeBranchIds;
+    return (scopeBranches || []).map((b) => b.id);
+  }, [currentBranchId, scopeBranchIds, scopeBranches]);
+
   const allGroups = opGroups(opData);
   const allCourses = directorData?.courses || [];
-  const groups = useMemo(() => {
-    return filterGroupsByBranch(allGroups, scopeBranchIds, allCourses);
-  }, [allGroups, scopeBranchIds, allCourses]);
 
-  const students = opData?.students || [];
-  const payments = directorData?.payments || [];
+  const scopedCourses = useMemo(() => {
+    return filterCoursesByBranch(allCourses, effectiveScopeBranchIds, allBranchesCount);
+  }, [allCourses, effectiveScopeBranchIds, allBranchesCount]);
+
+  const groups = useMemo(() => {
+    return filterGroupsByBranch(allGroups, effectiveScopeBranchIds, allCourses, allBranchesCount);
+  }, [allGroups, effectiveScopeBranchIds, allCourses, allBranchesCount]);
+
+  const students = useMemo(() => {
+    return filterStudentsByBranch(opData?.students || [], effectiveScopeBranchIds, allGroups, allCourses, allBranchesCount);
+  }, [opData?.students, effectiveScopeBranchIds, allGroups, allCourses, allBranchesCount]);
+
+  const payments = useMemo(() => {
+    return filterPaymentsByBranch(directorData?.payments || [], effectiveScopeBranchIds, opData?.students || [], allGroups, allCourses, allBranchesCount);
+  }, [directorData?.payments, effectiveScopeBranchIds, opData, allGroups, allCourses, allBranchesCount]);
+
+  const teachers = useMemo(() => {
+    return filterTeachersByBranch(directorData?.teachersHR || [], effectiveScopeBranchIds, allGroups, allCourses, allBranchesCount);
+  }, [directorData?.teachersHR, effectiveScopeBranchIds, allGroups, allCourses, allBranchesCount]);
+
+  const rooms = useMemo(() => {
+    return filterRoomsByBranch(opData?.rooms || [], effectiveScopeBranchIds, allBranchesCount);
+  }, [opData?.rooms, effectiveScopeBranchIds, allBranchesCount]);
+
   const attendanceList = opAttendance(opData);
-  const teachers = directorData?.teachersHR || [];
-  const rooms = opData?.rooms || [];
 
   // =========================================================================
   // 1. QARZDORLAR (Debtors calculation)

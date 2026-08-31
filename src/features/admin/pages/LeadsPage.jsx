@@ -53,6 +53,7 @@ import {
   LeadFormSettingsBuilder,
   getSavedLeadFormFields,
 } from "../components/LeadFormSettingsBuilder";
+import { filterCoursesByBranch, filterGroupsByBranch, filterLeadsByBranch } from "../utils/dataHelpers";
 
 const GRADE_OPTIONS = [
   "1-sinf",
@@ -99,6 +100,8 @@ export function LeadsPage({
   directorData,
   opData,
   scopeBranches = [],
+  currentBranchId,
+  scopeBranchIds: passedScopeBranchIds = [],
   onAddLead,
   onUpdateLead,
   onDeleteLead,
@@ -106,6 +109,12 @@ export function LeadsPage({
   openAddStudentFromLead,
   goTo,
 }) {
+  const allBranchesCount = (directorData?.branches || scopeBranches || []).length;
+  const scopeBranchIds = useMemo(() => {
+    if (currentBranchId && currentBranchId !== "all") return [currentBranchId];
+    if (passedScopeBranchIds && passedScopeBranchIds.length > 0) return passedScopeBranchIds;
+    return (scopeBranches || []).map((b) => b.id);
+  }, [currentBranchId, passedScopeBranchIds, scopeBranches]);
   const effectivePropSubView = subView || activeSubView || "leads";
   const [activeTab, setActiveTab] = useState(effectivePropSubView);
   const [searchTerm, setSearchTerm] = useState("");
@@ -178,10 +187,13 @@ export function LeadsPage({
   const [testFormSubmitted, setTestFormSubmitted] = useState(false);
   const [publicFormData, setPublicFormData] = useState({});
 
-  const leads = directorData?.leads || opData?.leads || [];
-  const courses = directorData?.courses || opData?.courses || [];
+  const rawLeads = directorData?.leads || opData?.leads || [];
+  const leads = filterLeadsByBranch(rawLeads, scopeBranchIds, allBranchesCount);
+  const rawCourses = directorData?.courses || opData?.courses || [];
+  const courses = filterCoursesByBranch(rawCourses, scopeBranchIds, allBranchesCount);
   const teachers = directorData?.teachers || opData?.teachers || [];
-  const groups = opData?.groups || directorData?.groups || [];
+  const rawGroups = opData?.groups || directorData?.groups || [];
+  const groups = filterGroupsByBranch(rawGroups, scopeBranchIds, courses, allBranchesCount);
   const rooms = directorData?.rooms || opData?.rooms || [];
   const managers = directorData?.managers || opData?.managers || [];
 

@@ -1,12 +1,17 @@
 import { supabase } from './supabaseClient';
 
 export async function fetchRooms() {
-  const { data, error } = await supabase.from('rooms').select('*');
-  if (error) {
-    console.error('Supabase fetchRooms error:', error);
+  try {
+    const { data, error } = await supabase.from('rooms').select('*');
+    if (error) {
+      console.error('Supabase fetchRooms error:', error);
+      return [];
+    }
+    return (data || []).map(r => ({ id: r.id, name: r.name, capacity: r.capacity }));
+  } catch (err) {
+    console.error('Supabase fetchRooms exception:', err);
     return [];
   }
-  return (data || []).map(r => ({ id: r.id, name: r.name, capacity: r.capacity }));
 }
 
 export async function addRoom(payload) {

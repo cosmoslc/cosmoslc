@@ -30,7 +30,7 @@ import {
 } from "../utils/helpers";
 import { getPaymentStatus, getPaymentTotal, thisMonthKey } from "../utils/helpers";
 import { calculateProratedFee, calculateStudentGroupFee } from "../../../shared/utils/prorata";
-import { filterGroupsByBranch, opGroups } from "../utils/dataHelpers";
+import { filterGroupsByBranch, filterStudentsByBranch, opGroups } from "../utils/dataHelpers";
 import { StudentProfilePage } from "./StudentProfilePage";
 
 const STATUS_META = {
@@ -65,7 +65,9 @@ function statusValue(student) {
 }
 
 export function StudentsPage({
-  scopeBranches,
+  scopeBranches = [],
+  scopeBranchIds: passedScopeBranchIds,
+  currentBranchId,
   directorData,
   opData,
   openModal = () => {},
@@ -79,16 +81,29 @@ export function StudentsPage({
   onRecordPayment,
   onRemoveFromGroup,
 }) {
-  const scopeBranchIds = (scopeBranches || []).map((b) => b.id);
-  const groups = filterGroupsByBranch(opGroups(opData), scopeBranchIds, directorData?.courses || []);
+  const allBranchesCount = (directorData?.branches || scopeBranches || []).length;
+  const effectiveScopeBranchIds = useMemo(() => {
+    if (currentBranchId && currentBranchId !== "all") return [currentBranchId];
+    if (passedScopeBranchIds && passedScopeBranchIds.length > 0) return passedScopeBranchIds;
+    return (scopeBranches || []).map((b) => b.id);
+  }, [currentBranchId, passedScopeBranchIds, scopeBranches]);
+
+  const groups = filterGroupsByBranch(
+    opGroups(opData),
+    effectiveScopeBranchIds,
+    directorData?.courses || [],
+    allBranchesCount
+  );
   const teachers = directorData?.teachersHR || directorData?.teachers || opData?.teachers || [];
-  const allowedGroupIds = new Set(groups.map((g) => g.id));
   const month = thisMonthKey();
 
-  const students = (opData?.students || []).filter((student) => {
-    const ids = student.groupIds || [];
-    return ids.some((id) => allowedGroupIds.has(id)) || ids.length === 0;
-  });
+  const students = filterStudentsByBranch(
+    opData?.students || [],
+    effectiveScopeBranchIds,
+    opGroups(opData),
+    directorData?.courses || [],
+    allBranchesCount
+  );
   const [selectedStudentProfileId, setSelectedStudentProfileId] = useState(null);
   const [query, setQuery] = useState("");
   const [groupFilter, setGroupFilter] = useState("all");

@@ -16,12 +16,17 @@ function fromRow(m) {
 }
 
 export async function fetchManagers() {
-  const { data, error } = await supabase.from('managers').select('*');
-  if (error) {
-    console.error('Supabase fetchManagers error:', error);
+  try {
+    const { data, error } = await supabase.from('managers').select('*');
+    if (error) {
+      console.error('Supabase fetchManagers error:', error);
+      return [];
+    }
+    return (data || []).map(fromRow);
+  } catch (err) {
+    console.error('Supabase fetchManagers exception:', err);
     return [];
   }
-  return (data || []).map(fromRow);
 }
 
 export async function findManagerByPhoneAndHash(normalizedPhone, passwordHash) {

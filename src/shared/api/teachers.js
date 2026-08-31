@@ -42,12 +42,17 @@ function fromRow(t) {
 }
 
 export async function fetchTeachersHR() {
-  const { data, error } = await supabase.from('teachers_hr').select('*');
-  if (error) {
-    console.error('Supabase fetchTeachersHR error:', error);
+  try {
+    const { data, error } = await supabase.from('teachers_hr').select('*');
+    if (error) {
+      console.error('Supabase fetchTeachersHR error:', error);
+      return [];
+    }
+    return (data || []).map(fromRow);
+  } catch (err) {
+    console.error('Supabase fetchTeachersHR exception:', err);
     return [];
   }
-  return (data || []).map(fromRow);
 }
 
 export async function addTeacherHR(payload) {
@@ -137,21 +142,26 @@ export async function deleteTeacherHR(id) {
 }
 
 export async function fetchTeacherPayments() {
-  const { data, error } = await supabase.from('teacher_payments').select('*');
-  if (error) {
-    console.error('Supabase fetchTeacherPayments error:', error);
+  try {
+    const { data, error } = await supabase.from('teacher_payments').select('*');
+    if (error) {
+      console.error('Supabase fetchTeacherPayments error:', error);
+      return [];
+    }
+    return (data || []).map(p => ({
+      id: p.id,
+      teacherHRId: p.teacher_hr_id,
+      type: p.type,
+      amount: p.amount,
+      month: p.month,
+      date: p.date,
+      note: p.note,
+      createdAt: new Date(p.created_at).getTime(),
+    }));
+  } catch (err) {
+    console.error('Supabase fetchTeacherPayments exception:', err);
     return [];
   }
-  return (data || []).map(p => ({
-    id: p.id,
-    teacherHRId: p.teacher_hr_id,
-    type: p.type,
-    amount: p.amount,
-    month: p.month,
-    date: p.date,
-    note: p.note,
-    createdAt: new Date(p.created_at).getTime(),
-  }));
 }
 
 export async function addTeacherPayment(payload) {

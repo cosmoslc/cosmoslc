@@ -11,12 +11,17 @@ function fromRow(a) {
 }
 
 export async function fetchAttendance() {
-  const { data, error } = await supabase.from('attendance').select('*');
-  if (error) {
-    console.error('Supabase fetchAttendance error:', error);
+  try {
+    const { data, error } = await supabase.from('attendance').select('*');
+    if (error) {
+      console.error('Supabase fetchAttendance error:', error);
+      return [];
+    }
+    return (data || []).map(fromRow);
+  } catch (err) {
+    console.error('Supabase fetchAttendance exception:', err);
     return [];
   }
-  return (data || []).map(fromRow);
 }
 
 export async function addAttendanceRecord(payload) {

@@ -22,12 +22,17 @@ function fromRow(p) {
 }
 
 export async function fetchPayments() {
-  const { data, error } = await supabase.from('payments').select('*');
-  if (error) {
-    console.error('Supabase fetchPayments error:', error);
+  try {
+    const { data, error } = await supabase.from('payments').select('*');
+    if (error) {
+      console.error('Supabase fetchPayments error:', error);
+      return [];
+    }
+    return (data || []).map(fromRow);
+  } catch (err) {
+    console.error('Supabase fetchPayments exception:', err);
     return [];
   }
-  return (data || []).map(fromRow);
 }
 
 export async function recordPayment(payload, branchId) {

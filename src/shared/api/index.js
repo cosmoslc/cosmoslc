@@ -29,34 +29,83 @@ import {
 } from './archives';
 
 export async function fetchDirectorData() {
-  const [directors, branches, managers, teachersHR, teacherPayments, holidays, finance, courses, payments, managerPayments, coinSettings, centerSettings, notifications, leads, leadForms] =
-    await Promise.all([
-      fetchDirectors(), fetchBranches(), fetchManagers(), fetchTeachersHR(),
-      fetchTeacherPayments(), fetchHolidays(), fetchFinance(), fetchCourses(), fetchPayments(),
-      _fetchManagerPayments(), _fetchCoinSettings(), _fetchCenterSettings(), _fetchNotifications(),
-      _fetchLeads(), _fetchLeadForms(),
-    ]);
-  return { directors, branches, managers, teachersHR, teacherPayments, holidays, finance, courses, payments, managerPayments, coinSettings, centerSettings, notifications, leads, leadForms };
+  try {
+    const [directors, branches, managers, teachersHR, teacherPayments, holidays, finance, courses, payments, managerPayments, coinSettings, centerSettings, notifications, leads, leadForms] =
+      await Promise.all([
+        fetchDirectors(), fetchBranches(), fetchManagers(), fetchTeachersHR(),
+        fetchTeacherPayments(), fetchHolidays(), fetchFinance(), fetchCourses(), fetchPayments(),
+        _fetchManagerPayments(), _fetchCoinSettings(), _fetchCenterSettings(), _fetchNotifications(),
+        _fetchLeads(), _fetchLeadForms(),
+      ]);
+    return {
+      directors: directors || [],
+      branches: branches || [],
+      managers: managers || [],
+      teachersHR: teachersHR || [],
+      teacherPayments: teacherPayments || [],
+      holidays: holidays || [],
+      finance: finance || [],
+      courses: courses || [],
+      payments: payments || [],
+      managerPayments: managerPayments || [],
+      coinSettings: coinSettings || {},
+      centerSettings: centerSettings || {},
+      notifications: notifications || [],
+      leads: leads || [],
+      leadForms: leadForms || [],
+    };
+  } catch (err) {
+    console.error("fetchDirectorData exception:", err);
+    return {
+      directors: [], branches: [], managers: [], teachersHR: [], teacherPayments: [],
+      holidays: [], finance: [], courses: [], payments: [], managerPayments: [],
+      coinSettings: {}, centerSettings: {}, notifications: [], leads: [], leadForms: [],
+    };
+  }
 }
 
 export async function fetchOpData() {
-  const [groups, students, rooms, attendance, coinTransactions, employeeAttendance] = await Promise.all([
-    fetchGroups(), fetchStudents(), fetchRooms(), fetchAttendance(),
-    _fetchCoinTransactions(), _fetchEmployeeAttendance(),
-  ]);
-  return { groups, students, rooms, attendance, coinTransactions, employeeAttendance };
+  try {
+    const [groups, students, rooms, attendance, coinTransactions, employeeAttendance] = await Promise.all([
+      fetchGroups(), fetchStudents(), fetchRooms(), fetchAttendance(),
+      _fetchCoinTransactions(), _fetchEmployeeAttendance(),
+    ]);
+    return {
+      groups: groups || [],
+      students: students || [],
+      rooms: rooms || [],
+      attendance: attendance || [],
+      coinTransactions: coinTransactions || [],
+      employeeAttendance: employeeAttendance || [],
+    };
+  } catch (err) {
+    console.error("fetchOpData exception:", err);
+    return {
+      groups: [], students: [], rooms: [], attendance: [], coinTransactions: [], employeeAttendance: [],
+    };
+  }
 }
 
-// Shape matches the old student-panel appData blob: { students, groups,
-// tasks, attendance, coinSettings, postponed }. Teacher identity itself now
-// comes from teachers_hr (via fetchDirectorData) — see frontend-teacher/App.jsx —
-// not from a standalone account, so it's no longer part of this shape.
 export async function fetchAppData() {
-  const [students, groups, tasks, attendance, coinSettings, postponed] = await Promise.all([
-    fetchStudents(), fetchGroups(), fetchTasks(),
-    fetchAttendance(), _fetchCoinSettings(), fetchPostponed(),
-  ]);
-  return { students, groups, tasks, attendance, coinSettings, postponed };
+  try {
+    const [students, groups, tasks, attendance, coinSettings, postponed] = await Promise.all([
+      fetchStudents(), fetchGroups(), fetchTasks(),
+      fetchAttendance(), _fetchCoinSettings(), fetchPostponed(),
+    ]);
+    return {
+      students: students || [],
+      groups: groups || [],
+      tasks: tasks || [],
+      attendance: attendance || [],
+      coinSettings: coinSettings || {},
+      postponed: postponed || [],
+    };
+  } catch (err) {
+    console.error("fetchAppData exception:", err);
+    return {
+      students: [], groups: [], tasks: [], attendance: [], coinSettings: {}, postponed: [],
+    };
+  }
 }
 
 export {

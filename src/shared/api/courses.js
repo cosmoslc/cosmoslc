@@ -1,19 +1,24 @@
 import { supabase } from './supabaseClient';
 
 export async function fetchCourses() {
-  const { data, error } = await supabase.from('courses').select('*');
-  if (error) {
-    console.error('Supabase fetchCourses error:', error);
+  try {
+    const { data, error } = await supabase.from('courses').select('*');
+    if (error) {
+      console.error('Supabase fetchCourses error:', error);
+      return [];
+    }
+    return (data || []).map(c => ({
+      id: c.id,
+      branchId: c.branch_id,
+      name: c.name,
+      price: c.price,
+      durationMonths: c.duration_months,
+      color: c.color || '#8b5cf6',
+    }));
+  } catch (err) {
+    console.error('Supabase fetchCourses exception:', err);
     return [];
   }
-  return (data || []).map(c => ({
-    id: c.id,
-    branchId: c.branch_id,
-    name: c.name,
-    price: c.price,
-    durationMonths: c.duration_months,
-    color: c.color || '#8b5cf6',
-  }));
 }
 
 export async function addCourse(payload) {
