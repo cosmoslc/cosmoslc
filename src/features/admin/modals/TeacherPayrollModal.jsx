@@ -39,16 +39,50 @@ export function TeacherPayrollModal({ teacher: propTeacher, teacherId, branch, d
     <Modal title={`${teacher.name} — maosh hisob-kitobi`} onClose={onClose}>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <span className="text-xs bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-full text-slate-700">{teacher.salaryType === 'fixed' ? 'Belgilangan oylik' : `Foizli ${teacher.revenueSharePercent || 0}%`}</span>
+          <span className="text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-1 rounded-full text-slate-700 dark:text-slate-300">
+            {teacher.salaryType === 'fixed'
+              ? 'Belgilangan oylik'
+              : teacher.revenueSharePercent
+              ? `Asosiy ulush: ${teacher.revenueSharePercent}%`
+              : "Guruhlar ulushi bo'yicha"}
+          </span>
           <input type="month" value={month} onChange={e => setMonth(e.target.value)} className={`${INPUT_CLS} w-auto py-1.5 text-xs`} />
         </div>
 
         <div className={`${GLASS_SOFT} rounded-xl p-4 grid grid-cols-2 gap-3 text-sm`}>
-          <div><p className="text-slate-400 text-[11px]">Oylik haqi</p><p className="text-slate-900 font-semibold">{money(stats.expectedPay)} so'm</p></div>
+          <div>
+            <p className="text-slate-400 text-[11px]">Jami hisoblangan haq</p>
+            <p className="text-slate-900 dark:text-white font-semibold">{money(stats.expectedPay)} so'm</p>
+            <p className="text-[10px] text-slate-500 mt-0.5">Jami tushum: {money(stats.collectedRevenue)} so'm</p>
+          </div>
           <div><p className="text-slate-400 text-[11px]">Avans olgan</p><p className="text-amber-600 font-semibold">{money(stats.advances)} so'm</p></div>
           <div><p className="text-slate-400 text-[11px]">Maosh olgan</p><p className="text-sky-600 font-semibold">{money(stats.salaryPaid)} so'm</p></div>
           <div><p className="text-slate-400 text-[11px]">Qolgan haqi</p><p className="text-green-600 font-semibold">{money(stats.remaining)} so'm</p></div>
         </div>
+
+        {stats.groupBreakdown && stats.groupBreakdown.length > 0 && (
+          <div className="space-y-1.5 pt-1">
+            <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+              Guruhlar kesimida tushum va ulush
+            </div>
+            <div className="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden text-xs">
+              {stats.groupBreakdown.map((gb) => (
+                <div key={gb.groupId} className="p-2.5 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/30">
+                  <div>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">{gb.groupName}</span>
+                    <span className="ml-2 text-[11px] text-slate-500">
+                      {gb.salaryType === 'fixed' ? 'Fix oylik' : `${gb.percent}% ulush`} · {gb.paymentsCount} ta to'lov
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-bold text-slate-900 dark:text-white">{money(gb.pay)} so'm</span>
+                    <span className="block text-[10px] text-slate-400">Tushum: {money(gb.collectedRevenue)} so'm</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="space-y-3">
           <div className="flex gap-1.5 bg-slate-50 border border-slate-200 rounded-xl p-1">

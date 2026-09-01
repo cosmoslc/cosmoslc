@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
   UserPlus,
   UserX,
@@ -41,6 +41,10 @@ import {
   ListFilter,
   Radio as RadioIcon,
   AlignLeft,
+  Columns,
+  Send,
+  Trash2,
+  ShieldCheck,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { LEAD_STATUSES } from "../../../shared/constants/finance";
@@ -54,6 +58,11 @@ import {
   getSavedLeadFormFields,
 } from "../components/LeadFormSettingsBuilder";
 import { filterCoursesByBranch, filterGroupsByBranch, filterLeadsByBranch } from "../utils/dataHelpers";
+import { ConfirmModal, Modal } from "../components/primitives";
+import { LeadReserveGroupModal } from "../components/LeadReserveGroupModal";
+import { LeadBulkSmsModal } from "../components/LeadBulkSmsModal";
+import { LeadAssignStaffModal } from "../components/LeadAssignStaffModal";
+import { LeadFilterSettingsModal } from "../components/LeadFilterSettingsModal";
 
 const GRADE_OPTIONS = [
   "1-sinf",
@@ -119,7 +128,202 @@ export function LeadsPage({
   const [activeTab, setActiveTab] = useState(effectivePropSubView);
   const [searchTerm, setSearchTerm] = useState("");
   const [sourceFilter, setSourceFilter] = useState("all");
+  const [staffFilter, setStaffFilter] = useState("all");
+  const [reserveGroupFilter, setReserveGroupFilter] = useState("all");
+  const [gradeFilter, setGradeFilter] = useState("all");
+  const [courseFilter, setCourseFilter] = useState("all");
   const [kanbanMode, setKanbanMode] = useState(true);
+
+  // Settings dropdown ref & state
+  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  const settingsMenuRef = useRef(null);
+
+  // Predefined column colors
+  const COLUMN_PALETTE = ["#8B5CF6", "#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#EC4899", "#06B6D4", "#64748B"];
+
+  // Custom Lead Columns State (saved in localStorage)
+  const [leadColumns, setLeadColumns] = useState(() => {
+    try {
+      const saved = localStorage.getItem("crm_lead_columns_v2");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return LEAD_STATUSES.filter((st) => st.id !== "rejected" && st.id !== "lost");
+  });
+
+  const [editingColId, setEditingColId] = useState(null);
+  const [editingColTitle, setEditingColTitle] = useState("");
+  const [colorPickerColId, setColorPickerColId] = useState(null);
+
+  const handleSaveColumns = (newCols) => {
+    setLeadColumns(newCols);
+    try {
+      localStorage.setItem("crm_lead_columns_v2", JSON.stringify(newCols));
+    } catch (e) {}
+  };
+
+  const handleStartEditColumn = (col) => {
+    setEditingColId(col.id);
+    setEditingColTitle(col.label);
+  };
+
+  const handleFinishEditColumn = (colId) => {
+    if (!editingColTitle.trim()) {
+      setEditingColId(null);
+      return;
+    }
+    const updated = leadColumns.map((c) =>
+      c.id === colId ? { ...c, label: editingColTitle.trim() } : c
+    );
+    handleSaveColumns(updated);
+    setEditingColId(null);
+  };
+
+  const handleUpdateColumnColor = (colId, newColor) => {
+    const updated = leadColumns.map((c) =>
+      c.id === colId ? { ...c, color: newColor } : c
+    );
+    handleSaveColumns(updated);
+    setColorPickerColId(null);
+  };
+
+  const [columnToDelete, setColumnToDelete] = useState(null);
+  const [deleteTargetColId, setDeleteTargetColId] = useState("");
+
+  const handleDeleteColumn = (colId) => {
+    if (leadColumns.length <= 1) {
+      alert("Kamida 1 ta ustun mavjud bo'lishi kerak.");
+      return;
+    }
+    const target = leadColumns.find((c) => c.id === colId);
+    if (!target) return;
+    const remainingCols = leadColumns.filter((c) => c.id !== colId);
+    setColumnToDelete(target);
+    setDeleteTargetColId(remainingCols[0]?.id || "");
+  };
+
+  const handleConfirmDeleteColumn = () => {
+    if (!columnToDelete) return;
+    const leadsInCol = leads.filter((l) => l.status === columnToDelete.id);
+    if (leadsInCol.length > 0 && deleteTargetColId) {
+      handleMoveLeadsToColumn(columnToDelete.id, deleteTargetColId);
+    }
+    const updated = leadColumns.filter((c) => c.id !== columnToDelete.id);
+    handleSaveColumns(updated);
+    setColumnToDelete(null);
+  };
+
+  const handleAddInlineColumn = () => {
+    const newId = `col_${Date.now()}`;
+    const newCol = {
+      id: newId,
+      label: "Yangi bosqich",
+      color: "#8B5CF6",
+    };
+    const updated = [...leadColumns, newCol];
+    handleSaveColumns(updated);
+    setEditingColId(newId);
+    setEditingColTitle("Yangi bosqich");
+  };
+
+  const handleMoveLeadsToColumn = (fromColId, toColId) => {
+    if (!effectiveUpdateLead) return;
+    const targetLeads = leads.filter((l) => l.status === fromColId);
+    targetLeads.forEach((l) => {
+      effectiveUpdateLead(l.id, { ...l, status: toColId });
+    });
+  };
+
+  // Reserve Groups State (Zaxira guruhlar)
+  const [reserveGroups, setReserveGroups] = useState(() => {
+    try {
+      const saved = localStorage.getItem("crm_reserve_groups_v2");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {}
+    return [
+      {
+        id: "res_grp_1",
+        name: "IELTS 7.5+ Kechki Zaxira",
+        courseName: "Ingliz tili (IELTS)",
+        targetDate: "2026-09-15",
+        note: "O'quvchilar soni 8 taga yetganda guruh ochiladi",
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: "res_grp_2",
+        name: "Python Full-Stack Yangi Oqim",
+        courseName: "Dasturlash (Python)",
+        targetDate: "2026-09-20",
+        note: "Dam olish kunlari guruh ochilishi kutilmoqda",
+        createdAt: new Date().toISOString(),
+      },
+    ];
+  });
+
+  const handleSaveReserveGroups = (newGrps) => {
+    setReserveGroups(newGrps);
+    try {
+      localStorage.setItem("crm_reserve_groups_v2", JSON.stringify(newGrps));
+    } catch (e) {}
+  };
+
+  // Assign lead to reserve group handler
+  const handleAssignLeadToReserve = (leadId, reserveGroupId, reserveGroupName) => {
+    if (!effectiveUpdateLead) return;
+    const targetLead = leads.find((l) => l.id === leadId);
+    if (!targetLead) return;
+    effectiveUpdateLead(leadId, {
+      ...targetLead,
+      reserveGroupId: reserveGroupId || null,
+      reserveGroupName: reserveGroupName || null,
+    });
+  };
+
+  // Filter visibility configuration
+  const [filterConfig, setFilterConfig] = useState(() => {
+    try {
+      const saved = localStorage.getItem("crm_lead_filter_cfg_v2");
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return {
+      source: true,
+      staff: true,
+      reserveGroup: true,
+      grade: true,
+      course: true,
+    };
+  });
+
+  const handleSaveFilterConfig = (cfg) => {
+    setFilterConfig(cfg);
+    try {
+      localStorage.setItem("crm_lead_filter_cfg_v2", JSON.stringify(cfg));
+    } catch (e) {}
+  };
+
+  // Modals state
+  const [showReserveGroupModal, setShowReserveGroupModal] = useState(false);
+  const [selectedLeadForReserve, setSelectedLeadForReserve] = useState(null);
+  const [showBulkSmsModal, setShowBulkSmsModal] = useState(false);
+  const [showAssignStaffModal, setShowAssignStaffModal] = useState(false);
+  const [selectedLeadForStaff, setSelectedLeadForStaff] = useState(null);
+  const [showFilterSettingsModal, setShowFilterSettingsModal] = useState(false);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (settingsMenuRef.current && !settingsMenuRef.current.contains(e.target)) {
+        setSettingsMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Full Page Lead Profile state
   const [selectedLeadId, setSelectedLeadId] = useState(null);
@@ -177,6 +381,8 @@ export function LeadsPage({
     enrolledGroupId: "",
     courseId: "",
     source: "instagram",
+    assignedStaffId: "",
+    reserveGroupId: "",
     note: "",
     customFields: {},
   });
@@ -197,6 +403,42 @@ export function LeadsPage({
   const rooms = directorData?.rooms || opData?.rooms || [];
   const managers = directorData?.managers || opData?.managers || [];
 
+  // Staff members list for assigning leads
+  const staffMembers = useMemo(() => {
+    const combined = [
+      ...(managers || []).map((m) => ({ id: m.id, name: m.name, role: "Menejer" })),
+      ...(directorData?.staff || []).map((s) => ({ id: s.id, name: s.name, role: "Xodim" })),
+      ...(teachers || []).map((t) => ({ id: t.id, name: t.name, role: "O'qituvchi" })),
+    ];
+    // deduplicate by id
+    const seen = new Set();
+    return combined.filter((s) => {
+      if (seen.has(s.id)) return false;
+      seen.add(s.id);
+      return true;
+    });
+  }, [managers, directorData?.staff, teachers]);
+
+  // Bulk staff assigning handler
+  const handleAssignStaff = (leadIds, staffId, staffName) => {
+    if (!effectiveUpdateLead) return;
+    leadIds.forEach((id) => {
+      const target = leads.find((l) => l.id === id);
+      if (target) {
+        effectiveUpdateLead(id, {
+          ...target,
+          assignedStaffId: staffId || null,
+          assignedStaffName: staffName || null,
+        });
+      }
+    });
+  };
+
+  // Bulk SMS handler
+  const handleSendBulkSms = (smsData) => {
+    console.log("Bulk SMS sent:", smsData);
+  };
+
   // Currently selected lead for full profile view
   const selectedLead = leads.find((l) => l.id === selectedLeadId);
 
@@ -215,9 +457,30 @@ export function LeadsPage({
       (l.phone || "").includes(searchTerm) ||
       (l.phone2 || "").includes(searchTerm) ||
       (l.parentPhone || "").includes(searchTerm) ||
-      (l.grade || "").toLowerCase().includes(term);
+      (l.grade || "").toLowerCase().includes(term) ||
+      (l.reserveGroupName || "").toLowerCase().includes(term) ||
+      (l.assignedStaffName || "").toLowerCase().includes(term);
     const matchesSource = sourceFilter === "all" || l.source === sourceFilter;
-    return matchesSearch && matchesSource;
+    const matchesStaff =
+      staffFilter === "all" ||
+      l.assignedStaffId === staffFilter ||
+      (staffFilter === "unassigned" && !l.assignedStaffId);
+    const matchesReserve =
+      reserveGroupFilter === "all" ||
+      (reserveGroupFilter === "has_reserve" && !!l.reserveGroupId) ||
+      (reserveGroupFilter === "no_reserve" && !l.reserveGroupId) ||
+      l.reserveGroupId === reserveGroupFilter;
+    const matchesGrade = gradeFilter === "all" || l.grade === gradeFilter;
+    const matchesCourse = courseFilter === "all" || l.courseId === courseFilter;
+
+    return (
+      matchesSearch &&
+      matchesSource &&
+      matchesStaff &&
+      matchesReserve &&
+      matchesGrade &&
+      matchesCourse
+    );
   });
 
   const filteredLostLeads = lostLeads.filter((l) => {
@@ -840,15 +1103,128 @@ export function LeadsPage({
             <Sliders size={16} className={currentView === "leadsSettings" || currentView === "leadsFormSettings" ? "text-white" : "text-violet-600 dark:text-violet-400"} />
           </button>
 
+          {/* Leads General Settings Dropdown Button */}
+          <div className="relative" ref={settingsMenuRef}>
+            <button
+              id="btn-lead-general-settings"
+              onClick={() => setSettingsMenuOpen((prev) => !prev)}
+              className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all shadow-xs cursor-pointer ${
+                settingsMenuOpen
+                  ? "bg-violet-600 border-violet-600 text-white shadow-violet-500/25"
+                  : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200"
+              }`}
+              title="Lidlar sozlamalari (Ustunlar, Zaxira guruhlar, SMS, Mas'ul xodimlar, Filtrlar)"
+            >
+              <Settings size={16} className={settingsMenuOpen ? "text-white animate-spin-slow" : "text-slate-600 dark:text-slate-300"} />
+            </button>
+
+            {settingsMenuOpen && (
+              <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 py-1.5 z-50 animate-in fade-in zoom-in duration-100">
+                <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-700">
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    Lidlar Sozlamalari
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setSettingsMenuOpen(false);
+                    setKanbanMode(true);
+                    handleAddInlineColumn();
+                  }}
+                  className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2.5 transition-colors"
+                >
+                  <Plus size={15} className="text-emerald-500 shrink-0" />
+                  <div>
+                    <span>Yangi ustun qo'shish</span>
+                    <span className="block text-[10px] text-slate-400 font-normal">
+                      Kanban doskasiga yangi bosqich qo'shish
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setSettingsMenuOpen(false);
+                    setShowFilterSettingsModal(true);
+                  }}
+                  className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2.5 transition-colors"
+                >
+                  <ListFilter size={15} className="text-sky-500 shrink-0" />
+                  <div>
+                    <span>Filtrlarni sozlash</span>
+                    <span className="block text-[10px] text-slate-400 font-normal">
+                      Doskada ko'rinadigan filtrlarni tanlash
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setSettingsMenuOpen(false);
+                    setShowBulkSmsModal(true);
+                  }}
+                  className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2.5 transition-colors"
+                >
+                  <MessageSquare size={15} className="text-indigo-500 shrink-0" />
+                  <div>
+                    <span>Barchaga SMS yuborish</span>
+                    <span className="block text-[10px] text-slate-400 font-normal">
+                      Ommaviy yoki ustun bo'yicha xabarnoma
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setSettingsMenuOpen(false);
+                    setSelectedLeadForStaff(null);
+                    setShowAssignStaffModal(true);
+                  }}
+                  className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2.5 transition-colors"
+                >
+                  <UserCheck size={15} className="text-emerald-600 shrink-0" />
+                  <div>
+                    <span>Mas'ul xodim qo'shish</span>
+                    <span className="block text-[10px] text-slate-400 font-normal">
+                      Lidlarga menejer biriktirish
+                    </span>
+                  </div>
+                </button>
+
+                <div className="my-1 border-t border-slate-100 dark:border-slate-700" />
+
+                <button
+                  onClick={() => {
+                    setSettingsMenuOpen(false);
+                    setSelectedLeadForReserve(null);
+                    setShowReserveGroupModal(true);
+                  }}
+                  className="w-full px-3 py-2 text-left text-xs font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 flex items-center gap-2.5 transition-colors"
+                >
+                  <Layers size={15} className="text-amber-500 shrink-0" />
+                  <div>
+                    <span>Zaxira guruhlar</span>
+                    <span className="block text-[10px] text-amber-600/80 dark:text-amber-400/80 font-normal">
+                      Kutilayotgan kurslar va guruhlar ({reserveGroups.length})
+                    </span>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+
           <ExcelButton
             onExport={() => {
-              const exportData = (filteredLeads || []).map((l) => ({
+              const exportData = (filteredActiveLeads || []).map((l) => ({
                 "F.I.SH": l.name || "",
                 "1-Telefon": l.phone || "",
                 "2-Telefon": l.phone2 || l.parentPhone || "",
                 "Sinf": l.grade || "",
                 "Manba": l.source || "",
                 "Holat": l.status || "new",
+                "Mas'ul xodim": l.assignedStaffName || "",
+                "Zaxira guruhi": l.reserveGroupName || "",
                 "Izoh": l.note || "",
                 "Yaratilgan sana": l.createdAt ? new Date(l.createdAt).toLocaleDateString() : "",
               }));
@@ -879,9 +1255,10 @@ export function LeadsPage({
       {/* 1. SUB-VIEW: LIDLAR (MAIN BOARD & LIST) */}
       {currentView === "leads" && (
         <div className="space-y-5">
-          {/* Controls & Filter Bar */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl p-2.5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-nowrap items-center gap-2.5 overflow-x-auto w-full">
-            <div className="relative w-44 sm:w-48 shrink-0">
+          {/* Controls & Multi-Filter Bar */}
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-2.5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-wrap items-center gap-2 w-full">
+            {/* Search */}
+            <div className="relative min-w-[160px] max-w-[200px] flex-1">
               <Search
                 size={14}
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -895,19 +1272,112 @@ export function LeadsPage({
               />
             </div>
 
-            <select
-              value={sourceFilter}
-              onChange={(e) => setSourceFilter(e.target.value)}
-              className={`${INPUT_CLS} !w-auto min-w-[145px] max-w-[170px] text-xs h-9 px-3 shrink-0 cursor-pointer`}
-            >
-              <option value="all">Barcha manbalar</option>
-              {LEAD_SOURCES.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
+            {/* Source filter */}
+            {filterConfig.source !== false && (
+              <select
+                value={sourceFilter}
+                onChange={(e) => setSourceFilter(e.target.value)}
+                className={`${INPUT_CLS} !w-auto min-w-[130px] text-xs h-9 px-2.5 shrink-0 cursor-pointer`}
+              >
+                <option value="all">Barcha manbalar</option>
+                {LEAD_SOURCES.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            )}
 
+            {/* Staff filter */}
+            {filterConfig.staff !== false && (
+              <select
+                value={staffFilter}
+                onChange={(e) => setStaffFilter(e.target.value)}
+                className={`${INPUT_CLS} !w-auto min-w-[130px] text-xs h-9 px-2.5 shrink-0 cursor-pointer`}
+              >
+                <option value="all">Barcha mas'ullar</option>
+                <option value="unassigned">Mas'ulsiz lidlar</option>
+                {staffMembers.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Reserve Group filter */}
+            {filterConfig.reserveGroup !== false && (
+              <select
+                value={reserveGroupFilter}
+                onChange={(e) => setReserveGroupFilter(e.target.value)}
+                className={`${INPUT_CLS} !w-auto min-w-[130px] text-xs h-9 px-2.5 shrink-0 cursor-pointer`}
+              >
+                <option value="all">Barcha (Zaxira + Oddiy)</option>
+                <option value="has_reserve">Faqat zaxiradagilar</option>
+                <option value="no_reserve">Zaxirada bo'lmaganlar</option>
+                {reserveGroups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    Zaxira: {g.name}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Grade filter */}
+            {filterConfig.grade !== false && (
+              <select
+                value={gradeFilter}
+                onChange={(e) => setGradeFilter(e.target.value)}
+                className={`${INPUT_CLS} !w-auto min-w-[120px] text-xs h-9 px-2.5 shrink-0 cursor-pointer`}
+              >
+                <option value="all">Barcha sinflar</option>
+                {GRADE_OPTIONS.map((gr) => (
+                  <option key={gr} value={gr}>
+                    {gr}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Course filter */}
+            {filterConfig.course !== false && courses.length > 0 && (
+              <select
+                value={courseFilter}
+                onChange={(e) => setCourseFilter(e.target.value)}
+                className={`${INPUT_CLS} !w-auto min-w-[125px] text-xs h-9 px-2.5 shrink-0 cursor-pointer`}
+              >
+                <option value="all">Barcha kurslar</option>
+                {courses.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Reset active filters */}
+            {(sourceFilter !== "all" ||
+              staffFilter !== "all" ||
+              reserveGroupFilter !== "all" ||
+              gradeFilter !== "all" ||
+              courseFilter !== "all" ||
+              searchTerm) && (
+              <button
+                onClick={() => {
+                  setSourceFilter("all");
+                  setStaffFilter("all");
+                  setReserveGroupFilter("all");
+                  setGradeFilter("all");
+                  setCourseFilter("all");
+                  setSearchTerm("");
+                }}
+                className="px-2.5 py-1.5 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors font-medium shrink-0"
+              >
+                Filtrni tozalash
+              </button>
+            )}
+
+            {/* View Mode Toggle */}
             <div className="ml-auto flex items-center h-9 border border-slate-200/90 dark:border-slate-700/80 rounded-xl p-1 bg-slate-100/80 dark:bg-slate-800/80 shrink-0 gap-1">
               <button
                 onClick={() => setKanbanMode(true)}
@@ -934,202 +1404,313 @@ export function LeadsPage({
             </div>
           </div>
 
-          {/* KANBAN BOARD VIEW */}
+          {/* KANBAN BOARD VIEW (Single Row Horizontal Layout) */}
           {kanbanMode ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 w-full items-start">
-              {LEAD_STATUSES.filter((st) => st.id !== "rejected" && st.id !== "lost").map(
-                (status) => {
-                  const stageLeads = filteredActiveLeads.filter(
-                    (l) => l.status === status.id
-                  );
-                  const isOver = dragOverStatus === status.id;
-                  return (
-                    <div
-                      key={status.id}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        e.dataTransfer.dropEffect = "move";
-                        if (dragOverStatus !== status.id) setDragOverStatus(status.id);
-                      }}
-                      onDragLeave={(e) => {
-                        if (e.currentTarget.contains(e.relatedTarget)) return;
-                        if (dragOverStatus === status.id) setDragOverStatus(null);
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        const leadId = e.dataTransfer.getData("text/plain") || draggedLeadId;
-                        if (leadId) {
-                          handleStatusChange(leadId, status.id);
-                        }
-                        setDragOverStatus(null);
-                        setDraggedLeadId(null);
-                      }}
-                      className={`rounded-xl p-3 border transition-all flex flex-col min-h-[540px] min-w-0 ${
-                        isOver
-                          ? "bg-violet-50/80 dark:bg-violet-950/40 border-violet-400 dark:border-violet-600 ring-2 ring-violet-500/30 border-dashed"
-                          : "bg-slate-100/80 dark:bg-slate-900/60 border-slate-200/70 dark:border-slate-800"
-                      }`}
-                    >
-                      {/* Column Header */}
-                      <div className="flex items-center justify-between pb-2.5 px-1 border-b border-slate-200/80 dark:border-slate-800 mb-2.5">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span
-                            className="w-2.5 h-2.5 rounded-full shrink-0"
-                            style={{ backgroundColor: status.color }}
+            <div className="flex flex-row flex-nowrap overflow-x-auto gap-3.5 items-start pb-4 w-full scrollbar-thin">
+              {leadColumns.map((status) => {
+                const stageLeads = filteredActiveLeads.filter(
+                  (l) => l.status === status.id
+                );
+                const isOver = dragOverStatus === status.id;
+                return (
+                  <div
+                    key={status.id}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      if (dragOverStatus !== status.id) setDragOverStatus(status.id);
+                    }}
+                    onDragLeave={(e) => {
+                      if (e.currentTarget.contains(e.relatedTarget)) return;
+                      if (dragOverStatus === status.id) setDragOverStatus(null);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const leadId = e.dataTransfer.getData("text/plain") || draggedLeadId;
+                      if (leadId) {
+                        handleStatusChange(leadId, status.id);
+                      }
+                      setDragOverStatus(null);
+                      setDraggedLeadId(null);
+                    }}
+                    className={`w-[295px] sm:w-[315px] shrink-0 rounded-xl p-3 border transition-all flex flex-col min-h-[580px] ${
+                      isOver
+                        ? "bg-violet-50/80 dark:bg-violet-950/40 border-violet-400 dark:border-violet-600 ring-2 ring-violet-500/30 border-dashed"
+                        : "bg-slate-100/80 dark:bg-slate-900/60 border-slate-200/70 dark:border-slate-800"
+                    }`}
+                  >
+                    {/* Column Header */}
+                    <div className="flex items-center justify-between pb-2.5 px-1 border-b border-slate-200/80 dark:border-slate-800 mb-2.5 gap-1.5">
+                      <div className="flex items-center gap-2 min-w-0 flex-1 relative">
+                        {/* Status Color Dot & quick color palette */}
+                        <div className="relative shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setColorPickerColId(colorPickerColId === status.id ? null : status.id);
+                            }}
+                            className="w-3.5 h-3.5 rounded-full shrink-0 transition-transform hover:scale-125 focus:outline-none cursor-pointer ring-1 ring-black/10 dark:ring-white/20 block"
+                            style={{ backgroundColor: status.color || "#8B5CF6" }}
+                            title="Rangni o'zgartirish"
                           />
-                          <h3 className="font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-200 truncate">
+                          {colorPickerColId === status.id && (
+                            <div
+                              onClick={(e) => e.stopPropagation()}
+                              className="absolute left-0 top-5 z-30 p-1.5 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 flex items-center gap-1 animate-in fade-in zoom-in-95 duration-100"
+                            >
+                              {COLUMN_PALETTE.map((c) => (
+                                <button
+                                  key={c}
+                                  type="button"
+                                  onClick={() => handleUpdateColumnColor(status.id, c)}
+                                  className="w-4 h-4 rounded-full transition-transform hover:scale-125 cursor-pointer ring-1 ring-black/10"
+                                  style={{ backgroundColor: c }}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Title - Inline editable on click */}
+                        {editingColId === status.id ? (
+                          <input
+                            type="text"
+                            value={editingColTitle}
+                            autoFocus
+                            onChange={(e) => setEditingColTitle(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleFinishEditColumn(status.id);
+                              if (e.key === "Escape") setEditingColId(null);
+                            }}
+                            onBlur={() => handleFinishEditColumn(status.id)}
+                            className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white bg-white dark:bg-slate-800 border border-violet-500 rounded px-1.5 py-0.5 outline-none w-full shadow-2xs"
+                          />
+                        ) : (
+                          <h3
+                            onClick={() => handleStartEditColumn(status)}
+                            className="font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-200 truncate cursor-pointer hover:text-violet-600 dark:hover:text-violet-400 hover:underline decoration-dotted underline-offset-2 transition-colors flex-1"
+                            title="Nomini o'zgartirish uchun bosing"
+                          >
                             {status.label}
                           </h3>
-                        </div>
-                        <span className="px-2 py-0.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs shrink-0">
-                          {stageLeads.length}
-                        </span>
-                      </div>
-
-                      {/* Column Cards List */}
-                      <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[680px] pr-0.5">
-                        {stageLeads.map((lead) => {
-                          const courseObj = courses.find((c) => c.id === lead.courseId);
-                          const isBeingDragged = draggedLeadId === lead.id;
-                          const commentsCount = Array.isArray(lead.comments) ? lead.comments.length : (lead.note ? 1 : 0);
-                          const targetGrp = groups.find((g) => g.id === (lead.enrolledGroupId || lead.groupId));
-
-                          return (
-                            <div
-                              key={lead.id}
-                              draggable={true}
-                              onDragStart={(e) => {
-                                e.dataTransfer.setData("text/plain", lead.id);
-                                setDraggedLeadId(lead.id);
-                              }}
-                              onDragEnd={() => {
-                                setDraggedLeadId(null);
-                                setDragOverStatus(null);
-                              }}
-                              onClick={() => setSelectedLeadId(lead.id)}
-                              className={`bg-white dark:bg-slate-800 rounded-xl p-3.5 border shadow-2xs hover:shadow-md transition-all group cursor-pointer active:scale-[0.99] select-none ${
-                                isBeingDragged
-                                  ? "opacity-40 scale-[0.98] border-violet-400 ring-2 ring-violet-400/50"
-                                  : "border-slate-200/80 dark:border-slate-700/80 hover:border-violet-300 dark:hover:border-violet-600"
-                              }`}
-                            >
-                              <div className="flex items-start justify-between gap-1.5 mb-1.5">
-                                <div className="flex items-center gap-1 min-w-0">
-                                  <GripVertical size={13} className="text-slate-300 dark:text-slate-600 group-hover:text-slate-400 shrink-0" />
-                                  <h4 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white leading-snug truncate hover:text-violet-600 dark:hover:text-violet-400">
-                                    {lead.name}
-                                  </h4>
-                                </div>
-                                <span
-                                  className="text-[9px] px-1.5 py-0.5 font-bold rounded capitalize shrink-0"
-                                  style={{
-                                    backgroundColor: `${status.color}18`,
-                                    color: status.color,
-                                  }}
-                                >
-                                  {lead.source || "Forma"}
-                                </span>
-                              </div>
-
-                              {/* SINF & GURUH BADGES */}
-                              <div className="flex items-center gap-1.5 flex-wrap mb-2">
-                                {lead.grade && (
-                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/80 flex items-center gap-0.5">
-                                    <School size={10} /> {lead.grade}
-                                  </span>
-                                )}
-                                {targetGrp && (
-                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-xl bg-violet-50 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 border border-violet-200/80 dark:border-violet-800/80 flex items-center gap-0.5 truncate max-w-[140px]">
-                                    <GraduationCap size={10} className="shrink-0" /> <span className="truncate">{targetGrp.name}</span>
-                                  </span>
-                                )}
-                              </div>
-
-                              <div className="text-[11px] text-slate-600 dark:text-slate-400 space-y-1 mb-2.5">
-                                {/* 1-Phone */}
-                                <p className="flex items-center gap-1 font-mono">
-                                  <Phone size={11} className="text-violet-500 shrink-0" />
-                                  <a
-                                    href={`tel:${lead.phone}`}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="hover:text-violet-600 dark:hover:text-violet-400 hover:underline truncate font-semibold"
-                                  >
-                                    1: {lead.phone}
-                                  </a>
-                                </p>
-                                {/* 2-Phone */}
-                                {(lead.phone2 || lead.parentPhone) && (
-                                  <p className="flex items-center gap-1 font-mono text-slate-500">
-                                    <Phone size={11} className="text-indigo-400 shrink-0" />
-                                    <a
-                                      href={`tel:${lead.phone2 || lead.parentPhone}`}
-                                      onClick={(e) => e.stopPropagation()}
-                                      className="hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline truncate"
-                                    >
-                                      2: {lead.phone2 || lead.parentPhone}
-                                    </a>
-                                  </p>
-                                )}
-
-                                {commentsCount > 0 && (
-                                  <p className="flex items-center gap-1 text-[10.5px] text-slate-400 font-semibold pt-0.5">
-                                    <MessageSquare size={11} className="text-slate-400" />
-                                    <span>{commentsCount} ta izoh</span>
-                                  </p>
-                                )}
-                              </div>
-
-                              {/* Stage Transition, Edit & Reject Actions */}
-                              <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between gap-1">
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedLeadId(lead.id);
-                                  }}
-                                  className="text-[10.5px] font-bold py-1 px-2.5 bg-violet-50 hover:bg-violet-100 dark:bg-violet-950/60 dark:hover:bg-violet-900 text-violet-700 dark:text-violet-300 rounded-xl border border-violet-200 dark:border-violet-800 transition-colors flex items-center gap-1"
-                                >
-                                  <span>Profilni ochish</span>
-                                  <ArrowRight size={11} />
-                                </button>
-
-                                <div className="flex items-center gap-0.5">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleEditOpen(lead);
-                                    }}
-                                    className="p-1 text-slate-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-xl text-xs transition-colors"
-                                    title="Tezkor tahrirlash"
-                                  >
-                                    <Pencil size={13} />
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setShowRejectModal(lead);
-                                    }}
-                                    className="p-1 text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl text-xs transition-colors"
-                                    title="Ketgan deb belgilash"
-                                  >
-                                    <UserX size={13} />
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-
-                        {stageLeads.length === 0 && (
-                          <div className="py-8 text-center text-xs text-slate-400 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl">
-                            {isOver ? "Bu yerga tashlang" : "Lidlar yo'q"}
-                          </div>
                         )}
                       </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className="px-2 py-0.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs">
+                          {stageLeads.length}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteColumn(status.id)}
+                          className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
+                          title="Ustunni o'chirish"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </div>
-                  );
-                }
-              )}
+
+                    {/* Column Cards List */}
+                    <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[700px] pr-0.5">
+                      {stageLeads.map((lead) => {
+                        const courseObj = courses.find((c) => c.id === lead.courseId);
+                        const isBeingDragged = draggedLeadId === lead.id;
+                        const commentsCount = Array.isArray(lead.comments) ? lead.comments.length : (lead.note ? 1 : 0);
+                        const targetGrp = groups.find((g) => g.id === (lead.enrolledGroupId || lead.groupId));
+
+                        return (
+                          <div
+                            key={lead.id}
+                            draggable={true}
+                            onDragStart={(e) => {
+                              e.dataTransfer.setData("text/plain", lead.id);
+                              setDraggedLeadId(lead.id);
+                            }}
+                            onDragEnd={() => {
+                              setDraggedLeadId(null);
+                              setDragOverStatus(null);
+                            }}
+                            onClick={() => setSelectedLeadId(lead.id)}
+                            className={`bg-white dark:bg-slate-800 rounded-xl p-3.5 border shadow-2xs hover:shadow-md transition-all group cursor-pointer active:scale-[0.99] select-none ${
+                              isBeingDragged
+                                ? "opacity-40 scale-[0.98] border-violet-400 ring-2 ring-violet-400/50"
+                                : "border-slate-200/80 dark:border-slate-700/80 hover:border-violet-300 dark:hover:border-violet-600"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-1.5 mb-1.5">
+                              <div className="flex items-center gap-1 min-w-0">
+                                <GripVertical size={13} className="text-slate-300 dark:text-slate-600 group-hover:text-slate-400 shrink-0" />
+                                <h4 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white leading-snug truncate hover:text-violet-600 dark:hover:text-violet-400">
+                                  {lead.name}
+                                </h4>
+                              </div>
+                              <span
+                                className="text-[9px] px-1.5 py-0.5 font-bold rounded capitalize shrink-0"
+                                style={{
+                                  backgroundColor: `${status.color || "#8B5CF6"}18`,
+                                  color: status.color || "#8B5CF6",
+                                }}
+                              >
+                                {lead.source || "Forma"}
+                              </span>
+                            </div>
+
+                            {/* SINF, GURUH, ZAXIRA VA MAS'UL BADGES */}
+                            <div className="flex items-center gap-1.5 flex-wrap mb-2">
+                              {lead.grade && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600 flex items-center gap-0.5">
+                                  <School size={10} /> {lead.grade}
+                                </span>
+                              )}
+                              {targetGrp && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-xl bg-violet-50 dark:bg-violet-950/60 text-violet-700 dark:text-violet-300 border border-violet-200/80 dark:border-violet-800/80 flex items-center gap-0.5 truncate max-w-[140px]">
+                                  <GraduationCap size={10} className="shrink-0" /> <span className="truncate">{targetGrp.name}</span>
+                                </span>
+                              )}
+                              {lead.reserveGroupId && (
+                                <span
+                                  className="text-[10px] font-bold px-2 py-0.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/80 flex items-center gap-0.5 truncate max-w-[140px]"
+                                  title={`Zaxira guruhi: ${lead.reserveGroupName || ""}`}
+                                >
+                                  <Layers size={10} className="shrink-0 text-amber-500" />
+                                  <span className="truncate">{lead.reserveGroupName || "Zaxira"}</span>
+                                </span>
+                              )}
+                              {lead.assignedStaffName && (
+                                <span
+                                  className="text-[10px] font-bold px-2 py-0.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80 flex items-center gap-0.5 truncate max-w-[130px]"
+                                  title={`Mas'ul xodim: ${lead.assignedStaffName}`}
+                                >
+                                  <UserCheck size={10} className="shrink-0 text-emerald-500" />
+                                  <span className="truncate">{lead.assignedStaffName}</span>
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="text-[11px] text-slate-600 dark:text-slate-400 space-y-1 mb-2.5">
+                              {/* 1-Phone */}
+                              <p className="flex items-center gap-1 font-mono">
+                                <Phone size={11} className="text-violet-500 shrink-0" />
+                                <a
+                                  href={`tel:${lead.phone}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="hover:text-violet-600 dark:hover:text-violet-400 hover:underline truncate font-semibold"
+                                >
+                                  1: {lead.phone}
+                                </a>
+                              </p>
+                              {/* 2-Phone */}
+                              {(lead.phone2 || lead.parentPhone) && (
+                                <p className="flex items-center gap-1 font-mono text-slate-500">
+                                  <Phone size={11} className="text-indigo-400 shrink-0" />
+                                  <a
+                                    href={`tel:${lead.phone2 || lead.parentPhone}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline truncate"
+                                  >
+                                    2: {lead.phone2 || lead.parentPhone}
+                                  </a>
+                                </p>
+                              )}
+
+                              {commentsCount > 0 && (
+                                <p className="flex items-center gap-1 text-[10.5px] text-slate-400 font-semibold pt-0.5">
+                                  <MessageSquare size={11} className="text-slate-400" />
+                                  <span>{commentsCount} ta izoh</span>
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Actions bar on card */}
+                            <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between gap-1">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedLeadId(lead.id);
+                                }}
+                                className="text-[10.5px] font-bold py-1 px-2.5 bg-violet-50 hover:bg-violet-100 dark:bg-violet-950/60 dark:hover:bg-violet-900 text-violet-700 dark:text-violet-300 rounded-xl border border-violet-200 dark:border-violet-800 transition-colors flex items-center gap-1"
+                              >
+                                <span>Profil</span>
+                                <ArrowRight size={11} />
+                              </button>
+
+                              <div className="flex items-center gap-0.5">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedLeadForReserve(lead);
+                                    setShowReserveGroupModal(true);
+                                  }}
+                                  className="p-1 text-amber-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-xl text-xs transition-colors"
+                                  title="Zaxira guruhiga biriktirish"
+                                >
+                                  <Layers size={13} />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedLeadForStaff(lead);
+                                    setShowAssignStaffModal(true);
+                                  }}
+                                  className="p-1 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-xl text-xs transition-colors"
+                                  title="Mas'ul xodim tayinlash"
+                                >
+                                  <UserCheck size={13} />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditOpen(lead);
+                                  }}
+                                  className="p-1 text-slate-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/40 rounded-xl text-xs transition-colors"
+                                  title="Tahrirlash"
+                                >
+                                  <Pencil size={13} />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowRejectModal(lead);
+                                  }}
+                                  className="p-1 text-rose-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl text-xs transition-colors"
+                                  title="Ketgan deb belgilash"
+                                >
+                                  <UserX size={13} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {stageLeads.length === 0 && (
+                        <div className="py-12 text-center text-xs text-slate-400 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl">
+                          {isOver ? "Bu yerga tashlang" : "Lidlar yo'q"}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Add New Column Card at the end of single row */}
+              <div
+                onClick={handleAddInlineColumn}
+                className="w-[260px] shrink-0 min-h-[580px] border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-violet-400 dark:hover:border-violet-500 rounded-xl flex flex-col items-center justify-center p-6 text-center group cursor-pointer transition-all bg-slate-50/50 dark:bg-slate-900/30 hover:bg-violet-50/30 dark:hover:bg-violet-950/20"
+              >
+                <div className="w-11 h-11 rounded-xl bg-white dark:bg-slate-800 shadow-xs border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 group-hover:text-violet-600 group-hover:border-violet-300 mb-2.5 transition-all">
+                  <Plus size={20} />
+                </div>
+                <h4 className="font-bold text-xs text-slate-700 dark:text-slate-200 group-hover:text-violet-600 dark:group-hover:text-violet-400">
+                  Yangi ustun qo'shish
+                </h4>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Bosish orqali yangi bosqich qo'shing
+                </p>
+              </div>
             </div>
           ) : (
             /* TABLE VIEW */
@@ -1991,29 +2572,15 @@ export function LeadsPage({
 
       {/* ADD NEW LEAD MODAL - DYNAMICALLY POWERED BY CUSTOM LEAD FORM BUILDER */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
-              <div className="flex items-center gap-2.5">
-                <span className="p-2 bg-violet-100 dark:bg-violet-950/80 text-violet-600 rounded-xl">
-                  <UserPlus size={18} />
-                </span>
-                <div>
-                  <h3 className="font-black text-base text-slate-900 dark:text-white">
-                    Yangi Lid Qo'shish
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Forma konstruktori asosida sozlangan maydonlar ({configuredFormFields.filter(f => f.enabled !== false).length} ta maydon)
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center justify-center text-sm cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
+        <Modal
+          title="Yangi Lid Qo'shish"
+          onClose={() => setShowAddModal(false)}
+          wide
+        >
+          <div className="space-y-4">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Forma konstruktori asosida sozlangan maydonlar ({configuredFormFields.filter(f => f.enabled !== false).length} ta maydon)
+            </p>
 
             {formErrorMsg && (
               <div className="p-3 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 rounded-xl text-xs font-semibold text-rose-700 dark:text-rose-300 flex items-center gap-2">
@@ -2420,23 +2987,27 @@ export function LeadsPage({
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* REJECT / LOST LEAD MODAL */}
       {showRejectModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-xl max-w-md w-full p-6 shadow-xl border border-slate-200 dark:border-slate-700 space-y-4">
-            <div className="flex items-center gap-3 text-rose-600">
+        <Modal
+          title="Lidni Ketgan deb belgilash"
+          onClose={() => setShowRejectModal(null)}
+          position="center"
+        >
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 text-rose-600 bg-rose-50 dark:bg-rose-950/40 p-3 rounded-xl border border-rose-100 dark:border-rose-900/50">
               <span className="p-2 bg-rose-100 dark:bg-rose-950 rounded-xl">
                 <UserX size={20} />
               </span>
               <div>
-                <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                  Lidni Ketgan deb belgilash
-                </h3>
+                <h4 className="font-bold text-sm text-slate-900 dark:text-white">
+                  {showRejectModal.name}
+                </h4>
                 <p className="text-xs text-slate-500">
-                  {showRejectModal.name} ({showRejectModal.phone})
+                  {showRejectModal.phone}
                 </p>
               </div>
             </div>
@@ -2477,50 +3048,36 @@ export function LeadsPage({
               <button
                 type="button"
                 onClick={() => setShowRejectModal(null)}
-                className="px-4 py-2.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs rounded-xl"
+                className="px-4 py-2.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs rounded-xl cursor-pointer"
               >
                 Bekor qilish
               </button>
               <button
                 type="button"
                 onClick={handleRejectConfirm}
-                className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-xl shadow-xs"
+                className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-xl shadow-xs cursor-pointer"
               >
                 Ketgan deb saqlash
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* EDIT LEAD MODAL */}
       {showEditModal && editLeadForm && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
-              <div className="flex items-center gap-2.5">
-                <span className="p-2 bg-violet-100 dark:bg-violet-950/80 text-violet-600 rounded-xl">
-                  <Pencil size={18} />
-                </span>
-                <div>
-                  <h3 className="font-black text-base text-slate-900 dark:text-white">
-                    Lid Ma'lumotlarini Tahrirlash
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Barcha maydonlar va 2 ta telefon raqami
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  setShowEditModal(false);
-                  setEditLeadForm(null);
-                }}
-                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center justify-center text-sm"
-              >
-                ✕
-              </button>
-            </div>
+        <Modal
+          title="Lid Ma'lumotlarini Tahrirlash"
+          onClose={() => {
+            setShowEditModal(false);
+            setEditLeadForm(null);
+          }}
+          wide
+        >
+          <div className="space-y-4">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Barcha maydonlar va 2 ta telefon raqami
+            </p>
 
             {formErrorMsg && (
               <div className="p-3 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 rounded-xl text-xs font-semibold text-rose-700 dark:text-rose-300 flex items-center gap-2">
@@ -2689,51 +3246,33 @@ export function LeadsPage({
                     setShowEditModal(false);
                     setEditLeadForm(null);
                   }}
-                  className="px-4 py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl"
+                  className="px-4 py-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl cursor-pointer"
                 >
                   Bekor qilish
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs rounded-xl shadow-md"
+                  className="px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer"
                 >
                   O'zgarishlarni saqlash
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* 5. MODAL: GURUHGA QO'SHISH (ADD / ASSIGN LEAD TO GROUP) */}
       {showAssignGroupModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 w-full max-w-md shadow-2xl border border-slate-200 dark:border-slate-700 animate-in fade-in zoom-in duration-150">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
-              <div className="flex items-center gap-2.5">
-                <span className="p-2.5 bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 rounded-xl">
-                  <GraduationCap size={20} />
-                </span>
-                <div>
-                  <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                    Guruhga qo'shish
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Lidni o'quvchi sifatida mavjud guruhga biriktirish
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  setShowAssignGroupModal(null);
-                  setSelectedGroupId("");
-                }}
-                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700"
-              >
-                <XCircle size={18} />
-              </button>
-            </div>
-
+        <Modal
+          title="Guruhga qo'shish"
+          onClose={() => {
+            setShowAssignGroupModal(null);
+            setSelectedGroupId("");
+          }}
+          position="center"
+        >
+          <div className="space-y-4">
             {assignSuccessMsg ? (
               <div className="py-8 text-center space-y-3">
                 <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-300 rounded-full flex items-center justify-center mx-auto animate-bounce">
@@ -2793,14 +3332,14 @@ export function LeadsPage({
                       setShowAssignGroupModal(null);
                       setSelectedGroupId("");
                     }}
-                    className="px-4 py-2.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs rounded-xl"
+                    className="px-4 py-2.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs rounded-xl cursor-pointer"
                   >
                     Bekor qilish
                   </button>
                   <button
                     type="submit"
                     disabled={!selectedGroupId || assigningGroup || (opData?.groups || []).length === 0}
-                    className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition-colors"
+                    className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
                     {assigningGroup ? (
                       <>
@@ -2818,7 +3357,78 @@ export function LeadsPage({
               </form>
             )}
           </div>
-        </div>
+        </Modal>
+      )}
+
+      {/* 1. Reserve Group Management Modal */}
+      {showReserveGroupModal && (
+        <LeadReserveGroupModal
+          isOpen={showReserveGroupModal}
+          onClose={() => {
+            setShowReserveGroupModal(false);
+            setSelectedLeadForReserve(null);
+          }}
+          lead={selectedLeadForReserve}
+          allLeads={leads}
+          reserveGroups={reserveGroups}
+          onSaveReserveGroups={handleSaveReserveGroups}
+          onAssignLeadToReserve={handleAssignLeadToReserve}
+        />
+      )}
+
+      {/* 3. Assign Staff Modal */}
+      {showAssignStaffModal && (
+        <LeadAssignStaffModal
+          isOpen={showAssignStaffModal}
+          onClose={() => {
+            setShowAssignStaffModal(false);
+            setSelectedLeadForStaff(null);
+          }}
+          lead={selectedLeadForStaff}
+          allLeads={leads}
+          staffMembers={staffMembers}
+          onAssign={handleAssignStaff}
+        />
+      )}
+
+      {/* 4. Bulk SMS Modal */}
+      {showBulkSmsModal && (
+        <LeadBulkSmsModal
+          isOpen={showBulkSmsModal}
+          onClose={() => setShowBulkSmsModal(false)}
+          leads={filteredActiveLeads}
+          columns={leadColumns}
+          staffMembers={staffMembers}
+          reserveGroups={reserveGroups}
+          onSendSms={handleSendBulkSms}
+        />
+      )}
+
+      {/* 5. Filter Visibility Settings Modal */}
+      {showFilterSettingsModal && (
+        <LeadFilterSettingsModal
+          isOpen={showFilterSettingsModal}
+          onClose={() => setShowFilterSettingsModal(false)}
+          filterConfig={filterConfig}
+          onSave={handleSaveFilterConfig}
+        />
+      )}
+
+      {/* 6. Standard Animated Delete Column Confirmation Modal */}
+      {columnToDelete && (
+        <ConfirmModal
+          title="Ustunni o'chirish"
+          message={
+            leads.filter((l) => l.status === columnToDelete.id).length > 0
+              ? `«${columnToDelete.label}» bosqichida ${leads.filter((l) => l.status === columnToDelete.id).length} ta lid mavjud. Ular avtomatik tarzda keyingi ustunga ko'chiriladi va ustun o'chiriladi. Davom etasizmi?`
+              : `Rostdan ham «${columnToDelete.label}» bosqich ustunini butunlay o'chirmoqchimisiz?`
+          }
+          confirmText="Ha, o'chirish"
+          cancelText="Bekor qilish"
+          danger={true}
+          onConfirm={handleConfirmDeleteColumn}
+          onCancel={() => setColumnToDelete(null)}
+        />
       )}
     </div>
   );

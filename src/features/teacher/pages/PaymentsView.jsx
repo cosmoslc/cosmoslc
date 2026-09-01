@@ -12,17 +12,33 @@ export function PaymentsView({ teacher, directorData, appData }) {
   const students = appData.students || [];
 
   // Teacher's groups
-  const myGroups = groups.filter(g => g.teacherHrId === teacher.id);
-  const myGroupIds = myGroups.map(g => g.id);
+  const myGroups = groups.filter(g => String(g.teacherHrId || g.teacherId) === String(teacher.id));
+  const myGroupIds = myGroups.map(g => String(g.id));
 
   // Payments for this month in teacher's groups
   const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`;
-  const monthPayments = payments.filter(p => myGroupIds.includes(p.groupId) && p.month === monthKey);
+  const monthPayments = payments.filter(p => {
+    if (!myGroupIds.includes(String(p.groupId))) return false;
+    const pMonth = p.month || (p.date ? p.date.slice(0, 7) : '');
+    return pMonth === monthKey;
+  });
 
-  // Teacher's share (percent of revenue)
-  const sharePercent = teacher.revenueSharePercent || 0;
-  const monthRevenue = monthPayments.reduce((s, p) => s + (p.amount || 0), 0);
-  const myShare = (monthRevenue * sharePercent) / 100;
+  // Calculate teacher's total share (per group percent or default sharePercent)
+  const defaultSharePercent = teacher.revenueSharePercent || 0;
+  let totalRevenue = 0;
+  let myShare = 0;
+
+  myGroups.forEach(g => {
+    const gPayments = monthPayments.filter(p => String(p.groupId) === String(g.id));
+    const gRev = gPayments.reduce((s, p) => s + Number(p.amount || 0), 0);
+    totalRevenue += gRev;
+    const gPercent = Number(g.teacherSalaryPercent ?? defaultSharePercent);
+    if (g.teacherSalaryType === 'fixed' || teacher.salaryType === 'fixed') {
+      myShare += Number(g.teacherSalaryFixed ?? teacher.fixedSalary ?? 0);
+    } else {
+      myShare += Math.round((gRev * gPercent) / 100);
+    }
+  });
 
   // Salary history
   const salaryHistory = teacherPayments.filter(p => p.month === monthKey);
@@ -97,9 +113,16 @@ export function PaymentsView({ teacher, directorData, appData }) {
         </div>
         <div className="divide-y divide-slate-100">
           {myGroups.map(g => {
-            const groupPayments = payments.filter(p => p.groupId === g.id && p.month === monthKey);
+            const groupPayments = payments.filter(p => {
+              if (String(p.groupId) !== String(g.id)) return false;
+              const pMonth = p.month || (p.date ? p.date.slice(0, 7) : '');
+              return pMonth === monthKey;
+            });
             const groupRevenue = groupPayments.reduce((s, p) => s + (p.amount || 0), 0);
-            const groupShare = (groupRevenue * sharePercent) / 100;
+            const groupPercent = Number(g.teacherSalaryPercent ?? defaultSharePercent);
+            const groupShare = g.teacherSalaryType === 'fixed' || teacher.salaryType === 'fixed'
+              ? Number(g.teacherSalaryFixed ?? teacher.fixedSalary ?? 0)
+              : Math.round((groupRevenue * groupPercent) / 100);
             const gIdStr = String(g.id);
             const groupStudents = (students || []).filter(s =>
               (s.groupIds || []).some(id => String(id) === gIdStr)
@@ -108,7 +131,9 @@ export function PaymentsView({ teacher, directorData, appData }) {
               <div key={g.id} className="flex items-center justify-between p-4">
                 <div>
                   <p className="font-medium text-sm">{g.name}</p>
-                  <p className="text-xs text-slate-500">{groupStudents.length} o'quvchi · {groupPayments.length} to'lov</p>
+                  <p className="text-xs text-slate-500">
+                    {groupStudents.length} o'quvchi · {groupPayments.length} to'lov {g.teacherSalaryType !== 'fixed' && `(${groupPercent}%)`}
+                  </p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-semibold text-slate-700">{money(groupShare)} so'm</p>

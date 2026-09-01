@@ -259,6 +259,52 @@ export function AppShell({
   });
 
   const [pinnedFlyout, setPinnedFlyout] = useState(null);
+
+  const PARENT_MENU_MAP = {
+    payments: "finance",
+    additionalIncome: "finance",
+    salaries: "finance",
+    expenses: "finance",
+    debtors: "finance",
+    groupReports: "reports",
+    teacherReports: "reports",
+    studentReports: "reports",
+    leadReports: "reports",
+    debtorReports: "reports",
+    discountReports: "reports",
+    lidConversionReport: "reports",
+    smsReport: "reports",
+    dailySummaryReport: "reports",
+    financialReports: "reports",
+    archivedStudents: "archive",
+    archivedGroups: "archive",
+    archivedTeachers: "archive",
+    archivedLeads: "archive",
+    archiveFinance: "archive",
+    rooms: "office",
+    courses: "office",
+    lidCategory: "office",
+    lidStatus: "office",
+    examList: "academic",
+    examResults: "academic",
+    certificateTemplate: "academic",
+    issuedCertificates: "academic",
+    branches: "settings",
+    ceoSettings: "settings",
+    adminManagement: "settings",
+    roles: "settings",
+    integrations: "settings",
+    trash: "settings",
+    sms: "settings",
+    forms: "settings",
+  };
+
+  useEffect(() => {
+    const parentKey = PARENT_MENU_MAP[view];
+    if (parentKey && !collapsed) {
+      setOpenMenus((prev) => ({ ...prev, [parentKey]: true }));
+    }
+  }, [view, collapsed]);
   const navGroupRef = useRef(null);
   const indicatorRef = useNavIndicator([view, collapsed, openMenus, pinnedFlyout], navGroupRef);
 

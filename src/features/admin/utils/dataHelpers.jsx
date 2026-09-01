@@ -256,6 +256,8 @@ export function getTeacherPayStats(
       salaryPaid: 0,
       totalPaid: 0,
       remaining: 0,
+      collectedRevenue: 0,
+      payments: [],
     };
   }
 
@@ -264,36 +266,90 @@ export function getTeacherPayStats(
     (g) => String(g.teacherHrId || g.teacherId) === tIdStr,
   );
 
+  const allPayments = directorData?.payments || opData?.payments || [];
+  const targetMonth = month || new Date().toISOString().slice(0, 7);
+
+  let totalCollectedRevenue = 0;
+  const groupBreakdown = [];
+
   const calculateGroupPay = (g) => {
     const gIdStr = String(g.id);
-    const studentCount = (opData?.students || []).filter((s) =>
-      (s.groupIds || []).some((id) => String(id) === gIdStr),
-    ).length;
-    const effectivePercent = Number(
-      g.teacherSalaryPercent ?? teacher.revenueSharePercent ?? 0,
-    );
-    const effectiveFixed = Number(
-      g.teacherSalaryFixed ?? teacher.fixedSalary ?? 0,
+    const hasGroupPercent =
+      g.teacherSalaryPercent !== undefined &&
+      g.teacherSalaryPercent !== null &&
+      g.teacherSalaryPercent !== "";
+    const effectivePercent = hasGroupPercent
+      ? Number(g.teacherSalaryPercent)
+      : Number(teacher.revenueSharePercent ?? 0);
+
+    const hasGroupFixed =
+      g.teacherSalaryFixed !== undefined &&
+      g.teacherSalaryFixed !== null &&
+      g.teacherSalaryFixed !== "";
+    const effectiveFixed = hasGroupFixed
+      ? Number(g.teacherSalaryFixed)
+      : Number(teacher.fixedSalary ?? 0);
+
+    const effectiveType =
+      g.teacherSalaryType || teacher.salaryType || "percent";
+
+    // Faqatgina ushbu oyda guruhga haqiqatda tushgan to'lovlar
+    const groupMonthPayments = allPayments.filter((p) => {
+      if (String(p.groupId) !== gIdStr) return false;
+      const pMonth = p.month || (p.date ? p.date.slice(0, 7) : "");
+      if (targetMonth && pMonth && pMonth !== targetMonth) return false;
+      return true;
+    });
+
+    const collectedRevenue = groupMonthPayments.reduce(
+      (sum, p) => sum + Number(p.amount || 0),
+      0,
     );
 
-    if (g.teacherSalaryType === "fixed" || teacher.salaryType === "fixed") {
-      return effectiveFixed || 0;
+    totalCollectedRevenue += collectedRevenue;
+
+    let groupPay = 0;
+    if (effectiveType === "fixed") {
+      groupPay = effectiveFixed || 0;
+    } else if (effectiveType === "per_student") {
+      const perStudentRate = Number(teacher.perStudentSalary || 0);
+      const paidStudentIds = new Set(
+        groupMonthPayments
+          .filter((p) => Number(p.amount || 0) > 0)
+          .map((p) => String(p.studentId)),
+      );
+      groupPay = paidStudentIds.size * perStudentRate;
+    } else {
+      // Foizli ulush: aynan guruh uchun belgilangan yoki o'qituvchining foizi bo'yicha tushumdan hisoblanadi
+      groupPay = Math.round(collectedRevenue * (effectivePercent / 100));
     }
 
-    const revenue = Number(g.price || 0) * studentCount || 0;
-    return Math.round(revenue * (effectivePercent / 100));
+    groupBreakdown.push({
+      groupId: g.id,
+      groupName: g.name,
+      salaryType: effectiveType,
+      percent: effectivePercent,
+      fixedSalary: effectiveFixed,
+      collectedRevenue,
+      pay: groupPay,
+      paymentsCount: groupMonthPayments.length,
+    });
+
+    return groupPay;
   };
 
   const expectedPay = groups.reduce((sum, g) => sum + calculateGroupPay(g), 0);
   const payments = (directorData?.teacherPayments || []).filter(
-    (p) => p.teacherHRId === teacher.id && p.month === month,
+    (p) =>
+      (String(p.teacherHRId) === tIdStr || String(p.teacherHrId) === tIdStr) &&
+      (!targetMonth || p.month === targetMonth),
   );
   const advances = payments
     .filter((p) => p.type === "advance")
-    .reduce((s, p) => s + p.amount, 0);
+    .reduce((s, p) => s + Number(p.amount || 0), 0);
   const salaryPaid = payments
     .filter((p) => p.type === "salary")
-    .reduce((s, p) => s + p.amount, 0);
+    .reduce((s, p) => s + Number(p.amount || 0), 0);
   const totalPaid = advances + salaryPaid;
   return {
     expectedPay,
@@ -301,6 +357,8 @@ export function getTeacherPayStats(
     salaryPaid,
     totalPaid,
     remaining: Math.max(0, expectedPay - totalPaid),
+    collectedRevenue: totalCollectedRevenue,
+    groupBreakdown,
     payments,
   };
 }

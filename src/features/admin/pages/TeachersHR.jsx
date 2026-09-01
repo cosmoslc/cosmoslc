@@ -390,10 +390,21 @@ export function TeachersHR({
     const exportData = filteredTeachers.map((t) => {
       const { groups } = getTeacherGroupsAndStudents(t.id);
       const groupsListStr = groups.map((g) => g.name).join(", ");
+      const avgPercent =
+        groups.length > 0
+          ? Math.round(
+              groups
+                .map((g) => Number(g.teacherSalaryPercent ?? t.revenueSharePercent ?? 0))
+                .reduce((sum, p) => sum + p, 0) / groups.length
+            )
+          : Number(t.revenueSharePercent ?? 0);
+
       const salaryStr =
         t.salaryType === "fixed"
           ? `${t.fixedSalary || 0} [Fix]`
-          : `${t.revenueSharePercent || 50} [Foiz]`;
+          : t.salaryType === "per_student"
+          ? `${t.perStudentSalary || 0} [O'quvchi bay]`
+          : `${avgPercent}% [Foiz]`;
 
       return {
         Name: t.name || "",
@@ -853,7 +864,18 @@ export function TeachersHR({
                               ? `${money(t.fixedSalary || 0)} so'm (Fixed)`
                               : t.salaryType === "per_student"
                               ? `${money(t.perStudentSalary || 0)} so'm / o'quvchi`
-                              : `${t.revenueSharePercent || 0}% ulush`}
+                              : (() => {
+                                  if (groups.length > 0) {
+                                    const groupPercents = groups.map((g) =>
+                                      Number(g.teacherSalaryPercent ?? t.revenueSharePercent ?? 0)
+                                    );
+                                    const avgPercent = Math.round(
+                                      groupPercents.reduce((sum, p) => sum + p, 0) / groupPercents.length
+                                    );
+                                    return `${avgPercent}% ulush`;
+                                  }
+                                  return `${t.revenueSharePercent ?? 0}% ulush`;
+                                })()}
                           </div>
                           {activeTab === "teachers" && (
                             <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">

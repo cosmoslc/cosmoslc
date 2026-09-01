@@ -1,4 +1,5 @@
 import { useState, isValidElement } from "react";
+import { createPortal } from "react-dom";
 import { Star, X, ChevronRight, Bell, Loader2 } from "lucide-react";
 import {
   BG_GRADIENT,
@@ -282,10 +283,12 @@ export function PhoneInput({ value, onChange, autoFocus, onKeyDown }) {
 }
 
 export function Modal({ title, onClose, children, wide, position = "right" }) {
+  if (typeof document === "undefined") return null;
+
   if (position === "center") {
-    return (
+    return createPortal(
       <div
-        className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-slate-950/50 dark:bg-slate-950/70 backdrop-blur-md animate-backdrop-fade"
+        className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/50 dark:bg-slate-950/70 backdrop-blur-md animate-backdrop-fade"
         onClick={onClose}
       >
         <div
@@ -302,13 +305,14 @@ export function Modal({ title, onClose, children, wide, position = "right" }) {
           </div>
           {children}
         </div>
-      </div>
+      </div>,
+      document.body
     );
   }
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[999] flex justify-end bg-slate-950/50 dark:bg-slate-950/70 backdrop-blur-md animate-backdrop-fade"
+      className="fixed inset-0 z-[9999] flex justify-end bg-slate-950/50 dark:bg-slate-950/70 backdrop-blur-md animate-backdrop-fade"
       onClick={onClose}
     >
       <div
@@ -327,34 +331,38 @@ export function Modal({ title, onClose, children, wide, position = "right" }) {
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
 export function ConfirmModal({ message, onConfirm, onCancel }) {
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md"
       onClick={onCancel}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         className={`${GLASS} rounded-xl p-6 w-full max-w-sm`}
       >
-        <p className="text-slate-900 mb-5">{message}</p>
+        <p className="text-slate-900 dark:text-white mb-5">{message}</p>
         <div className="flex gap-3">
           <button onClick={onCancel} className={`${BTN_GHOST} flex-1`}>
             Yo'q, bekor
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 bg-rose-500 hover:bg-rose-600 text-white rounded-xl px-4 py-2.5 text-sm transition-all"
+            className="flex-1 bg-rose-500 hover:bg-rose-600 text-white rounded-xl px-4 py-2.5 text-sm transition-all cursor-pointer"
           >
             Ha, tasdiqlash
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

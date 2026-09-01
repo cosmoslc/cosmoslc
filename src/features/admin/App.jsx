@@ -634,7 +634,7 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
         }
       }
       let res;
-      if (groupData.id && opData?.groups?.some((g) => String(g.id) === String(groupData.id))) {
+      if (groupData.id) {
         res = await api.updateGroup(groupData.id, groupData);
       } else {
         res = await api.addGroup(groupData);
@@ -1606,14 +1606,14 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
 
         {modal?.type === "groupForm" && (
           <GroupFormModal
-            editing={modal.group}
-            initialCourseId={modal.courseId}
+            editing={modal.group || modal.editing}
+            initialCourseId={modal.courseId || modal.group?.courseId || modal.editing?.courseId}
             courses={directorData?.courses || []}
             teachers={directorData?.teachersHR || directorData?.teachers || opData?.teachers || []}
             rooms={opData?.rooms || directorData?.rooms || []}
             groups={opData?.groups || []}
             branches={directorData?.branches || []}
-            defaultBranchId={currentBranchId}
+            defaultBranchId={currentBranchId || modal.branchId || modal.group?.branchId || modal.editing?.branchId}
             onSubmit={handleSaveGroup}
             onClose={() => setModal(null)}
           />
@@ -1639,6 +1639,14 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
             }
             openStudentProfile={(student) =>
               setModal({ type: "studentProfile", student })
+            }
+            onEditGroup={(grp) =>
+              setModal({
+                type: "groupForm",
+                editing: grp,
+                group: grp,
+                courseId: grp?.courseId,
+              })
             }
             onSaveGroup={handleSaveGroup}
             onDeleteGroup={handleDeleteGroup}

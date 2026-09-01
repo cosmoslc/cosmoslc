@@ -10,6 +10,12 @@ export function useNavIndicator(dependencies = [], containerRef) {
   const prevPosRef = useRef(null);
 
   useEffect(() => {
+    // Reset position history on dependency change (e.g. collapse toggle)
+    prevPosRef.current = null;
+    if (indicatorRef.current) {
+      indicatorRef.current.getAnimations().forEach((a) => a.cancel());
+    }
+
     const updatePosition = () => {
       const container = containerRef?.current;
       const indicator = indicatorRef?.current;
@@ -66,7 +72,7 @@ export function useNavIndicator(dependencies = [], containerRef) {
       indicator.style.height = `${toH}px`;
       indicator.style.borderRadius = toRadius;
 
-      // First time or same position
+      // First time or same position or dependency toggle
       if (!prev || (Math.abs(prev.y - toY) < 1 && Math.abs(prev.x - toX) < 1)) {
         indicator.style.transform = `translate3d(${toX}px, ${toY}px, 0) scaleX(1) scaleY(1)`;
         return;
@@ -106,12 +112,31 @@ export function useNavIndicator(dependencies = [], containerRef) {
       );
     };
 
-    const frameId = requestAnimationFrame(updatePosition);
+    let animId;
+    const start = performance.now();
+    const tick = (now) => {
+      updatePosition();
+      if (now - start < 350) {
+        animId = requestAnimationFrame(tick);
+      }
+    };
+    animId = requestAnimationFrame(tick);
+
     window.addEventListener('resize', updatePosition);
 
+    const container = containerRef?.current;
+    let observer;
+    if (container && typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(() => {
+        updatePosition();
+      });
+      observer.observe(container);
+    }
+
     return () => {
-      cancelAnimationFrame(frameId);
+      if (animId) cancelAnimationFrame(animId);
       window.removeEventListener('resize', updatePosition);
+      if (observer) observer.disconnect();
     };
   }, dependencies);
 

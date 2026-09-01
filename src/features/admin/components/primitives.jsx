@@ -1,4 +1,5 @@
 import { isValidElement, useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Loader2, X, Bell, Star, Trash2, AlertTriangle } from "lucide-react";
 
 let lastTriggerInfo = {
@@ -304,10 +305,12 @@ export function PhoneInput({ value, onChange, autoFocus, onKeyDown }) {
 }
 
 export function Modal({ title, onClose, children, wide, position = "right" }) {
+  if (typeof document === "undefined") return null;
+
   if (position === "center") {
-    return (
+    return createPortal(
       <div
-        className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-slate-950/50 dark:bg-slate-950/70 backdrop-blur-md animate-backdrop-fade"
+        className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/50 dark:bg-slate-950/70 backdrop-blur-md animate-backdrop-fade"
         onClick={onClose}
       >
         <div
@@ -324,13 +327,14 @@ export function Modal({ title, onClose, children, wide, position = "right" }) {
           </div>
           {children}
         </div>
-      </div>
+      </div>,
+      document.body
     );
   }
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[999] flex justify-end bg-slate-950/50 dark:bg-slate-950/70 backdrop-blur-md animate-backdrop-fade"
+      className="fixed inset-0 z-[9999] flex justify-end bg-slate-950/50 dark:bg-slate-950/70 backdrop-blur-md animate-backdrop-fade"
       onClick={onClose}
     >
       <div
@@ -349,7 +353,8 @@ export function Modal({ title, onClose, children, wide, position = "right" }) {
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -584,19 +589,19 @@ export function ConfirmModal({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [handleClose, onCancel]);
 
-  return (
+  const modalContent = (
     <div data-confirm-modal="true">
       <div
         ref={overlayRef}
         data-confirm-modal="true"
-        className="confirm-modal-overlay fixed inset-0 z-[100] bg-slate-950/60 dark:bg-slate-950/75 backdrop-blur-md opacity-0 invisible transition-all duration-350 ease-[cubic-bezier(.32,.72,0,1)] [&.visible]:opacity-100 [&.visible]:visible"
+        className="confirm-modal-overlay fixed inset-0 z-[9998] bg-slate-950/60 dark:bg-slate-950/75 backdrop-blur-md opacity-0 invisible transition-all duration-350 ease-[cubic-bezier(.32,.72,0,1)] [&.visible]:opacity-100 [&.visible]:visible"
         onClick={() => handleClose(onCancel)}
       />
       <div
         ref={panelRef}
         data-confirm-modal="true"
         onClick={(e) => e.stopPropagation()}
-        className="confirm-modal-panel fixed z-[101] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-[26px] overflow-hidden opacity-0 pointer-events-none flex items-center justify-center shadow-[0_30px_70px_-20px_rgba(15,20,28,0.4)] [&.visible]:pointer-events-auto"
+        className="confirm-modal-panel fixed z-[9999] bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-[26px] overflow-hidden opacity-0 pointer-events-none flex items-center justify-center shadow-[0_30px_70px_-20px_rgba(15,20,28,0.4)] [&.visible]:pointer-events-auto"
       >
         <div ref={contentRef} className="shrink-0 origin-center">
           <div
@@ -656,6 +661,8 @@ export function ConfirmModal({
       </div>
     </div>
   );
+
+  return typeof document !== "undefined" ? createPortal(modalContent, document.body) : modalContent;
 }
 
 export function ToastStack({ toasts, onDismiss }) {
