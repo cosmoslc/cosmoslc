@@ -18,6 +18,7 @@ import {
   Sparkles,
   BookOpen,
   ArrowRight,
+  ArrowLeft,
   Pencil,
   Check,
   Flame,
@@ -43,9 +44,9 @@ import {
 } from "../utils/dataHelpers";
 import { JS_DAY_NAMES, MONTHS_UZ, WEEK_DAYS } from "../utils/constants";
 import * as api from "../../../shared/api/index";
-import { RecordPaymentModal } from "./RecordPaymentModal";
+import { RecordPaymentModal } from "../modals/RecordPaymentModal";
 
-export function GroupProfileModal({
+export function GroupProfilePage({
   group,
   directorData,
   opData,
@@ -553,13 +554,8 @@ export function GroupProfileModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl w-full max-w-6xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+    <div className="w-full h-full max-w-7xl mx-auto space-y-6 animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col shadow-sm">
         {/* Top Header */}
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between flex-wrap gap-3 bg-slate-50/50 dark:bg-slate-900/50">
           <div className="flex items-center gap-3">
@@ -608,15 +604,16 @@ export function GroupProfileModal({
             )}
             <button
               onClick={onClose}
-              className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-sm font-bold"
             >
-              <X size={20} />
+              <ArrowLeft size={18} />
+              Ortga
             </button>
           </div>
         </div>
 
-        {/* Scrollable Body */}
-        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
+        {/* Main Body */}
+        <div className="p-5 sm:p-6 space-y-6">
           {/* 1. FIRST ROW: 7 KEY CARDS */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
             {/* Card 1: O'qituvchi */}

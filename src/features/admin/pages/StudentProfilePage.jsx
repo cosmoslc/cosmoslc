@@ -45,6 +45,7 @@ import {
   Snowflake,
   Camera,
   Upload,
+  LogOut,
 } from "lucide-react";
 import {
   INPUT_CLS,
@@ -1184,6 +1185,101 @@ export function StudentProfilePage({
     });
   };
 
+  const handleUnenrollAndRefund = async (grp) => {
+    const month = thisMonthKey();
+    const billingMode = directorData?.centerSettings?.billingMode || "invoice";
+    const excusedAbsenceRefund = directorData?.centerSettings?.excusedAbsenceRefund || false;
+    
+    let refundAmount = 0;
+    let otilganDarslar = 0;
+    let jamiTolanganSumma = 0;
+    
+    if (billingMode === "per_lesson") {
+      refundAmount = Number(currentStudent.balance || 0) > 0 ? Number(currentStudent.balance) : 0;
+    } else {
+      const groupAttendances = (opData?.attendance || []).filter(a => String(a.groupId) === String(grp.id));
+      groupAttendances.forEach(a => {
+        if (a.date.startsWith(month)) {
+          const rec = a.records?.[currentStudent.id];
+          if (rec) {
+            if (rec.status === "present" || rec.status === "late") {
+              otilganDarslar++;
+            } else if (rec.status === "absent") {
+              if (excusedAbsenceRefund && rec.reason) {
+                // do not count
+              } else {
+                otilganDarslar++;
+              }
+            }
+          }
+        }
+      });
+      
+      const membership = currentStudent?.groupMemberships?.[grp.id] || currentStudent?.groupMemberships?.[String(grp.id)];
+      const fullPrice = membership?.agreedPrice ? Number(membership.agreedPrice) : Number(grp.price || 0);
+      const totalLessons = getMonthLessonDates(month, grp.days || []).length || 12;
+      const pricePerLesson = totalLessons > 0 ? Math.round(fullPrice / totalLessons) : 0;
+      const foydalanilganSumma = otilganDarslar * pricePerLesson;
+      
+      const groupPayments = (directorData?.payments || []).filter(
+        p => String(p.studentId) === String(currentStudent.id) && String(p.groupId) === String(grp.id) && p.month === month
+      );
+      jamiTolanganSumma = groupPayments.reduce((sum, p) => sum + (Number(p.paidAmount) || Number(p.amount) || 0) + (Number(p.usedBalance) || 0), 0);
+      
+      refundAmount = jamiTolanganSumma - foydalanilganSumma;
+      if (refundAmount < 0) refundAmount = 0;
+    }
+
+    setConfirmModalState({
+      title: "Guruhni tark etish (Refund bilan)",
+      message: `Haqiqatan ham o'quvchini guruhdan chiqarib, refund qayd etmoqchimisiz?
+${billingMode === 'invoice' ? `\nO'tilgan darslar: ${otilganDarslar} ta.\nHisoblangan Refund summasi: ${money(refundAmount)} so'm.` : `\nHisoblangan Refund summasi (balansdan): ${money(refundAmount)} so'm.`}`,
+      onConfirm: async () => {
+        try {
+          const targetGid = String(grp.id);
+          const remaining = (currentStudent.groupIds || []).map(String).filter(id => id !== targetGid);
+          const currentMemberships = { ...(currentStudent?.groupMemberships || {}) };
+          delete currentMemberships[targetGid];
+          
+          const updatedData = {
+            groupIds: remaining,
+            groupMemberships: currentMemberships,
+            status: "unenrolled",
+          };
+          
+          if (billingMode === "per_lesson" && refundAmount > 0) {
+            updatedData.balance = 0;
+          }
+
+          setLocalStudent(prev => ({ ...prev, ...updatedData }));
+          await api.updateStudent(currentStudent.id, updatedData);
+          
+          if (refundAmount > 0) {
+             await api.recordPayment({
+               studentId: currentStudent.id,
+               groupId: grp.id,
+               amount: -refundAmount,
+               paidAmount: -refundAmount,
+               method: "cash", // Assuming cash refund
+               note: "Refund - Guruhni tark etish (Unenroll)",
+               date: new Date().toISOString().slice(0, 10),
+               month,
+             });
+          }
+
+          if (onRemoveFromGroup) onRemoveFromGroup(currentStudent.id, grp.id);
+          if (onUpdateStudent) await onUpdateStudent(currentStudent.id, updatedData);
+          
+          setSaveSuccessMsg("O'quvchi guruhdan chiqarildi va refund qayd etildi!");
+          setTimeout(() => setSaveSuccessMsg(""), 2500);
+        } catch(err) {
+          console.error(err);
+          setErrorMsg("Xatolik yuz berdi");
+        }
+      }
+    });
+  };
+
   return (
     <div className="min-h-screen pb-20 space-y-6 text-slate-900 dark:text-slate-100 animate-in fade-in duration-200">
       {/* Notifications */}
@@ -1648,6 +1744,18 @@ export function StudentProfilePage({
                                       <div className="h-px bg-slate-100 dark:bg-slate-800 my-1" />
 
                                       {/* 6. O'chirish */}
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setOpenGroupMenuId(null);
+                                          handleUnenrollAndRefund(grp);
+                                        }}
+                                        className="w-full px-3.5 py-2 text-left hover:bg-orange-50 dark:hover:bg-orange-950/40 text-orange-600 dark:text-orange-400 flex items-center gap-2.5 font-semibold transition-colors cursor-pointer"
+                                      >
+                                        <LogOut size={14} className="text-orange-500 shrink-0" />
+                                        <span>Tark etish (Refund)</span>
+                                      </button>
+                                      
                                       <button
                                         type="button"
                                         onClick={() => {

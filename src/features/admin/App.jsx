@@ -110,7 +110,7 @@ import { ManagerPayrollModal } from "./modals/ManagerPayrollModal";
 import { CourseFormModal } from "./modals/CourseFormModal";
 import { GroupFormModal } from "./modals/GroupFormModal";
 import { ImportGroupsModal } from "./modals/ImportGroupsModal";
-import { GroupProfileModal } from "./modals/GroupProfileModal";
+import { GroupProfilePage } from "./pages/GroupProfilePage";
 import { RecordPaymentModal } from "./modals/RecordPaymentModal";
 import { AddStudentModal } from "./modals/AddStudentModal";
 import { ImportStudentsModal } from "./modals/ImportStudentsModal";
@@ -149,6 +149,8 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
     }
   }, [currentBranchId]);
   const [modal, setModal] = useState(null);
+  const [selectedGroupProfile, setSelectedGroupProfile] = useState(null);
+  const [previousView, setPreviousView] = useState(null);
   const [toasts, setToasts] = useState([]);
   const [notifLog, setNotifLog] = useState([]);
   const [now, setNow] = useState(new Date());
@@ -1047,7 +1049,7 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
                   setModal({ type: "studentProfile", student })
                 }
                 openGroupProfile={(group) =>
-                  setModal({ type: "groupProfile", group })
+                  { setPreviousView(view); setSelectedGroupProfile(group); setView("groupProfile"); }
                 }
               />
             )}
@@ -1182,8 +1184,36 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
                 setModal({ type: "groupForm", group })
               }
               openGroupProfile={(group) =>
-                setModal({ type: "groupProfile", group })
+                { setPreviousView(view); setSelectedGroupProfile(group); setView("groupProfile"); }
               }
+              onDeleteGroup={handleDeleteGroup}
+            />
+          )}
+
+          {view === "groupProfile" && selectedGroupProfile && (
+            <GroupProfilePage
+              group={selectedGroupProfile}
+              directorData={directorData}
+              opData={opData}
+              onClose={() => {
+                setView(previousView || "groups");
+                setSelectedGroupProfile(null);
+              }}
+              openPaymentModal={(student, group) =>
+                setModal({ type: "recordPayment", student, group })
+              }
+              openStudentProfile={(student) =>
+                setModal({ type: "studentProfile", student })
+              }
+              onEditGroup={(grp) =>
+                setModal({
+                  type: "groupForm",
+                  editing: grp,
+                  group: grp,
+                  courseId: grp?.courseId,
+                })
+              }
+              onSaveGroup={handleSaveGroup}
               onDeleteGroup={handleDeleteGroup}
             />
           )}
@@ -1628,30 +1658,6 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
           />
         )}
 
-        {modal?.type === "groupProfile" && (
-          <GroupProfileModal
-            group={modal.group}
-            directorData={directorData}
-            opData={opData}
-            onClose={() => setModal(null)}
-            openPaymentModal={(student, group) =>
-              setModal({ type: "recordPayment", student, group })
-            }
-            openStudentProfile={(student) =>
-              setModal({ type: "studentProfile", student })
-            }
-            onEditGroup={(grp) =>
-              setModal({
-                type: "groupForm",
-                editing: grp,
-                group: grp,
-                courseId: grp?.courseId,
-              })
-            }
-            onSaveGroup={handleSaveGroup}
-            onDeleteGroup={handleDeleteGroup}
-          />
-        )}
 
         {modal?.type === "roomForm" && (
           <RoomFormModal

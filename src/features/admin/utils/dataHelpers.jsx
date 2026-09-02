@@ -310,17 +310,38 @@ export function getTeacherPayStats(
 
     let groupPay = 0;
     if (effectiveType === "fixed") {
+      // Tur 1: Fiksirlangan
       groupPay = effectiveFixed || 0;
     } else if (effectiveType === "per_student") {
+      // Tur 3: Har bir o'quvchi uchun belgilangan summa (proporsional to'lov)
       const perStudentRate = Number(teacher.perStudentSalary || 0);
-      const paidStudentIds = new Set(
-        groupMonthPayments
-          .filter((p) => Number(p.amount || 0) > 0)
-          .map((p) => String(p.studentId)),
-      );
-      groupPay = paidStudentIds.size * perStudentRate;
+      
+      const studentPayments = {};
+      for (const p of groupMonthPayments) {
+        const sId = String(p.studentId);
+        studentPayments[sId] = (studentPayments[sId] || 0) + Number(p.amount || 0);
+      }
+      
+      let totalSalary = 0;
+      for (const sId in studentPayments) {
+        const oquvchiHaqiqiyTolovi = studentPayments[sId];
+        const oylikBelgilanganTolov = Number(g.price || 0);
+        
+        if (oylikBelgilanganTolov > 0) {
+          // Tolov_foizi (%) = (Oquvchi_haqiqiy_tolovi / Oylik_belgilangan_tolov) * 100
+          let tolovFoizi = (oquvchiHaqiqiyTolovi / oylikBelgilanganTolov) * 100;
+          if (tolovFoizi > 100) tolovFoizi = 100; // Ortiqcha to'lasa ham 100% hisoblanadi
+
+          // Oqtuvchi_maoshi = Oqtuvchiga_belgilangan_summa * (Tolov_foizi / 100)
+          const oqtuvchiMaoshi = perStudentRate * (tolovFoizi / 100);
+          totalSalary += oqtuvchiMaoshi;
+        } else if (oquvchiHaqiqiyTolovi > 0) {
+          totalSalary += perStudentRate;
+        }
+      }
+      groupPay = Math.round(totalSalary);
     } else {
-      // Foizli ulush: aynan guruh uchun belgilangan yoki o'qituvchining foizi bo'yicha tushumdan hisoblanadi
+      // Tur 2: Foizli ulush - faqatgina real yig'ilgan summadan hisoblanadi
       groupPay = Math.round(collectedRevenue * (effectivePercent / 100));
     }
 
