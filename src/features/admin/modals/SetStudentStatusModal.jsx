@@ -11,7 +11,29 @@ export function SetStudentStatusModal({ student, onSave, onClose }) {
 
   async function submit() {
     setBusy(true);
-    await onSave(student.id, { status, statusNote: note.trim() });
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const currentMemberships = { ...(student?.groupMemberships || {}) };
+    if (status === "active") {
+      (student?.groupIds || []).forEach((gid) => {
+        const strGid = String(gid);
+        currentMemberships[strGid] = {
+          ...(currentMemberships[strGid] || {}),
+          status: "active",
+          activationDate: currentMemberships[strGid]?.activationDate || todayStr,
+          reactivatedAt: currentMemberships[strGid]?.reactivatedAt || todayStr,
+        };
+      });
+    }
+    await onSave(student.id, {
+      status,
+      statusNote: note.trim(),
+      groupMemberships: currentMemberships,
+      ...(status === "active"
+        ? { activationDate: todayStr, reactivatedAt: todayStr, pausedAt: null, studiedOneMonth: true }
+        : status === "paused"
+        ? { pausedAt: todayStr }
+        : {}),
+    });
     setBusy(false);
     onClose();
   }

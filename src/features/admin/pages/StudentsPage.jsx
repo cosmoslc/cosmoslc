@@ -695,12 +695,25 @@ export function StudentsPage({
                     onChange={(e) => {
                       const newStatus = e.target.value;
                       const todayStr = new Date().toISOString().slice(0, 10);
+                      const currentMemberships = { ...(student?.groupMemberships || {}) };
+                      if (newStatus === "active") {
+                        (student?.groupIds || []).forEach((gid) => {
+                          const strGid = String(gid);
+                          currentMemberships[strGid] = {
+                            ...(currentMemberships[strGid] || {}),
+                            status: "active",
+                            activationDate: currentMemberships[strGid]?.activationDate || todayStr,
+                            reactivatedAt: currentMemberships[strGid]?.reactivatedAt || todayStr,
+                          };
+                        });
+                      }
                       const payload = {
                         status: newStatus,
+                        groupMemberships: currentMemberships,
                         ...(newStatus === "paused"
                           ? { pausedAt: todayStr }
                           : newStatus === "active"
-                          ? { activationDate: todayStr, reactivatedAt: todayStr, pausedAt: null }
+                          ? { activationDate: todayStr, reactivatedAt: todayStr, pausedAt: null, studiedOneMonth: true }
                           : {}),
                       };
                       const saveFn = onUpdateStudent || onSaveStudent;

@@ -88,34 +88,59 @@ export function calculateStudentGroupFee({
     return a;
   });
 
-  // Determine active/paused/trial status
-  const isStudentPaused = student?.status === "paused" || student?.isFrozen;
+  // Determine active/paused/trial status with clear precedence
   let status = "active";
-  if (isStudentPaused || membership?.status === "paused") status = "paused";
-  else if (membership?.status === "trial" || student?.status === "trial" || student?.studiedOneMonth === false) status = "trial";
+  if (membership?.status === "paused" || (student?.status === "paused" && membership?.status !== "active") || student?.isFrozen) {
+    status = "paused";
+  } else if (membership?.status === "trial") {
+    status = "trial";
+  } else if (membership?.status === "active") {
+    status = "active";
+  } else if (student?.status === "trial") {
+    status = "trial";
+  } else if (student?.status === "paused") {
+    status = "paused";
+  } else {
+    status = "active";
+  }
+
+  const explicitActDate = membership?.activationDate || null;
+  const fallbackActDate = membership?.reactivatedAt || student?.activationDate || (status === "active" ? (membership?.enrolledAt || student?.joinedAt || student?.createdAt) : null);
+  const actDateStr = (explicitActDate || fallbackActDate || "")?.slice(0, 10);
+  const pauseDateStr = (membership?.pausedAt || student?.pausedAt || "")?.slice(0, 10);
+
+  const baseResult = {
+    status,
+    statusLabel: status === "active" ? "Faol" : status === "trial" ? "Sinovda" : "Muzlatilgan",
+    isTrial: status === "trial",
+    isPaused: status === "paused",
+    activationDate: explicitActDate || (status === "active" ? actDateStr : null),
+    pricePerLesson,
+    totalLessons,
+    allLessonDates,
+  };
 
   if (status === "trial") {
     return {
+      ...baseResult,
       calculatedFee: 0,
-      pricePerLesson,
-      isTrial: true,
-      isPaused: false,
+      attendedLessons: 0,
+      missedLessons: totalLessons,
+      isProrated: false,
       reason: "Sinovdagi o'quvchilar: To'lov hisoblanmaydi",
     };
   }
   
   if (status === "paused") {
     return {
+      ...baseResult,
       calculatedFee: 0,
-      pricePerLesson,
-      isTrial: false,
-      isPaused: true,
+      attendedLessons: 0,
+      missedLessons: totalLessons,
+      isProrated: false,
       reason: "Muzlatilgan o'quvchilar: To'lov hisoblanmaydi",
     };
   }
-
-  const actDateStr = (membership?.reactivatedAt || membership?.activationDate || student?.activationDate || student?.joinedAt || student?.createdAt || "")?.slice(0, 10);
-  const pauseDateStr = (membership?.pausedAt || student?.pausedAt || "")?.slice(0, 10);
 
   if (mode === "per_lesson") {
     // Rejim B — Dars-dars hisob (Per-lesson / real-time)
@@ -139,12 +164,14 @@ export function calculateStudentGroupFee({
     }
 
     const calculatedFee = billableLessons * pricePerLesson;
+    const missedLessons = Math.max(0, totalLessons - billableLessons);
     return {
+      ...baseResult,
       calculatedFee,
-      pricePerLesson,
       billableLessons,
-      isTrial: false,
-      isPaused: false,
+      attendedLessons: billableLessons,
+      missedLessons,
+      isProrated: billableLessons < totalLessons,
       mode: "per_lesson",
       reason: `Rejim B: ${billableLessons} ta dars (har biri ${pricePerLesson} so'm) uchun hisoblandi`,
     };
@@ -179,12 +206,14 @@ export function calculateStudentGroupFee({
       }
     }
 
+    const missedLessons = Math.max(0, totalLessons - expectedLessons);
     return {
+      ...baseResult,
       calculatedFee,
-      pricePerLesson,
       expectedLessons,
-      isTrial: false,
-      isPaused: false,
+      attendedLessons: expectedLessons,
+      missedLessons,
+      isProrated: expectedLessons < totalLessons,
       mode: "invoice",
       reason: reasonText,
     };

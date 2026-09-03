@@ -207,6 +207,10 @@ export function StudentProfilePage({
       setLocalStudent((prev) => ({
         ...prev,
         ...student,
+        groupMemberships: {
+          ...(student.groupMemberships || {}),
+          ...(prev?.groupMemberships || {}),
+        },
       }));
     }
   }, [student]);
@@ -216,6 +220,10 @@ export function StudentProfilePage({
       setLocalStudent((prev) => ({
         ...prev,
         ...liveStudent,
+        groupMemberships: {
+          ...(liveStudent.groupMemberships || {}),
+          ...(prev?.groupMemberships || {}),
+        },
       }));
     }
   }, [liveStudent]);
@@ -397,6 +405,11 @@ export function StudentProfilePage({
       const isPartial = !isPaid && effectiveCovered > 0;
       const paymentStatus = isPaid ? "paid" : isPartial ? "partial" : "unpaid";
 
+      const effectiveActivationDate =
+        membership?.activationDate ||
+        groupFeeInfo?.activationDate ||
+        (groupFeeInfo?.isTrial ? null : (membership?.reactivatedAt || currentStudent?.activationDate || membership?.enrolledAt || currentStudent?.joinedAt || null));
+
       return {
         group: g,
         membership,
@@ -404,7 +417,7 @@ export function StudentProfilePage({
         membershipStatusLabel: groupFeeInfo.statusLabel,
         isTrial: groupFeeInfo.isTrial,
         isPaused: groupFeeInfo.isPaused,
-        activationDate: groupFeeInfo.activationDate,
+        activationDate: effectiveActivationDate,
         price: effectivePrice,
         fullPrice,
         isProrated: groupFeeInfo.isProrated,
@@ -951,23 +964,31 @@ export function StudentProfilePage({
   const handleActivateGroupSave = async ({ groupId, status, activationDate, notes }) => {
     try {
       const targetGid = String(groupId);
+      const chosenActDate = status === "active" ? (activationDate || new Date().toISOString().slice(0, 10)) : null;
       const currentMemberships = { ...(currentStudent?.groupMemberships || {}) };
       currentMemberships[targetGid] = {
         ...(currentMemberships[targetGid] || {}),
         status: status || "active",
-        activationDate: status === "active" ? (activationDate || new Date().toISOString().slice(0, 10)) : null,
+        activationDate: chosenActDate,
+        reactivatedAt: chosenActDate,
         notes: notes || "",
         updatedAt: new Date().toISOString(),
       };
 
       const updatedData = {
         status: status === "active" ? "active" : currentStudent?.status,
+        studiedOneMonth: status === "active" ? true : currentStudent?.studiedOneMonth,
+        activationDate: status === "active" ? (chosenActDate || currentStudent?.activationDate) : currentStudent?.activationDate,
         groupMemberships: currentMemberships,
       };
 
       setLocalStudent((prev) => ({
         ...prev,
         ...updatedData,
+        groupMemberships: {
+          ...(prev?.groupMemberships || {}),
+          ...currentMemberships,
+        },
       }));
 
       await api.updateStudent(currentStudent.id, updatedData);
@@ -2831,11 +2852,24 @@ function ActivateGroupModal({
   month,
   onSave,
 }) {
-  const [status, setStatus] = useState(membership?.status || "active");
+  const [status, setStatus] = useState(
+    membership?.status === "paused" ? "paused" : "active"
+  );
   const [activationDate, setActivationDate] = useState(
     membership?.activationDate || new Date().toISOString().slice(0, 10)
   );
   const [notes, setNotes] = useState(membership?.notes || "");
+
+  useEffect(() => {
+    if (isOpen) {
+      const initStatus = membership?.status === "paused" ? "paused" : "active";
+      setStatus(initStatus);
+      setActivationDate(
+        membership?.activationDate || new Date().toISOString().slice(0, 10)
+      );
+      setNotes(membership?.notes || "");
+    }
+  }, [isOpen, membership]);
 
   if (!isOpen || !group) return null;
 

@@ -28,6 +28,7 @@ import {
   ExternalLink,
   ChevronRight,
   Layers,
+  Zap,
 } from "lucide-react";
 import {
   INPUT_CLS,
@@ -45,6 +46,21 @@ import {
 import { JS_DAY_NAMES, MONTHS_UZ, WEEK_DAYS } from "../utils/constants";
 import * as api from "../../../shared/api/index";
 import { RecordPaymentModal } from "../modals/RecordPaymentModal";
+import { calculateStudentGroupFee } from "../../../shared/utils/prorata";
+
+function formatShortDate(iso) {
+  if (!iso) return "—";
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso).slice(0, 10);
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    return `${dd}.${mm}.${yyyy}`;
+  } catch {
+    return String(iso).slice(0, 10);
+  }
+}
 
 export function GroupProfilePage({
   group,
@@ -159,17 +175,41 @@ export function GroupProfilePage({
         .filter((p) => p.studentId === s.id)
         .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
-      const isPaid = pricePerStudent > 0 ? studentPaidThisMonth >= pricePerStudent : true;
-      const debtAmount = Math.max(0, pricePerStudent - studentPaidThisMonth);
+      const membership = s.groupMemberships?.[group.id] || s.groupMemberships?.[String(group.id)];
+      const groupAttendances = (opData?.attendance || []).filter(
+        (a) => String(a.groupId) === String(group.id)
+      );
+
+      const feeInfo = calculateStudentGroupFee({
+        fullMonthlyFee: pricePerStudent,
+        groupDays: group.days || ["Dush", "Chor", "Juma"],
+        monthStr: currentMonthKey,
+        membership,
+        student: s,
+        group,
+        attendances: groupAttendances,
+        settings: directorData?.centerSettings || {},
+      });
+
+      const effectiveExpected = feeInfo.calculatedFee;
+      const isPaid = effectiveExpected > 0 ? studentPaidThisMonth >= effectiveExpected : true;
+      const debtAmount = Math.max(0, effectiveExpected - studentPaidThisMonth);
 
       return {
         ...s,
+        membership,
+        membershipStatus: feeInfo.status,
+        membershipStatusLabel: feeInfo.statusLabel,
+        isTrial: feeInfo.isTrial,
+        isPaused: feeInfo.isPaused,
+        activationDate: feeInfo.activationDate,
         paidThisMonth: studentPaidThisMonth,
+        effectiveExpected,
         isPaid,
         debtAmount,
       };
     });
-  }, [groupStudents, monthPayments, pricePerStudent]);
+  }, [groupStudents, monthPayments, pricePerStudent, group, opData?.attendance, currentMonthKey, directorData?.centerSettings]);
 
   // Filtered students by query and payment filter
   const filteredStudents = useMemo(() => {
@@ -422,10 +462,16 @@ export function GroupProfilePage({
     if (!student) return;
     const targetGid = String(group.id);
     const newGroupIds = (student.groupIds || []).filter((id) => String(id) !== targetGid);
+    const currentMemberships = { ...(student.groupMemberships || {}) };
+    delete currentMemberships[targetGid];
+    const payload = {
+      groupIds: newGroupIds,
+      groupMemberships: currentMemberships,
+    };
     try {
-      await api.updateStudent(studentId, { groupIds: newGroupIds });
+      await api.updateStudent(studentId, payload);
       if (onUpdateStudent) {
-        onUpdateStudent(studentId, { groupIds: newGroupIds });
+        onUpdateStudent(studentId, payload);
       }
       setSelectedStudentIds((prev) => prev.filter((id) => id !== studentId));
       if (onRefresh) onRefresh();
@@ -443,8 +489,14 @@ export function GroupProfilePage({
         const student = (opData?.students || []).find((s) => s.id === sId);
         if (student) {
           const newGroupIds = (student.groupIds || []).filter((id) => String(id) !== targetGid);
-          await api.updateStudent(sId, { groupIds: newGroupIds });
-          if (onUpdateStudent) onUpdateStudent(sId, { groupIds: newGroupIds });
+          const currentMemberships = { ...(student.groupMemberships || {}) };
+          delete currentMemberships[targetGid];
+          const payload = {
+            groupIds: newGroupIds,
+            groupMemberships: currentMemberships,
+          };
+          await api.updateStudent(sId, payload);
+          if (onUpdateStudent) onUpdateStudent(sId, payload);
         }
       }
       setSelectedStudentIds([]);
@@ -458,10 +510,25 @@ export function GroupProfilePage({
   async function handleAddExistingStudent(studentId) {
     const student = (opData?.students || []).find((s) => s.id === studentId);
     if (!student) return;
-    const newGroupIds = [...new Set([...(student.groupIds || []).map(String), String(group.id)])];
+    const targetGid = String(group.id);
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const newGroupIds = [...new Set([...(student.groupIds || []).map(String), targetGid])];
+    const currentMemberships = { ...(student.groupMemberships || {}) };
+    currentMemberships[targetGid] = {
+      ...(currentMemberships[targetGid] || {}),
+      status: "active",
+      activationDate: todayStr,
+      reactivatedAt: todayStr,
+      enrolledAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    const payload = {
+      groupIds: newGroupIds,
+      groupMemberships: currentMemberships,
+    };
     try {
-      await api.updateStudent(studentId, { groupIds: newGroupIds });
-      if (onUpdateStudent) onUpdateStudent(studentId, { groupIds: newGroupIds });
+      await api.updateStudent(studentId, payload);
+      if (onUpdateStudent) onUpdateStudent(studentId, payload);
       setShowAddExistingModal(false);
       if (onRefresh) onRefresh();
     } catch (e) {
@@ -469,10 +536,41 @@ export function GroupProfilePage({
     }
   }
 
+  // Activate student in this group
+  async function handleActivateInGroup(studentId) {
+    const student = (opData?.students || []).find((s) => s.id === studentId);
+    if (!student) return;
+    const targetGid = String(group.id);
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const currentMemberships = { ...(student.groupMemberships || {}) };
+    currentMemberships[targetGid] = {
+      ...(currentMemberships[targetGid] || {}),
+      status: "active",
+      activationDate: todayStr,
+      reactivatedAt: todayStr,
+      updatedAt: new Date().toISOString(),
+    };
+    const payload = {
+      status: "active",
+      studiedOneMonth: true,
+      activationDate: student.activationDate || todayStr,
+      groupMemberships: currentMemberships,
+    };
+    try {
+      await api.updateStudent(studentId, payload);
+      if (onUpdateStudent) onUpdateStudent(studentId, payload);
+      if (onRefresh) onRefresh();
+    } catch (e) {
+      console.error("Error activating student in group:", e);
+    }
+  }
+
   // Quick create and add new student directly to this group
   async function handleQuickAddNewStudent(e) {
     e.preventDefault();
     if (!quickNewStudentName.trim()) return;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const targetGid = String(group.id);
     try {
       const payload = {
         name: quickNewStudentName.trim(),
@@ -482,6 +580,16 @@ export function GroupProfilePage({
         parentPhone: quickNewStudentParentPhone.trim(),
         groupIds: [group.id],
         status: "active",
+        studiedOneMonth: true,
+        activationDate: todayStr,
+        groupMemberships: {
+          [targetGid]: {
+            status: "active",
+            activationDate: todayStr,
+            reactivatedAt: todayStr,
+            enrolledAt: new Date().toISOString(),
+          },
+        },
         coins: 10,
         balance: 0,
       };
@@ -909,26 +1017,49 @@ export function GroupProfilePage({
                               {/* Student name & Debt indicator */}
                               <td className="py-3 px-3">
                                 <div className="flex items-center gap-2.5">
-                                  {/* Red / Green debt status indicator */}
-                                  <span
-                                    className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                                      s.debtAmount > 0
-                                        ? "bg-rose-500 shadow-sm shadow-rose-500/50"
-                                        : "bg-emerald-500 shadow-sm shadow-emerald-500/50"
+                                  <div
+                                    className={`w-3 h-3 rounded-full flex-shrink-0 ${
+                                      s.isTrial
+                                        ? "bg-amber-400 ring-2 ring-amber-400/30"
+                                        : s.debtAmount > 0
+                                        ? "bg-rose-500 ring-2 ring-rose-500/20"
+                                        : "bg-emerald-500 ring-2 ring-emerald-500/20"
                                     }`}
                                     title={
-                                      s.debtAmount > 0
+                                      s.isTrial
+                                        ? "Sinovdagi o'quvchi (faollashtirilmagan)"
+                                        : s.debtAmount > 0
                                         ? `Qarzdor: ${money(s.debtAmount)} so'm`
                                         : "Qarzsiz (to'langan)"
                                     }
                                   />
                                   <div>
-                                    <p className="font-semibold text-slate-900 dark:text-white">
+                                    <p
+                                      onClick={() => openModal?.({ type: "studentProfile", student: s })}
+                                      className="font-semibold text-slate-900 dark:text-white cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                                    >
                                       {s.name}
                                     </p>
-                                    <span className="text-[10px] text-slate-400">
-                                      {s.parentName ? `Ota-onasi: ${s.parentName}` : "Holati: Faol"}
-                                    </span>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      {s.isTrial ? (
+                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                                          Sinovda
+                                        </span>
+                                      ) : s.isPaused ? (
+                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300">
+                                          Muzlatilgan
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                                          Faol {s.activationDate ? `(${formatShortDate(s.activationDate)})` : ""}
+                                        </span>
+                                      )}
+                                      {s.parentName && (
+                                        <span className="text-[10px] text-slate-400 truncate max-w-[120px]">
+                                          · {s.parentName}
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               </td>
@@ -967,15 +1098,27 @@ export function GroupProfilePage({
                                 )}
                               </td>
 
-                              {/* Remove action */}
+                              {/* Actions */}
                               <td className="py-3 px-3 text-right">
-                                <button
-                                  onClick={() => handleRemoveStudent(s.id)}
-                                  className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                                  title="Guruhdan chiqarish"
-                                >
-                                  <UserMinus size={14} />
-                                </button>
+                                <div className="flex items-center justify-end gap-1.5">
+                                  {s.isTrial && (
+                                    <button
+                                      onClick={() => handleActivateInGroup(s.id)}
+                                      className="px-2 py-1 rounded-xl text-[11px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:hover:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-colors flex items-center gap-1"
+                                      title="Guruhda faollashtirish"
+                                    >
+                                      <Zap size={12} className="text-amber-500 fill-amber-500" />
+                                      <span>Faollashtirish</span>
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => handleRemoveStudent(s.id)}
+                                    className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                                    title="Guruhdan chiqarish"
+                                  >
+                                    <UserMinus size={14} />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           );
