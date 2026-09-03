@@ -21,6 +21,9 @@ import {
   ShieldAlert,
   Save,
   Sparkles,
+  Wallet,
+  Receipt,
+  CalendarCheck,
 } from "lucide-react";
 import { GLASS, INPUT_CLS, LABEL_CLS, BTN_GHOST, PrimaryButton } from "../theme/tokens";
 import { WEEK_DAYS } from "../utils/constants";
@@ -63,9 +66,15 @@ export function ProfileSettingsHub({
     workDays: ["Dushanba", "Seshanba", "Chorshanba", "Payshanba", "Juma", "Shanba"],
     workStart: "08:30",
     workEnd: "21:00",
+    billingMode: "invoice",
+    excusedAbsenceRefund: true,
   };
 
-  const [settingsForm, setSettingsForm] = useState(centerSettings);
+  const [settingsForm, setSettingsForm] = useState({
+    billingMode: "invoice",
+    excusedAbsenceRefund: true,
+    ...centerSettings,
+  });
 
   // Security Form State
   const [twoFactor, setTwoFactor] = useState(Boolean(director?.twoFactorEnabled));
@@ -445,6 +454,92 @@ export function ProfileSettingsHub({
               Markaz sozlamalari muvaffaqiyatli saqlandi!
             </div>
           )}
+
+          {/* Moliyaviy hisob-kitob sozlamalari */}
+          <div className={`${GLASS} rounded-xl p-6 space-y-5`}>
+            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+              <Wallet className="w-5 h-5 text-indigo-600" />
+              <h3 className="font-bold text-slate-900 text-base">
+                Moliyaviy hisob-kitob sozlamalari
+              </h3>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Hisoblash rejimi */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-700">
+                  O'quvchi balansini hisoblash rejimi
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSettingsForm((prev) => ({ ...prev, billingMode: "invoice" }))}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      (settingsForm.billingMode || "invoice") === "invoice"
+                        ? "border-indigo-600 bg-indigo-50/70 text-indigo-900 shadow-sm"
+                        : "border-slate-200 bg-slate-50/50 text-slate-700 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <Receipt size={16} className={settingsForm.billingMode === "invoice" ? "text-indigo-600" : "text-slate-400"} />
+                      <span className="text-xs font-bold">To'liq oylik hisob</span>
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      Oy boshida to'liq summa qarz yoziladi
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSettingsForm((prev) => ({ ...prev, billingMode: "per_lesson" }))}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      settingsForm.billingMode === "per_lesson"
+                        ? "border-indigo-600 bg-indigo-50/70 text-indigo-900 shadow-sm"
+                        : "border-slate-200 bg-slate-50/50 text-slate-700 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <CalendarCheck size={16} className={settingsForm.billingMode === "per_lesson" ? "text-indigo-600" : "text-slate-400"} />
+                      <span className="text-xs font-bold">Dars-dars hisob</span>
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      Davomat qilinganda balansdan ayiriladi
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Sababli kelmaslik toggle */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-700">
+                  Sababli kelmaslik
+                </label>
+                <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50/50">
+                  <div>
+                    <span className="text-xs font-semibold text-slate-900 block">
+                      Sababli kelmaslik dars to'loviga ta'sir qilishi
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                      {settingsForm.excusedAbsenceRefund ? "Kompensatsiya qilinadi" : "Kompensatsiya qilinmaydi"}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSettingsForm((prev) => ({ ...prev, excusedAbsenceRefund: !prev.excusedAbsenceRefund }))}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer shrink-0 ${
+                      settingsForm.excusedAbsenceRefund ? "bg-indigo-600" : "bg-slate-300"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        settingsForm.excusedAbsenceRefund ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
 
           <div className="grid md:grid-cols-2 gap-6">
             {/* Aloqa ma'lumotlari */}

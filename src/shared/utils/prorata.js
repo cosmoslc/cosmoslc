@@ -33,6 +33,20 @@ export function calculateProratedFee() {
   return { calculatedFee: 0, reason: "Deprecated" };
 }
 
+export function getCenterBillingSettings() {
+  try {
+    const raw = localStorage.getItem('center_settings');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        billingMode: parsed.billingMode || parsed.billing_mode || "invoice",
+        excusedAbsenceRefund: parsed.excusedAbsenceRefund !== undefined ? Boolean(parsed.excusedAbsenceRefund) : (parsed.excused_absence_refund !== undefined ? Boolean(parsed.excused_absence_refund) : true),
+      };
+    }
+  } catch {}
+  return { billingMode: "invoice", excusedAbsenceRefund: true };
+}
+
 /**
  * CRM — Moliyaviy Hisob-Kitob (Student Billing)
  * 2 xil rejim (Rejim A - Invoice-based, Rejim B - Per-lesson)
@@ -43,7 +57,8 @@ export function calculateStudentGroupFee({
   monthStr,
   membership,
   student,
-  attendances = [], // [{ date: "2024-11-01", status: "present"|"absent", reason: "kasal" }]
+  group = null,
+  attendances = [], // [{ date: "2024-11-01", status: "present"|"absent", reason: "kasal" }] yoki opData.attendance
   settings = {}, // { billingMode: "invoice" | "per_lesson", excusedAbsenceRefund: true }
 }) {
   const fee = Number(fullMonthlyFee) || 0;
@@ -53,8 +68,25 @@ export function calculateStudentGroupFee({
   const totalLessons = allLessonDates.length || 12;
   const pricePerLesson = totalLessons > 0 ? Math.round(fee / totalLessons) : 0;
 
-  const mode = settings.billingMode || "invoice"; // default Rejim A
-  const excusedRefund = settings.excusedAbsenceRefund || false;
+  const defaultCenter = getCenterBillingSettings();
+  const mode = group?.billingMode || settings.billingMode || defaultCenter.billingMode || "invoice"; // default Rejim A
+  const excusedRefund = group?.excusedAbsenceRefund !== undefined 
+    ? Boolean(group.excusedAbsenceRefund) 
+    : (settings.excusedAbsenceRefund !== undefined ? Boolean(settings.excusedAbsenceRefund) : defaultCenter.excusedAbsenceRefund);
+
+  // Normalize attendances if opData.attendance records structure is provided
+  const studentIdStr = String(student?.id || "");
+  const normalizedAttendances = (attendances || []).map((a) => {
+    if (a && a.records && studentIdStr) {
+      const rec = a.records[studentIdStr] || a.records[student?.id];
+      return {
+        date: a.date,
+        status: rec?.status || "absent",
+        reason: rec?.reason || "",
+      };
+    }
+    return a;
+  });
 
   // Determine active/paused/trial status
   const isStudentPaused = student?.status === "paused" || student?.isFrozen;
@@ -89,8 +121,8 @@ export function calculateStudentGroupFee({
     // Rejim B — Dars-dars hisob (Per-lesson / real-time)
     let billableLessons = 0;
     
-    for (const att of attendances) {
-      if (!att.date.startsWith(activeMonth)) continue;
+    for (const att of normalizedAttendances) {
+      if (!att.date || !att.date.startsWith(activeMonth)) continue;
       if (actDateStr && att.date < actDateStr) continue;
       if (status === "paused" && pauseDateStr && att.date >= pauseDateStr) continue;
 
@@ -98,8 +130,9 @@ export function calculateStudentGroupFee({
         billableLessons++;
       } else if (att.status === "absent") {
         if (excusedRefund && att.reason) {
-          // Sababli kelmaslik
+          // Sababli kelmaslik - balansdan pul olinmaydi
         } else {
+          // Sababsiz kelmaslik - dars narxi yechiladi
           billableLessons++;
         }
       }
@@ -112,6 +145,7 @@ export function calculateStudentGroupFee({
       billableLessons,
       isTrial: false,
       isPaused: false,
+      mode: "per_lesson",
       reason: `Rejim B: ${billableLessons} ta dars (har biri ${pricePerLesson} so'm) uchun hisoblandi`,
     };
   } else {
@@ -129,7 +163,8 @@ export function calculateStudentGroupFee({
 
     // Sababli kelmaslik kompensatsiyasi
     if (excusedRefund) {
-      const excusedCount = attendances.filter(a => 
+      const excusedCount = normalizedAttendances.filter(a => 
+        a.date &&
         a.date.startsWith(activeMonth) && 
         a.status === "absent" && 
         a.reason &&
@@ -150,8 +185,76 @@ export function calculateStudentGroupFee({
       expectedLessons,
       isTrial: false,
       isPaused: false,
+      mode: "invoice",
       reason: reasonText,
     };
   }
+}
+
+/**
+ * CRM — Refund (pul qaytarish) logikasi
+ */
+export function calculateRefundAmount({
+  billingMode = "invoice",
+  excusedAbsenceRefund = true,
+  currentBalance = 0,
+  fullPrice = 0,
+  groupDays = ["Dush", "Chor", "Juma"],
+  monthStr,
+  attendances = [],
+  totalPaidAmount = 0,
+  student,
+}) {
+  if (billingMode === "per_lesson") {
+    // Rejim B: agar balans plyusda bo'lsa -> shu plyus summa refund qilinadi, minusda bo'lsa 0
+    const refundAmount = Math.max(0, Number(currentBalance || 0));
+    return {
+      refundAmount,
+      otilganDarslar: 0,
+      pricePerLesson: 0,
+      foydalanilganSumma: 0,
+      billingMode: "per_lesson",
+    };
+  }
+
+  // Rejim A: Otilgan_darslar * Dars_narxi = Foydalanilgan_summa
+  // Refund = Jami_tolangan - Foydalanilgan
+  const now = new Date();
+  const activeMonth = monthStr || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const allLessonDates = getMonthLessonDates(activeMonth, groupDays);
+  const totalLessons = allLessonDates.length || 12;
+  const pricePerLesson = totalLessons > 0 ? Math.round(Number(fullPrice || 0) / totalLessons) : 0;
+
+  const studentIdStr = String(student?.id || "");
+  let otilganDarslar = 0;
+
+  for (const a of attendances) {
+    if (!a?.date || !a.date.startsWith(activeMonth)) continue;
+    let rec = a;
+    if (a.records && studentIdStr) {
+      rec = a.records[studentIdStr] || a.records[student?.id];
+    }
+    if (!rec) continue;
+
+    if (rec.status === "present" || rec.status === "late") {
+      otilganDarslar++;
+    } else if (rec.status === "absent") {
+      if (excusedAbsenceRefund && rec.reason) {
+        // Sababli kelmagan darslar "o'tilgan" deb hisoblanmaydi -> refundga qo'shiladi
+      } else {
+        otilganDarslar++;
+      }
+    }
+  }
+
+  const foydalanilganSumma = otilganDarslar * pricePerLesson;
+  const refundAmount = Math.max(0, Number(totalPaidAmount || 0) - foydalanilganSumma);
+  return {
+    refundAmount,
+    otilganDarslar,
+    pricePerLesson,
+    foydalanilganSumma,
+    billingMode: "invoice",
+  };
 }
 

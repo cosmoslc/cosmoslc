@@ -13,6 +13,8 @@ const DEFAULT_CENTER_SETTINGS = {
   workDays: ['Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan'],
   workStart: '08:00',
   workEnd: '20:00',
+  billingMode: 'invoice', // 'invoice' | 'per_lesson'
+  excusedAbsenceRefund: true, // Sababli kelmaslik dars to'loviga ta'sir qilishi
 };
 
 export async function fetchCenterSettings() {
@@ -22,6 +24,7 @@ export async function fetchCenterSettings() {
       if (error && !isNetworkError(error)) console.warn('Supabase fetchCenterSettings warning:', error.message || error);
       return getCachedData('center_settings', DEFAULT_CENTER_SETTINGS);
     }
+    const cached = getCachedData('center_settings', DEFAULT_CENTER_SETTINGS);
     const result = {
       id: data.id,
       directorId: data.director_id,
@@ -34,6 +37,8 @@ export async function fetchCenterSettings() {
       workDays: data.work_days || [],
       workStart: data.work_start,
       workEnd: data.work_end,
+      billingMode: data.billing_mode || cached.billingMode || 'invoice',
+      excusedAbsenceRefund: data.excused_absence_refund !== undefined ? Boolean(data.excused_absence_refund) : (cached.excusedAbsenceRefund ?? true),
     };
     setCachedData('center_settings', result);
     return result;
@@ -47,7 +52,7 @@ export async function fetchCenterSettings() {
 
 export async function updateCenterSettings(payload) {
   try {
-    const { error } = await supabase.from('center_settings').update({
+    const updatePayload = {
       director_id: payload.directorId,
       primary_phone: payload.primaryPhone,
       secondary_phone: payload.secondaryPhone,
@@ -58,9 +63,14 @@ export async function updateCenterSettings(payload) {
       work_days: payload.workDays,
       work_start: payload.workStart,
       work_end: payload.workEnd,
-    }).eq('id', 'default');
+    };
+    if (payload.billingMode !== undefined) updatePayload.billing_mode = payload.billingMode;
+    if (payload.excusedAbsenceRefund !== undefined) updatePayload.excused_absence_refund = payload.excusedAbsenceRefund;
+
+    const { error } = await supabase.from('center_settings').update(updatePayload).eq('id', 'default');
     if (error && !isNetworkError(error)) console.warn('Supabase updateCenterSettings warning:', error.message || error);
   } catch {}
-  setCachedData('center_settings', { ...DEFAULT_CENTER_SETTINGS, ...payload });
+  const cached = getCachedData('center_settings', DEFAULT_CENTER_SETTINGS);
+  setCachedData('center_settings', { ...cached, ...payload });
 }
 

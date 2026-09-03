@@ -52,7 +52,7 @@ import {
   LABEL_CLS,
 } from "../theme/tokens";
 import { ConfirmModal, Modal } from "../components/primitives";
-import { calculateProratedFee, calculateStudentGroupFee, getMonthLessonDates } from "../../../shared/utils/prorata";
+import { calculateProratedFee, calculateStudentGroupFee, calculateRefundAmount, getMonthLessonDates } from "../../../shared/utils/prorata";
 import {
   displayPhone,
   formatDate,
@@ -366,12 +366,16 @@ export function StudentProfilePage({
       }
 
       const membership = currentStudent?.groupMemberships?.[g.id] || currentStudent?.groupMemberships?.[String(g.id)];
+      const groupAttendances = (opData?.attendance || []).filter(a => String(a.groupId) === String(g.id));
       const groupFeeInfo = calculateStudentGroupFee({
         fullMonthlyFee: fullPrice,
         groupDays: g.days || ["Dush", "Chor", "Juma"],
         monthStr: month,
         membership,
         student: currentStudent,
+        group: g,
+        attendances: groupAttendances,
+        settings: directorData?.centerSettings || {},
       });
 
       const effectivePrice = groupFeeInfo.calculatedFee;
@@ -419,7 +423,7 @@ export function StudentProfilePage({
         status: paymentStatus,
       };
     });
-  }, [assignedGroups, allPayments, currentStudent, month]);
+  }, [assignedGroups, allPayments, currentStudent, month, opData?.attendance, directorData?.centerSettings]);
 
   const totalDebt = useMemo(() => {
     return groupDebts.reduce((sum, d) => sum + (d.remainingDebt || 0), 0);
@@ -1187,48 +1191,34 @@ export function StudentProfilePage({
 
   const handleUnenrollAndRefund = async (grp) => {
     const month = thisMonthKey();
-    const billingMode = directorData?.centerSettings?.billingMode || "invoice";
-    const excusedAbsenceRefund = directorData?.centerSettings?.excusedAbsenceRefund || false;
+    const billingMode = grp?.billingMode || directorData?.centerSettings?.billingMode || "invoice";
+    const excusedAbsenceRefund = grp?.excusedAbsenceRefund !== undefined && grp?.excusedAbsenceRefund !== null
+      ? Boolean(grp.excusedAbsenceRefund)
+      : (directorData?.centerSettings?.excusedAbsenceRefund !== undefined ? Boolean(directorData.centerSettings.excusedAbsenceRefund) : true);
     
-    let refundAmount = 0;
-    let otilganDarslar = 0;
-    let jamiTolanganSumma = 0;
+    const membership = currentStudent?.groupMemberships?.[grp.id] || currentStudent?.groupMemberships?.[String(grp.id)];
+    const fullPrice = membership?.agreedPrice ? Number(membership.agreedPrice) : Number(grp.price || 0);
     
-    if (billingMode === "per_lesson") {
-      refundAmount = Number(currentStudent.balance || 0) > 0 ? Number(currentStudent.balance) : 0;
-    } else {
-      const groupAttendances = (opData?.attendance || []).filter(a => String(a.groupId) === String(grp.id));
-      groupAttendances.forEach(a => {
-        if (a.date.startsWith(month)) {
-          const rec = a.records?.[currentStudent.id];
-          if (rec) {
-            if (rec.status === "present" || rec.status === "late") {
-              otilganDarslar++;
-            } else if (rec.status === "absent") {
-              if (excusedAbsenceRefund && rec.reason) {
-                // do not count
-              } else {
-                otilganDarslar++;
-              }
-            }
-          }
-        }
-      });
-      
-      const membership = currentStudent?.groupMemberships?.[grp.id] || currentStudent?.groupMemberships?.[String(grp.id)];
-      const fullPrice = membership?.agreedPrice ? Number(membership.agreedPrice) : Number(grp.price || 0);
-      const totalLessons = getMonthLessonDates(month, grp.days || []).length || 12;
-      const pricePerLesson = totalLessons > 0 ? Math.round(fullPrice / totalLessons) : 0;
-      const foydalanilganSumma = otilganDarslar * pricePerLesson;
-      
-      const groupPayments = (directorData?.payments || []).filter(
-        p => String(p.studentId) === String(currentStudent.id) && String(p.groupId) === String(grp.id) && p.month === month
-      );
-      jamiTolanganSumma = groupPayments.reduce((sum, p) => sum + (Number(p.paidAmount) || Number(p.amount) || 0) + (Number(p.usedBalance) || 0), 0);
-      
-      refundAmount = jamiTolanganSumma - foydalanilganSumma;
-      if (refundAmount < 0) refundAmount = 0;
-    }
+    const groupPayments = (directorData?.payments || []).filter(
+      p => String(p.studentId) === String(currentStudent.id) && String(p.groupId) === String(grp.id) && p.month === month
+    );
+    const jamiTolanganSumma = groupPayments.reduce((sum, p) => sum + (Number(p.paidAmount) || Number(p.amount) || 0) + (Number(p.usedBalance) || 0), 0);
+    const groupAttendances = (opData?.attendance || []).filter(a => String(a.groupId) === String(grp.id));
+
+    const refundRes = calculateRefundAmount({
+      billingMode,
+      excusedAbsenceRefund,
+      currentBalance: currentStudent.balance,
+      fullPrice,
+      groupDays: grp.days || [],
+      monthStr: month,
+      attendances: groupAttendances,
+      totalPaidAmount: jamiTolanganSumma,
+      student: currentStudent,
+    });
+
+    const refundAmount = refundRes.refundAmount;
+    const otilganDarslar = refundRes.otilganDarslar;
 
     setConfirmModalState({
       title: "Guruhni tark etish (Refund bilan)",

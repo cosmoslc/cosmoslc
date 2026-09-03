@@ -554,231 +554,233 @@ export function GroupProfilePage({
   }
 
   return (
-    <div className="w-full h-full max-w-7xl mx-auto space-y-6 animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex flex-col shadow-sm">
-        {/* Top Header */}
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between flex-wrap gap-3 bg-slate-50/50 dark:bg-slate-900/50">
-          <div className="flex items-center gap-3">
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white shadow-sm shrink-0"
-              style={{ backgroundColor: groupAccent }}
-            >
-              <Layers size={20} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="font-display text-xl font-bold text-slate-900 dark:text-white">
-                  {group.name}
-                </h2>
-                <span
-                  className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider"
-                  style={{
-                    backgroundColor: `${groupAccent}15`,
-                    color: groupAccent,
-                    border: `1px solid ${groupAccent}30`,
-                  }}
-                >
-                  {course?.name || "Kurssiz"}
-                </span>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-900/40">
-                  Faol guruh
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Guruh profili, o'quvchilar tarkibi, to'lovlar va dars davomati
-              </p>
-            </div>
+    <div className="w-full space-y-6 animate-in fade-in duration-200">
+      {/* Top Page Header */}
+      <div className="flex items-center justify-between flex-wrap gap-4 pb-4 border-b border-slate-200/80 dark:border-slate-800">
+        <div className="flex items-center gap-3.5">
+          <button
+            onClick={onClose}
+            className="p-2 -ml-1 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center justify-center shrink-0 cursor-pointer"
+            title="Guruhlar ro'yxatiga qaytish"
+          >
+            <ArrowLeft size={20} />
+          </button>
+
+          <div
+            className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-white shadow-sm shrink-0"
+            style={{ backgroundColor: groupAccent }}
+          >
+            <Layers size={24} />
           </div>
 
-          <div className="flex items-center gap-2">
-            {canEdit && onEditGroup && (
-              <button
-                onClick={() => {
-                  onClose();
-                  onEditGroup(group);
+          <div>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                {group.name}
+              </h1>
+              <span
+                className="px-2.5 py-0.5 rounded-full text-xs font-bold"
+                style={{
+                  backgroundColor: `${groupAccent}15`,
+                  color: groupAccent,
+                  border: `1px solid ${groupAccent}30`,
                 }}
-                className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-600 dark:hover:text-indigo-400 text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-200 dark:border-slate-700"
               >
-                <Pencil size={13} /> Guruhni tahrirlash
-              </button>
-            )}
-            <button
-              onClick={onClose}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-sm font-bold"
-            >
-              <ArrowLeft size={18} />
-              Ortga
-            </button>
+                {course?.name || "Kurssiz"}
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-900/40">
+                Faol guruh
+              </span>
+              {group?.billingMode && (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-900/40">
+                  {group.billingMode === "per_lesson" ? "Dars-dars hisob" : "To'liq oylik hisob"}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Guruh ma'lumotlari, o'quvchilar tarkibi va dars davomati
+            </p>
           </div>
         </div>
 
-        {/* Main Body */}
-        <div className="p-5 sm:p-6 space-y-6">
-          {/* 1. FIRST ROW: 7 KEY CARDS */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
-            {/* Card 1: O'qituvchi */}
-            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3.5 flex flex-col justify-between">
-              <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-400 flex items-center gap-1.5">
-                <GraduationCap size={13} className="text-indigo-500" /> O'qituvchi
-              </span>
-              <p className="font-display text-sm font-bold text-slate-900 dark:text-white mt-1.5 truncate">
-                {teacher?.name || "Belgilanmagan"}
-              </p>
-              <span className="text-[10px] text-slate-400 truncate mt-0.5">
-                {teacher?.phone || "Asosiy ustoz"}
-              </span>
-            </div>
-
-            {/* Card 2: Xona */}
-            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3.5 flex flex-col justify-between">
-              <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-400 flex items-center gap-1.5">
-                <DoorOpen size={13} className="text-sky-500" /> Xona
-              </span>
-              <p className="font-display text-sm font-bold text-slate-900 dark:text-white mt-1.5 truncate">
-                {room?.name || "Tanlanmagan"}
-              </p>
-              <span className="text-[10px] text-slate-400 truncate mt-0.5">
-                Sig'im: {maxCapacity} o'rin
-              </span>
-            </div>
-
-            {/* Card 3: Dars vaqti */}
-            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3.5 flex flex-col justify-between">
-              <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-400 flex items-center gap-1.5">
-                <Clock size={13} className="text-amber-500" /> Dars vaqti
-              </span>
-              <p className="font-display text-sm font-bold text-slate-900 dark:text-white mt-1.5 truncate">
-                {group.time || "15:00"}
-              </p>
-              <span className="text-[10px] text-slate-400 truncate mt-0.5">90 daqiqa</span>
-            </div>
-
-            {/* Card 4: Dars kunlari */}
-            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3.5 flex flex-col justify-between">
-              <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-400 flex items-center gap-1.5">
-                <Calendar size={13} className="text-purple-500" /> Dars kunlari
-              </span>
-              <p className="font-display text-xs font-bold text-slate-900 dark:text-white mt-1.5 truncate">
-                {(group.days || []).join(", ") || "Belgilanmagan"}
-              </p>
-              <span className="text-[10px] text-slate-400 truncate mt-0.5">Haftada 3 kun</span>
-            </div>
-
-            {/* Card 5: Kutilayotgan to'lov */}
-            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3.5 flex flex-col justify-between">
-              <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-400 flex items-center gap-1.5">
-                <Wallet size={13} className="text-blue-500" /> Kutilayotgan
-              </span>
-              <p className="font-display text-sm font-bold text-blue-600 dark:text-blue-400 mt-1.5 truncate">
-                {money(expectedRevenue)} <span className="text-[9px] font-normal">so'm</span>
-              </p>
-              <span className="text-[10px] text-slate-400 truncate mt-0.5">
-                {groupStudents.length} ta o'quvchidan
-              </span>
-            </div>
-
-            {/* Card 6: Yig'ilgan to'lov */}
-            <div className="bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-900/50 rounded-xl p-3.5 flex flex-col justify-between">
-              <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 flex items-center justify-between">
-                <span className="flex items-center gap-1">
-                  <CheckCircle2 size={13} /> Yig'ilgan
-                </span>
-                <span className="text-[10px] font-extrabold">{collectedPercent}%</span>
-              </span>
-              <p className="font-display text-sm font-bold text-emerald-700 dark:text-emerald-300 mt-1.5 truncate">
-                {money(collectedRevenue)} <span className="text-[9px] font-normal">so'm</span>
-              </p>
-              <span className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 truncate mt-0.5">
-                Shu oy bo'yicha
-              </span>
-            </div>
-
-            {/* Card 7: O'quvchilar soni */}
-            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3.5 flex flex-col justify-between col-span-2 sm:col-span-1">
-              <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-400 flex items-center gap-1.5">
-                <Users size={13} className="text-sky-500" /> O'quvchilar
-              </span>
-              <p className="font-display text-sm font-bold text-slate-900 dark:text-white mt-1.5">
-                {groupStudents.length}{" "}
-                <span className="text-xs font-normal text-slate-400">/ {maxCapacity}</span>
-              </p>
-              <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden mt-1">
-                <div
-                  className="h-full rounded-full transition-all duration-300"
-                  style={{
-                    width: `${Math.min(100, Math.round((groupStudents.length / maxCapacity) * 100))}%`,
-                    backgroundColor: groupAccent,
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* 2. DARS PROGRESS (Lesson Progress Bar) */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-4 shadow-sm">
-            <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
-              <div className="flex items-center gap-2">
-                <span className="p-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
-                  <BookOpen size={15} />
-                </span>
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                  Darslar jarayoni (Progress)
-                </span>
-              </div>
-              <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
-                <span>
-                  O'tilgan darslar:{" "}
-                  <strong className="text-slate-900 dark:text-white">{conductedLessonsCount} ta</strong>
-                </span>
-                <span>•</span>
-                <span>
-                  Reja:{" "}
-                  <strong className="text-slate-900 dark:text-white">
-                    {totalCourseLessons} ta ({totalCourseMonths} oy)
-                  </strong>
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-900/40">
-                  {lessonProgressPercent}% bajarildi
-                </span>
-              </div>
-            </div>
-
-            {/* Progress bar */}
-            <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{
-                  width: `${lessonProgressPercent}%`,
-                  backgroundImage: `linear-gradient(90deg, ${groupAccent}, #8b5cf6)`,
-                }}
-              />
-            </div>
-          </div>
-
-          {/* 3. TABS NAVIGATION */}
-          <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+        <div className="flex items-center gap-2">
+          {canEdit && onEditGroup && (
             <button
-              onClick={() => setActiveTab("students")}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
-                activeTab === "students"
-                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
-                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-              }`}
+              onClick={() => {
+                onClose();
+                onEditGroup(group);
+              }}
+              className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-600 dark:hover:text-indigo-400 text-xs font-semibold flex items-center gap-1.5 transition-colors border border-slate-200 dark:border-slate-700 cursor-pointer"
             >
-              <Users size={15} /> O'quvchilar ({groupStudents.length})
+              <Pencil size={14} /> Guruhni tahrirlash
             </button>
+          )}
+          <button
+            onClick={onClose}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-xs font-bold border border-slate-200 dark:border-slate-700 cursor-pointer"
+          >
+            <ArrowLeft size={16} /> Ortga
+          </button>
+        </div>
+      </div>
 
-            <button
-              onClick={() => setActiveTab("attendance")}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
-                activeTab === "attendance"
-                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
-                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-              }`}
-            >
-              <Calendar size={15} /> Davomat jadvali ({lessonDatesInMonth.length} ta dars)
-            </button>
+      {/* 1. FIRST ROW: 7 KEY STAT CARDS */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+        {/* Card 1: O'qituvchi */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3.5 flex flex-col justify-between shadow-xs">
+          <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-400 flex items-center gap-1.5">
+            <GraduationCap size={13} className="text-indigo-500" /> O'qituvchi
+          </span>
+          <p className="font-display text-sm font-bold text-slate-900 dark:text-white mt-1.5 truncate">
+            {teacher?.name || "Belgilanmagan"}
+          </p>
+          <span className="text-[10px] text-slate-400 truncate mt-0.5">
+            {teacher?.phone || "Asosiy ustoz"}
+          </span>
+        </div>
+
+        {/* Card 2: Xona */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3.5 flex flex-col justify-between shadow-xs">
+          <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-400 flex items-center gap-1.5">
+            <DoorOpen size={13} className="text-sky-500" /> Xona
+          </span>
+          <p className="font-display text-sm font-bold text-slate-900 dark:text-white mt-1.5 truncate">
+            {room?.name || "Tanlanmagan"}
+          </p>
+          <span className="text-[10px] text-slate-400 truncate mt-0.5">
+            Sig'im: {maxCapacity} o'rin
+          </span>
+        </div>
+
+        {/* Card 3: Dars vaqti */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3.5 flex flex-col justify-between shadow-xs">
+          <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-400 flex items-center gap-1.5">
+            <Clock size={13} className="text-amber-500" /> Dars vaqti
+          </span>
+          <p className="font-display text-sm font-bold text-slate-900 dark:text-white mt-1.5 truncate">
+            {group.time || "15:00"}
+          </p>
+          <span className="text-[10px] text-slate-400 truncate mt-0.5">90 daqiqa</span>
+        </div>
+
+        {/* Card 4: Dars kunlari */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3.5 flex flex-col justify-between shadow-xs">
+          <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-400 flex items-center gap-1.5">
+            <Calendar size={13} className="text-purple-500" /> Dars kunlari
+          </span>
+          <p className="font-display text-xs font-bold text-slate-900 dark:text-white mt-1.5 truncate">
+            {(group.days || []).join(", ") || "Belgilanmagan"}
+          </p>
+          <span className="text-[10px] text-slate-400 truncate mt-0.5">Haftada 3 kun</span>
+        </div>
+
+        {/* Card 5: Kutilayotgan to'lov */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3.5 flex flex-col justify-between shadow-xs">
+          <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-400 flex items-center gap-1.5">
+            <Wallet size={13} className="text-blue-500" /> Kutilayotgan
+          </span>
+          <p className="font-display text-sm font-bold text-blue-600 dark:text-blue-400 mt-1.5 truncate">
+            {money(expectedRevenue)} <span className="text-[9px] font-normal">so'm</span>
+          </p>
+          <span className="text-[10px] text-slate-400 truncate mt-0.5">
+            {groupStudents.length} ta o'quvchidan
+          </span>
+        </div>
+
+        {/* Card 6: Yig'ilgan to'lov */}
+        <div className="bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-900/50 rounded-xl p-3.5 flex flex-col justify-between shadow-xs">
+          <span className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 flex items-center justify-between">
+            <span className="flex items-center gap-1">
+              <CheckCircle2 size={13} /> Yig'ilgan
+            </span>
+            <span className="text-[10px] font-extrabold">{collectedPercent}%</span>
+          </span>
+          <p className="font-display text-sm font-bold text-emerald-700 dark:text-emerald-300 mt-1.5 truncate">
+            {money(collectedRevenue)} <span className="text-[9px] font-normal">so'm</span>
+          </p>
+          <span className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 truncate mt-0.5">
+            Shu oy bo'yicha
+          </span>
+        </div>
+
+        {/* Card 7: O'quvchilar soni */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3.5 flex flex-col justify-between shadow-xs col-span-2 sm:col-span-1">
+          <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-400 flex items-center gap-1.5">
+            <Users size={13} className="text-sky-500" /> O'quvchilar
+          </span>
+          <p className="font-display text-sm font-bold text-slate-900 dark:text-white mt-1.5">
+            {groupStudents.length}{" "}
+            <span className="text-xs font-normal text-slate-400">/ {maxCapacity}</span>
+          </p>
+          <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden mt-1">
+            <div
+              className="h-full rounded-full transition-all duration-300"
+              style={{
+                width: `${Math.min(100, Math.round((groupStudents.length / maxCapacity) * 100))}%`,
+                backgroundColor: groupAccent,
+              }}
+            />
           </div>
+        </div>
+      </div>
+
+      {/* 2. DARS PROGRESS (Lesson Progress Bar) */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <span className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+            <BookOpen size={15} />
+          </span>
+          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+            Darslar jarayoni
+          </span>
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            O'tilgan: <strong className="text-slate-900 dark:text-white">{conductedLessonsCount} ta</strong>
+          </span>
+          <span className="text-slate-300 dark:text-slate-700">•</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            Reja: <strong className="text-slate-900 dark:text-white">{totalCourseLessons} ta ({totalCourseMonths} oy)</strong>
+          </span>
+          <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-900/40">
+            {lessonProgressPercent}% bajarildi
+          </span>
+        </div>
+
+        {/* Progress bar */}
+        <div className="w-full sm:w-60 h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden shrink-0">
+          <div
+            className="h-full rounded-full transition-all duration-500"
+            style={{
+              width: `${lessonProgressPercent}%`,
+              backgroundImage: `linear-gradient(90deg, ${groupAccent}, #8b5cf6)`,
+            }}
+          />
+        </div>
+      </div>
+
+      {/* 3. TABS NAVIGATION */}
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+        <button
+          onClick={() => setActiveTab("students")}
+          className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+            activeTab === "students"
+              ? "bg-indigo-600 text-white shadow-sm"
+              : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+          }`}
+        >
+          <Users size={15} /> O'quvchilar ({groupStudents.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab("attendance")}
+          className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+            activeTab === "attendance"
+              ? "bg-indigo-600 text-white shadow-sm"
+              : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+          }`}
+        >
+          <Calendar size={15} /> Davomat jadvali ({lessonDatesInMonth.length})
+        </button>
+      </div>
 
           {/* ======================================================== */}
           {/* TAB 1: O'QUVCHILAR (STUDENTS LIST, ACTIONS, TELEGRAM)   */}
@@ -797,7 +799,7 @@ export function GroupProfilePage({
                       type="text"
                       value={studentQuery}
                       onChange={(e) => setStudentQuery(e.target.value)}
-                      placeholder="O'quvchi ismi yoki telefoni..."
+                      placeholder="O'quvchini qidirish..."
                       className={`${INPUT_CLS} pl-9 text-xs`}
                     />
                   </div>
@@ -816,13 +818,13 @@ export function GroupProfilePage({
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setShowAddExistingModal(true)}
-                    className="px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 transition-colors"
+                    className="px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
                   >
-                    <UserPlus size={14} /> Mavjud talaba qo'shish
+                    <UserPlus size={14} /> Mavjud o'quvchi qo'shish
                   </button>
 
                   <PrimaryButton onClick={() => setShowQuickAddModal(true)}>
-                    <UserPlus size={14} /> Yangi talaba qo'shish
+                    <UserPlus size={14} /> Yangi o'quvchi qo'shish
                   </PrimaryButton>
                 </div>
               </div>
@@ -991,14 +993,9 @@ export function GroupProfilePage({
                     <span className="p-2 rounded-xl bg-sky-500 text-white shadow-sm">
                       <Send size={15} />
                     </span>
-                    <div>
-                      <h4 className="font-bold text-xs text-slate-900 dark:text-white">
-                        Guruh Telegram kanali & Telegram bot
-                      </h4>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                        O'quvchilar va ota-onalar bilan darslar, to'lovlar va davomat bo'yicha xabarlar
-                      </p>
-                    </div>
+                    <h4 className="font-bold text-xs text-slate-900 dark:text-white">
+                      Guruh Telegram kanali va bot
+                    </h4>
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -1025,7 +1022,7 @@ export function GroupProfilePage({
                       type="text"
                       value={telegramUsername}
                       onChange={(e) => setTelegramUsername(e.target.value)}
-                      placeholder="@cosmos_ielts_group yoki https://t.me/cosmos_group"
+                      placeholder="@guruh_kanali"
                       className={`${INPUT_CLS} pl-9 text-xs bg-white dark:bg-slate-900`}
                     />
                   </div>
@@ -1033,11 +1030,11 @@ export function GroupProfilePage({
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handleSaveTelegram}
-                      className="flex-1 px-3 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition-colors shadow-sm flex items-center justify-center gap-1.5"
+                      className="flex-1 px-3 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold transition-colors shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       {telegramSaved ? (
                         <>
-                          <Check size={14} /> Saqlandi!
+                          <Check size={14} /> Saqlandi
                         </>
                       ) : (
                         <>
@@ -1090,27 +1087,24 @@ export function GroupProfilePage({
                 {/* Status Legend Indicator */}
                 <div className="flex items-center gap-3 text-xs flex-wrap">
                   <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Bor (Qatnashgan)
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Bor
                   </span>
                   <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Kechikkan
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Kech
                   </span>
                   <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
                     <span className="w-2.5 h-2.5 rounded-full bg-sky-500" /> Sababli
                   </span>
                   <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
-                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Kelmagan
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500" /> Yo'q
                   </span>
                 </div>
               </div>
 
-              {/* LESSON DATES PILLS (ONLY DARS KUNLARI!) */}
+              {/* LESSON DATES PILLS */}
               <div>
-                <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 flex items-center justify-between">
-                  <span>Dars kunlari jadvali ({lessonDatesInMonth.length} ta dars):</span>
-                  <span className="text-[11px] text-indigo-600 dark:text-indigo-400 font-medium">
-                    Faqat belgilangan dars kunlari ({groupDaysNormalized.join(", ")})
-                  </span>
+                <div className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-2">
+                  Dars kunlari:
                 </div>
 
                 <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
@@ -1123,7 +1117,7 @@ export function GroupProfilePage({
                       <button
                         key={d.date}
                         onClick={() => setSelectedDate(d.date)}
-                        className={`px-3 py-2.5 rounded-xl text-xs font-semibold flex flex-col items-center shrink-0 border transition-all ${
+                        className={`px-3 py-2.5 rounded-xl text-xs font-semibold flex flex-col items-center shrink-0 border transition-all cursor-pointer ${
                           isSelected
                             ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20 scale-105"
                             : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-indigo-400"
@@ -1155,11 +1149,8 @@ export function GroupProfilePage({
               {/* SELECTED DATE DETAILS & SUMMARY BAR */}
               <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-4 shadow-sm flex items-center justify-between flex-wrap gap-3">
                 <div>
-                  <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                    <span>{formatDate(selectedDate)}</span>
-                    <span className="text-xs font-normal text-slate-400">
-                      ({groupStudents.length} nafar o'quvchi)
-                    </span>
+                  <h4 className="font-bold text-sm text-slate-900 dark:text-white">
+                    {formatDate(selectedDate)}
                   </h4>
                   <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-1">
                     <span className="text-emerald-600 font-semibold">Bor: {dayStats.present}</span>
@@ -1168,7 +1159,7 @@ export function GroupProfilePage({
                     <span>•</span>
                     <span className="text-sky-600 font-semibold">Sababli: {dayStats.excused}</span>
                     <span>•</span>
-                    <span className="text-rose-600 font-semibold">Kelmadi: {dayStats.absent}</span>
+                    <span className="text-rose-600 font-semibold">Yo'q: {dayStats.absent}</span>
                   </div>
                 </div>
 
@@ -1176,7 +1167,7 @@ export function GroupProfilePage({
                   <button
                     onClick={handleMarkAllPresent}
                     disabled={savingAttendance}
-                    className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors shadow-sm flex items-center gap-1.5"
+                    className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors shadow-sm flex items-center gap-1.5 cursor-pointer"
                   >
                     <CheckCircle2 size={14} /> Barchasini BOR qilish
                   </button>
@@ -1191,7 +1182,7 @@ export function GroupProfilePage({
                       <th className="py-3 px-4">#</th>
                       <th className="py-3 px-3">O'quvchi</th>
                       <th className="py-3 px-3">Telefon</th>
-                      <th className="py-3 px-3 text-center">Davomat holati ({formatDate(selectedDate)})</th>
+                      <th className="py-3 px-3 text-center">Davomat holati</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1309,10 +1300,10 @@ export function GroupProfilePage({
                                       onChange={(e) => handleSetReason(s.id, e.target.value)}
                                       placeholder={
                                         status === "late"
-                                          ? "Kechikish sababi..."
+                                          ? "Kechikish sababi"
                                           : status === "excused"
-                                          ? "Sababli kelmaganlik izohi..."
-                                          : "Kelmadi sababi / izoh..."
+                                          ? "Sababli izohi"
+                                          : "Kelmaganlik sababi"
                                       }
                                       className="w-full text-[11px] px-2.5 py-1 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-indigo-500"
                                     />
@@ -1329,22 +1320,6 @@ export function GroupProfilePage({
               </div>
             </div>
           )}
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 py-3.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
-          <div className="text-xs text-slate-400">
-            Jami o'quvchilar: <strong className="text-slate-700 dark:text-slate-300">{groupStudents.length} nafar</strong>
-          </div>
-
-          <button
-            onClick={onClose}
-            className="px-4 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors"
-          >
-            Yopish
-          </button>
-        </div>
-      </div>
 
       {/* ======================================================= */}
       {/* MODAL 1: MAVJUD TALABA QO'SHISH (ADD EXISTING STUDENT) */}
@@ -1444,14 +1419,14 @@ export function GroupProfilePage({
             <form onSubmit={handleQuickAddNewStudent} className="space-y-3">
               <div>
                 <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 block mb-1">
-                  O'quvchi to'liq ismi *
+                  To'liq ism
                 </label>
                 <input
                   type="text"
                   required
                   value={quickNewStudentName}
                   onChange={(e) => setQuickNewStudentName(e.target.value)}
-                  placeholder="Masalan: Azizov Sardorbek Bahrom o'g'li"
+                  placeholder="Ism, familiya"
                   className={`${INPUT_CLS} text-xs`}
                   autoFocus
                 />
@@ -1492,7 +1467,7 @@ export function GroupProfilePage({
                   type="text"
                   value={quickNewStudentParentName}
                   onChange={(e) => setQuickNewStudentParentName(e.target.value)}
-                  placeholder="Ota-onasining to'liq ismi"
+                  placeholder="Ota-onasi ismi"
                   className={`${INPUT_CLS} text-xs`}
                 />
               </div>

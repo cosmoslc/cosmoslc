@@ -961,6 +961,10 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
   const handleUpdateCenterSettings = async (settings) => {
     try {
       await api.updateCenterSettings(settings);
+      setDirectorData((prev) => ({
+        ...prev,
+        centerSettings: { ...prev?.centerSettings, ...settings },
+      }));
       addToast("Markaz sozlamalari yangilandi");
       await refreshData();
     } catch (e) {

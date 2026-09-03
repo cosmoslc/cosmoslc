@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sliders, Save, Check } from 'lucide-react';
+import { Sliders, Save, Check, Wallet, Receipt, CalendarCheck } from 'lucide-react';
 import { WEEK_DAYS } from '../utils/constants';
 
 export function CenterSettingsPage({ directorData, onUpdateSettings }) {
@@ -13,9 +13,15 @@ export function CenterSettingsPage({ directorData, onUpdateSettings }) {
     workDays: ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'],
     workStart: '09:00',
     workEnd: '21:00',
+    billingMode: 'invoice',
+    excusedAbsenceRefund: true,
   };
 
-  const [form, setForm] = useState(settings);
+  const [form, setForm] = useState({
+    billingMode: 'invoice',
+    excusedAbsenceRefund: true,
+    ...settings,
+  });
   const [saved, setSaved] = useState(false);
 
   const toggleDay = (day) => {
@@ -64,10 +70,96 @@ export function CenterSettingsPage({ directorData, onUpdateSettings }) {
       </div>
 
       {saved && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl text-sm">
-          Sozlamalar saqlandi ✅
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-xl text-sm font-medium">
+          Sozlamalar muvaffaqiyatli saqlandi
         </div>
       )}
+
+      {/* Moliyaviy hisob-kitob sozlamalari */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 space-y-5">
+        <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <Wallet className="w-5 h-5 text-indigo-600" />
+          <h3 className="font-bold text-slate-900 dark:text-white text-base">
+            Moliyaviy hisob-kitob sozlamalari
+          </h3>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Hisoblash rejimi */}
+          <div className="space-y-2">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+              O'quvchi balansini hisoblash rejimi
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setForm(prev => ({ ...prev, billingMode: 'invoice' }))}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  (form.billingMode || 'invoice') === 'invoice'
+                    ? 'border-indigo-600 bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 shadow-sm'
+                    : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <Receipt size={16} className={form.billingMode === 'invoice' ? 'text-indigo-600' : 'text-slate-400'} />
+                  <span className="text-xs font-bold">To'liq oylik hisob</span>
+                </div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Oy boshida to'liq summa qarz yoziladi
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setForm(prev => ({ ...prev, billingMode: 'per_lesson' }))}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                  form.billingMode === 'per_lesson'
+                    ? 'border-indigo-600 bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200 shadow-sm'
+                    : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <CalendarCheck size={16} className={form.billingMode === 'per_lesson' ? 'text-indigo-600' : 'text-slate-400'} />
+                  <span className="text-xs font-bold">Dars-dars hisob</span>
+                </div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Davomat qilinganda balansdan ayiriladi
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Sababli kelmaslik toggle */}
+          <div className="space-y-2">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+              Sababli kelmaslik
+            </label>
+            <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
+              <div>
+                <span className="text-xs font-semibold text-slate-900 dark:text-white block">
+                  Sababli kelmaslik dars to'loviga ta'sir qilishi
+                </span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                  {form.excusedAbsenceRefund ? "Kompensatsiya qilinadi" : "Kompensatsiya qilinmaydi"}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setForm(prev => ({ ...prev, excusedAbsenceRefund: !prev.excusedAbsenceRefund }))}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer shrink-0 ${
+                  form.excusedAbsenceRefund ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    form.excusedAbsenceRefund ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* Contact info */}

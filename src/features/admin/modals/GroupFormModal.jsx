@@ -87,6 +87,12 @@ export function GroupFormModal({
   const [startDate, setStartDate] = useState(editing?.startDate || todayISO());
   const [telegramChatId, setTelegramChatId] = useState(editing?.telegramChatId || "");
   const [color, setColor] = useState(editing?.color || nextGroupColor(groups));
+  const [billingMode, setBillingMode] = useState(editing?.billingMode || "");
+  const [excusedAbsenceRefund, setExcusedAbsenceRefund] = useState(
+    editing?.excusedAbsenceRefund !== undefined && editing?.excusedAbsenceRefund !== null
+      ? String(editing.excusedAbsenceRefund)
+      : ""
+  );
   const [note, setNote] = useState(editing?.note || editing?.statusNote || "");
   const [error, setError] = useState("");
 
@@ -168,6 +174,8 @@ export function GroupFormModal({
       startDate,
       telegramChatId: telegramChatId.trim(),
       color,
+      billingMode: billingMode || null,
+      excusedAbsenceRefund: excusedAbsenceRefund === "" ? null : (excusedAbsenceRefund === "true"),
       note: note.trim(),
     });
     onClose();
@@ -406,6 +414,35 @@ export function GroupFormModal({
                 style={{ background: c }}
               />
             ))}
+          </div>
+        </div>
+
+        {/* Moliyaviy hisob-kitob sozlamalari */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 border-t border-slate-100 dark:border-slate-800">
+          <div>
+            <label className={LABEL_CLS}>Hisob-kitob rejimi</label>
+            <select
+              value={billingMode}
+              onChange={(e) => setBillingMode(e.target.value)}
+              className={INPUT_CLS}
+            >
+              <option value="">Markaz bo'yicha</option>
+              <option value="invoice">To'liq oylik hisob</option>
+              <option value="per_lesson">Dars-dars hisob</option>
+            </select>
+          </div>
+
+          <div>
+            <label className={LABEL_CLS}>Sababli kelmaslik</label>
+            <select
+              value={excusedAbsenceRefund}
+              onChange={(e) => setExcusedAbsenceRefund(e.target.value)}
+              className={INPUT_CLS}
+            >
+              <option value="">Markaz bo'yicha</option>
+              <option value="true">Kompensatsiya qilinadi</option>
+              <option value="false">Kompensatsiya qilinmaydi</option>
+            </select>
           </div>
         </div>
 

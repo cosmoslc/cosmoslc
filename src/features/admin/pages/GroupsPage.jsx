@@ -31,6 +31,7 @@ export function GroupsPage({
   directorData,
   opData,
   openModal = () => {},
+  openGroupProfile = () => {},
   scopeBranchIds: passedScopeBranchIds = [],
   scopeBranches = [],
   currentBranchId,
@@ -351,7 +352,7 @@ export function GroupsPage({
             return (
               <div
                 key={g.id}
-                onClick={() => openModal({ type: "groupProfile", group: g })}
+                onClick={() => openGroupProfile(g)}
                 className="group relative bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-5 flex flex-col justify-between shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700/60 transition-all duration-200 cursor-pointer"
                 style={{
                   borderLeftWidth: "4px",
