@@ -80,5 +80,37 @@ export async function addManagerPayment(payload) {
   }
 }
 
+export async function deleteManagerPayment(id) {
+  try {
+    const { error } = await supabase.from('manager_payments').delete().eq('id', id);
+    if (error) throw error;
+    const cached = getCachedData('manager_payments', []);
+    setCachedData('manager_payments', cached.filter(p => String(p.id) !== String(id)));
+    return true;
+  } catch (err) {
+    const cached = getCachedData('manager_payments', []);
+    setCachedData('manager_payments', cached.filter(p => String(p.id) !== String(id)));
+    return true;
+  }
+}
+
+export async function updateManagerPayment(id, payload) {
+  try {
+    const { data, error } = await supabase.from('manager_payments').update({
+      amount: Number(payload.amount) || 0,
+      date: payload.date,
+      note: payload.note || '',
+    }).eq('id', id).select().single();
+    if (error) throw error;
+    const cached = getCachedData('manager_payments', []);
+    setCachedData('manager_payments', cached.map(p => String(p.id) === String(id) ? { ...p, ...payload } : p));
+    return data;
+  } catch (err) {
+    const cached = getCachedData('manager_payments', []);
+    setCachedData('manager_payments', cached.map(p => String(p.id) === String(id) ? { ...p, ...payload } : p));
+    return { id, ...payload };
+  }
+}
+
 
 

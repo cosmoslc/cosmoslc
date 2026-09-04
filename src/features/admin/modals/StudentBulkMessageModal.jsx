@@ -19,7 +19,7 @@ export function StudentBulkMessageModal({ studentIds, students, onSend, onClose 
   }
 
   return (
-    <Modal title="O'quvchilarga xabar" onClose={onClose}>
+    <Modal title="O'quvchilarga xabar" onClose={onClose} position="center">
       <div className="space-y-4">
         <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-700">
           SMS orqali avtomatik yuborish hali sozlanmagan (provayder ulanmagan). Bu

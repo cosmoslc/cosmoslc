@@ -1,7 +1,9 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { MorphDropdown } from "../../../shared/components/MorphDropdown";
 import {
   ArrowLeft,
+  ArrowDownLeft,
+  ArrowUpRight,
   User,
   Phone,
   Calendar,
@@ -52,16 +54,58 @@ import {
   LABEL_CLS,
 } from "../theme/tokens";
 import { ConfirmModal, Modal } from "../components/primitives";
+import { RefundPaymentModal } from "../modals/RefundPaymentModal";
+import { RecordPaymentModal } from "../modals/RecordPaymentModal";
+import { UnenrollGroupModal } from "../modals/UnenrollGroupModal";
+import { UnenrollAllGroupsModal } from "../modals/UnenrollAllGroupsModal";
+import { AddDiscountModal } from "../modals/AddDiscountModal";
 import { calculateProratedFee, calculateStudentGroupFee, calculateRefundAmount, getMonthLessonDates } from "../../../shared/utils/prorata";
 import {
   displayPhone,
   formatDate,
   money,
   thisMonthKey,
+  prevMonthKey,
 } from "../utils/helpers";
 import { opGroups } from "../utils/dataHelpers";
 import { SearchableGroupSelect } from "../../../shared/components/SearchableGroupSelect";
 import * as api from "../../../shared/api";
+
+const UZ_MONTH_NAMES = [
+  "Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun",
+  "Iyul", "Avgust", "Sentabr", "Oktabr", "Noyabr", "Dekabr"
+];
+
+function getMonthNameUz(mStr) {
+  if (!mStr) return "";
+  const parts = mStr.split("-");
+  const mNum = parseInt(parts[1], 10);
+  return UZ_MONTH_NAMES[mNum - 1] || mStr;
+}
+
+function getMonthsRange(startMKey, endMKey) {
+  if (!startMKey || !endMKey) return [endMKey || thisMonthKey()];
+  const result = [];
+  try {
+    let [sY, sM] = startMKey.split("-").map(Number);
+    const [eY, eM] = endMKey.split("-").map(Number);
+    if (isNaN(sY) || isNaN(sM) || isNaN(eY) || isNaN(eM)) return [endMKey];
+
+    let count = 0;
+    while ((sY < eY || (sY === eY && sM <= eM)) && count < 36) {
+      result.push(`${sY}-${String(sM).padStart(2, "0")}`);
+      sM++;
+      if (sM > 12) {
+        sM = 1;
+        sY++;
+      }
+      count++;
+    }
+  } catch {
+    return [endMKey];
+  }
+  return result.length > 0 ? result : [endMKey];
+}
 
 function formatShortDate(val) {
   if (!val) return "—";
@@ -184,9 +228,11 @@ export function StudentProfilePage({
   onRemoveFromGroup,
   onBack,
   openModal,
+  openPaymentModal,
 }) {
   // Top menu tabs: guruhlar, tolovlar, eslatma, chegirma, imtihonlar, tarix, xaridlar, sms, coins, edit
   const [activeTab, setActiveTab] = useState("groups");
+  const [paymentFilter, setPaymentFilter] = useState("all"); // 'all' | 'charges' | 'payments'
   const [isEditing, setIsEditing] = useState(false);
   const [showMoreInfo, setShowMoreInfo] = useState(false); // Collapsible for extra details in Left Block
   const [copiedPhone, setCopiedPhone] = useState(false);
@@ -301,13 +347,29 @@ export function StudentProfilePage({
   // Coin state
   const [coinAmount, setCoinAmount] = useState(10);
   const [coinReason, setCoinReason] = useState("Darsdagi faollik uchun");
+  const [coinSection, setCoinSection] = useState("Darsdagi faollik");
   const [coinActionType, setCoinActionType] = useState("add"); // add | deduct
+
+  // Discount modal state
+  const [showAddDiscountModal, setShowAddDiscountModal] = useState(false);
+  const [editingDiscount, setEditingDiscount] = useState(null);
 
   // Group quick assign state
   const [groupToAssign, setGroupToAssign] = useState("");
 
   // Actions dropdown menu state & ref
   const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [paymentModalData, setPaymentModalData] = useState(null);
+  const [showGiveCoinModal, setShowGiveCoinModal] = useState(false);
+  const [coinAmountInput, setCoinAmountInput] = useState(10);
+  const [showEditBalanceModal, setShowEditBalanceModal] = useState(false);
+  const [newBalanceInput, setNewBalanceInput] = useState("");
+  const [balanceComment, setBalanceComment] = useState("");
+  const [showTransferBranchModal, setShowTransferBranchModal] = useState(false);
+  const [targetBranchId, setTargetBranchId] = useState("");
+  const [targetGroupId, setTargetGroupId] = useState("");
+  const [showUnenrollAllModal, setShowUnenrollAllModal] = useState(false);
   const actionsMenuRef = useRef(null);
 
   // Group action menu state & modals
@@ -316,14 +378,11 @@ export function StudentProfilePage({
   const [transferModalData, setTransferModalData] = useState(null); // group
   const [attendanceModalGroup, setAttendanceModalGroup] = useState(null); // group for attendance & grades view
   const [isAddGroupModalOpen, setIsAddGroupModalOpen] = useState(false);
+  const [unenrollGroupModalData, setUnenrollGroupModalData] = useState(null); // group to unenroll
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (
-        actionsMenuRef.current &&
-        !actionsMenuRef.current.contains(e.target) &&
-        !e.target.closest("#menuToggle")
-      ) {
+      if (!e.target.closest(".header-actions-container")) {
         setShowActionsMenu(false);
       }
       if (!e.target.closest(".group-card-actions-container")) {
@@ -363,6 +422,9 @@ export function StudentProfilePage({
 
   // Debt calculation per group with Pro-rata support and Group Activation
   const groupDebts = useMemo(() => {
+    const prevKey = prevMonthKey(month);
+    const prevMonthName = getMonthNameUz(prevKey);
+
     return assignedGroups.map((g) => {
       let fullPrice = Number(g.price || 0);
       if (currentStudent?.discount) {
@@ -405,6 +467,38 @@ export function StudentProfilePage({
       const isPartial = !isPaid && effectiveCovered > 0;
       const paymentStatus = isPaid ? "paid" : isPartial ? "partial" : "unpaid";
 
+      // O'tgan oy (prevMonth) bo'yicha ushbu guruh hisob-kitobi
+      const prevFeeInfo = calculateStudentGroupFee({
+        fullMonthlyFee: fullPrice,
+        groupDays: g.days || ["Dush", "Chor", "Juma"],
+        monthStr: prevKey,
+        membership,
+        student: currentStudent,
+        group: g,
+        attendances: groupAttendances,
+        settings: directorData?.centerSettings || {},
+      });
+      const prevEffectivePrice = prevFeeInfo.isTrial ? 0 : (prevFeeInfo.calculatedFee || 0);
+      const prevGroupPayments = allPayments.filter(
+        (p) =>
+          String(p.studentId) === String(currentStudent?.id) &&
+          String(p.groupId) === String(g.id) &&
+          (p.month === prevKey || (p.date && p.date.startsWith(prevKey)))
+      );
+      const prevPaidSum = prevGroupPayments.reduce(
+        (sum, p) => sum + (Number(p.amount) || 0) + (Number(p.discount) || 0),
+        0
+      );
+      const prevRemainingDebt = Math.max(0, prevEffectivePrice - prevPaidSum);
+
+      const totalGroupRemainingDebt = remainingDebt + prevRemainingDebt;
+      const groupBalance =
+        totalGroupRemainingDebt > 0
+          ? -totalGroupRemainingDebt
+          : effectiveCovered > effectivePrice
+          ? effectiveCovered - effectivePrice
+          : 0;
+
       const effectiveActivationDate =
         membership?.activationDate ||
         groupFeeInfo?.activationDate ||
@@ -431,6 +525,11 @@ export function StudentProfilePage({
         discountSum,
         effectiveCovered,
         remainingDebt,
+        prevRemainingDebt,
+        prevMonthName,
+        prevKey,
+        totalGroupRemainingDebt,
+        groupBalance,
         paid: isPaid,
         isPartial,
         status: paymentStatus,
@@ -441,6 +540,105 @@ export function StudentProfilePage({
   const totalDebt = useMemo(() => {
     return groupDebts.reduce((sum, d) => sum + (d.remainingDebt || 0), 0);
   }, [groupDebts]);
+
+  // O'tgan oydan qarz hisob-kitobi (agar o'tgan oydan qarz bo'lsa)
+  const previousMonthDebtInfo = useMemo(() => {
+    const prevKey = prevMonthKey(month);
+    const monthName = getMonthNameUz(prevKey);
+    const totalPrevDebt = groupDebts.reduce((sum, d) => sum + (d.prevRemainingDebt || 0), 0);
+    const primaryGroup = groupDebts.find((d) => d.prevRemainingDebt > 0)?.group || (assignedGroups.length > 0 ? assignedGroups[0] : null);
+
+    return {
+      monthKey: prevKey,
+      monthName,
+      amount: totalPrevDebt,
+      hasDebt: totalPrevDebt > 0,
+      primaryGroup,
+    };
+  }, [month, groupDebts, assignedGroups]);
+
+  // Agar bevosita o'tgan oyda qarz bo'lmasa, undan oldingi oylarni ham tekshirish
+  const pastDebtInfo = useMemo(() => {
+    if (previousMonthDebtInfo.hasDebt) {
+      return previousMonthDebtInfo;
+    }
+
+    let curKey = prevMonthKey(month);
+    for (let i = 0; i < 3; i++) {
+      curKey = prevMonthKey(curKey);
+      let olderDebt = 0;
+      let pGroup = null;
+
+      assignedGroups.forEach((g) => {
+        let fullPrice = Number(g.price || 0);
+        if (currentStudent?.discount) {
+          if (
+            currentStudent.discountType === "percent" ||
+            currentStudent.discountType === "%" ||
+            currentStudent.discountType === "foiz"
+          ) {
+            fullPrice = Math.round(fullPrice * (1 - Number(currentStudent.discount) / 100));
+          } else {
+            fullPrice = Math.max(0, fullPrice - Number(currentStudent.discount));
+          }
+        }
+        const membership =
+          currentStudent?.groupMemberships?.[g.id] ||
+          currentStudent?.groupMemberships?.[String(g.id)];
+        const groupAttendances = (opData?.attendance || []).filter(
+          (a) => String(a.groupId) === String(g.id)
+        );
+        const feeInfo = calculateStudentGroupFee({
+          fullMonthlyFee: fullPrice,
+          groupDays: g.days || ["Dush", "Chor", "Juma"],
+          monthStr: curKey,
+          membership,
+          student: currentStudent,
+          group: g,
+          attendances: groupAttendances,
+          settings: directorData?.centerSettings || {},
+        });
+        if (feeInfo.isTrial) return;
+        const effPrice = feeInfo.calculatedFee || 0;
+        if (effPrice <= 0) return;
+        const payments = allPayments.filter(
+          (p) =>
+            String(p.studentId) === String(currentStudent?.id) &&
+            String(p.groupId) === String(g.id) &&
+            (p.month === curKey || (p.date && p.date.startsWith(curKey)))
+        );
+        const paidTotal = payments.reduce(
+          (sum, p) => sum + (Number(p.amount) || 0) + (Number(p.discount) || 0),
+          0
+        );
+        const rem = Math.max(0, effPrice - paidTotal);
+        if (rem > 0) {
+          olderDebt += rem;
+          if (!pGroup) pGroup = g;
+        }
+      });
+
+      if (olderDebt > 0) {
+        return {
+          monthKey: curKey,
+          monthName: getMonthNameUz(curKey),
+          amount: olderDebt,
+          hasDebt: true,
+          primaryGroup: pGroup,
+        };
+      }
+    }
+
+    return previousMonthDebtInfo;
+  }, [
+    previousMonthDebtInfo,
+    month,
+    assignedGroups,
+    currentStudent,
+    opData?.attendance,
+    directorData?.centerSettings,
+    allPayments,
+  ]);
 
   // Tabledagi sof hisoblangan balans (StudentsPage bilan 100% bir xil)
   const tableBalance = useMemo(() => {
@@ -453,20 +651,258 @@ export function StudentProfilePage({
             currentStudent?.groupMemberships?.[String(g.id)];
           return !m?.activationDate || m?.status === "trial";
         }));
-    const rawBal = Number(currentStudent?.balance || 0) - totalDebt;
+    const totalGroupSurplus = groupDebts.reduce(
+      (sum, item) => sum + (item.groupBalance > 0 ? item.groupBalance : 0),
+      0
+    );
+    const rawBal = Number(currentStudent?.balance || 0) + totalGroupSurplus - totalDebt;
     return isTrial && rawBal <= 0 ? 0 : rawBal;
-  }, [currentStudent, assignedGroups, totalDebt]);
+  }, [currentStudent, assignedGroups, totalDebt, groupDebts]);
 
-  // Student's payment history
+  // Student's payment history (Yangi to'lovlar birinchi chiqishi uchun tartiblangan)
   const studentPayments = useMemo(() => {
     return allPayments
-      .filter((p) => p.studentId === currentStudent?.id)
-      .sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0));
+      .filter((p) => String(p.studentId) === String(currentStudent?.id))
+      .sort((a, b) => {
+        const timeA = new Date(a.date || a.createdAt || 0).getTime() || 0;
+        const timeB = new Date(b.date || b.createdAt || 0).getTime() || 0;
+        if (timeB !== timeA) return timeB - timeA;
+        const cA = new Date(a.createdAt || 0).getTime() || 0;
+        const cB = new Date(b.createdAt || 0).getTime() || 0;
+        if (cB !== cA) return cB - cA;
+        return String(b.id || "").localeCompare(String(a.id || ""));
+      });
   }, [allPayments, currentStudent?.id]);
 
   const totalPaidSum = useMemo(() => {
     return studentPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
   }, [studentPayments]);
+
+  // O'quvchining Coin tarixi (Transactions va Coin history birlashmasi)
+  const studentCoinHistory = useMemo(() => {
+    const fromTransactions = (directorData?.coinTransactions || opData?.coinTransactions || [])
+      .filter((t) => String(t.studentId || t.student_id) === String(currentStudent?.id))
+      .map((t) => ({
+        id: t.id,
+        section: t.section || t.category || "Darsdagi faollik",
+        type: Number(t.amount) >= 0 ? "add" : "deduct",
+        amount: Math.abs(Number(t.amount) || 0),
+        reason: t.reason || "Coin amali",
+        createdAt: t.createdAt || t.date || new Date().toISOString(),
+      }));
+
+    const fromStudentHistory = (currentStudent?.coinHistory || []).map((h, i) => ({
+      id: h.id || `ch_${i}`,
+      section: h.section || h.category || "Darsdagi faollik",
+      type: h.type || (Number(h.amount) >= 0 ? "add" : "deduct"),
+      amount: Math.abs(Number(h.amount) || 0),
+      reason: h.reason || h.comment || "Coin amali",
+      createdAt: h.createdAt || h.date || new Date().toISOString(),
+    }));
+
+    const map = new Map();
+    [...fromStudentHistory, ...fromTransactions].forEach((item) => {
+      map.set(String(item.id), item);
+    });
+
+    return Array.from(map.values()).sort((a, b) => {
+      const tA = new Date(a.createdAt || a.date || 0).getTime() || 0;
+      const tB = new Date(b.createdAt || b.date || 0).getTime() || 0;
+      return tB - tA;
+    });
+  }, [directorData?.coinTransactions, opData?.coinTransactions, currentStudent]);
+
+  // O'quvchining chegirmalari ro'yxati
+  const studentDiscounts = useMemo(() => {
+    if (Array.isArray(currentStudent?.discounts) && currentStudent.discounts.length > 0) {
+      return currentStudent.discounts;
+    }
+    if (currentStudent?.discount && Number(currentStudent.discount) > 0) {
+      return [
+        {
+          id: "disc_default",
+          groupId: "",
+          groupName: "Barcha guruhlar",
+          value: Number(currentStudent.discount),
+          type: currentStudent.discountType || "percent",
+          startDate: currentStudent.joinedAt?.slice(0, 10) || new Date().toISOString().slice(0, 10),
+          endDate: "2026-12-31",
+          affectsTeacherShare: true,
+          reason: currentStudent.discountReason || "Oila a'zolari chegirmasi",
+          createdAt: currentStudent.createdAt || new Date().toISOString(),
+        },
+      ];
+    }
+    return [];
+  }, [currentStudent]);
+
+  // O'quvchiga aloqador barcha guruhlar (biriktirilgan + a'zolikdagi + to'lovlardagi)
+  const allRelevantGroups = useMemo(() => {
+    const groupMap = new Map();
+    assignedGroups.forEach((g) => {
+      if (g && g.id) groupMap.set(String(g.id), g);
+    });
+    const membershipGids = Object.keys(currentStudent?.groupMemberships || {});
+    membershipGids.forEach((gid) => {
+      if (!groupMap.has(String(gid))) {
+        const found = allGroups.find((g) => String(g.id) === String(gid));
+        if (found) groupMap.set(String(gid), found);
+      }
+    });
+    studentPayments.forEach((p) => {
+      if (p.groupId && !groupMap.has(String(p.groupId))) {
+        const found = allGroups.find((g) => String(g.id) === String(p.groupId));
+        if (found) groupMap.set(String(p.groupId), found);
+      }
+    });
+    return Array.from(groupMap.values());
+  }, [assignedGroups, currentStudent?.groupMemberships, allGroups, studentPayments]);
+
+  // Tizim tomonidan faollashtirilganda yoki yangi oy kelganda balansdan minus qilingan abonent to'lovlari (Yechimlar)
+  const studentCharges = useMemo(() => {
+    const charges = [];
+    const curMonth = thisMonthKey();
+
+    allRelevantGroups.forEach((g) => {
+      let fullPrice = Number(g.price || 0);
+      if (currentStudent?.discount) {
+        if (
+          currentStudent.discountType === "percent" ||
+          currentStudent.discountType === "%" ||
+          currentStudent.discountType === "foiz"
+        ) {
+          fullPrice = Math.round(fullPrice * (1 - Number(currentStudent.discount) / 100));
+        } else {
+          fullPrice = Math.max(0, fullPrice - Number(currentStudent.discount));
+        }
+      }
+
+      const membership =
+        currentStudent?.groupMemberships?.[g.id] ||
+        currentStudent?.groupMemberships?.[String(g.id)];
+
+      const explicitActDate = membership?.activationDate || null;
+      const fallbackActDate =
+        membership?.reactivatedAt ||
+        (membership?.status === "active"
+          ? (membership?.enrolledAt || currentStudent?.activationDate || currentStudent?.joinedAt || currentStudent?.createdAt)
+          : null);
+      const actDateStr = (explicitActDate || fallbackActDate || "")?.slice(0, 10);
+
+      // Agar sinovda bo'lsa va faollashtirilmagan bo'lsa, to'lov yechilmaydi
+      if (!actDateStr && (membership?.status === "trial" || currentStudent?.status === "trial")) {
+        return;
+      }
+
+      let startMonth = actDateStr ? actDateStr.slice(0, 7) : curMonth;
+      studentPayments.forEach((p) => {
+        if (String(p.groupId) === String(g.id) && p.month && p.month < startMonth) {
+          startMonth = p.month;
+        }
+      });
+
+      const monthsToProcess = getMonthsRange(startMonth, curMonth);
+      const groupAttendances = (opData?.attendance || []).filter(
+        (a) => String(a.groupId) === String(g.id)
+      );
+
+      monthsToProcess.forEach((mKey) => {
+        const feeInfo = calculateStudentGroupFee({
+          fullMonthlyFee: fullPrice,
+          groupDays: g.days || ["Dush", "Chor", "Juma"],
+          monthStr: mKey,
+          membership,
+          student: currentStudent,
+          group: g,
+          attendances: groupAttendances,
+          settings: directorData?.centerSettings || {},
+        });
+
+        if (feeInfo.isTrial || feeInfo.isPaused || !feeInfo.calculatedFee || feeInfo.calculatedFee <= 0) {
+          return;
+        }
+
+        const isActivationMonth = actDateStr && mKey === actDateStr.slice(0, 7);
+        const chargeDate = isActivationMonth ? actDateStr : `${mKey}-01`;
+
+        charges.push({
+          id: `charge_${g.id}_${mKey}`,
+          kind: "charge",
+          date: chargeDate,
+          groupId: g.id,
+          groupName: g.name,
+          month: mKey,
+          monthName: getMonthNameUz(mKey),
+          amount: feeInfo.calculatedFee,
+          chargeType: isActivationMonth && feeInfo.isProrated
+            ? "Guruhga faollashuv"
+            : "Oylik kurs to'lovi",
+          isProrated: feeInfo.isProrated,
+          attendedLessons: feeInfo.attendedLessons || feeInfo.billableLessons || feeInfo.expectedLessons || 0,
+          totalLessons: feeInfo.totalLessons || 12,
+          reason: feeInfo.reason,
+          actDateStr,
+        });
+      });
+    });
+
+    return charges.sort((a, b) => new Date(b.date) - new Date(a.date));
+  }, [allRelevantGroups, currentStudent, studentPayments, opData?.attendance, directorData?.centerSettings]);
+
+  const totalChargedSum = useMemo(() => {
+    return studentCharges.reduce((sum, c) => sum + (c.amount || 0), 0);
+  }, [studentCharges]);
+
+  // Barcha tranzaksiyalar (Kirim to'lovlar va Chiqim yechimlar)
+  const combinedTransactions = useMemo(() => {
+    const list = [
+      ...studentPayments.map((p) => ({
+        id: p.id,
+        kind: "payment",
+        date: p.date || p.createdAt?.slice(0, 10) || "",
+        createdAt: p.createdAt,
+        groupId: p.groupId,
+        groupName: allGroups.find((g) => String(g.id) === String(p.groupId))?.name || "Umumiy to'lov",
+        month: p.month || "",
+        amount: Number(p.amount) || 0,
+        method: p.method || p.type || "Naqd pul",
+        note: p.comment || p.note || "",
+        receiptNumber: p.receiptNumber || p.id?.slice(-6),
+      })),
+      ...studentCharges.map((c) => ({
+        id: c.id,
+        kind: "charge",
+        date: c.date,
+        groupId: c.groupId,
+        groupName: c.groupName,
+        month: c.month,
+        monthName: c.monthName,
+        amount: c.amount,
+        chargeType: c.chargeType,
+        method: "Balansdan yechim",
+        note: c.isProrated
+          ? `Faollashuv: ${formatShortDate(c.actDateStr)} (${c.attendedLessons} ta dars)`
+          : `${c.monthName} oyi uchun (${c.attendedLessons} ta dars)`,
+        isProrated: c.isProrated,
+      })),
+    ];
+
+    return list.sort((a, b) => {
+      const timeA = new Date(a.date || a.createdAt || 0).getTime() || 0;
+      const timeB = new Date(b.date || b.createdAt || 0).getTime() || 0;
+      if (timeB !== timeA) return timeB - timeA;
+      const cA = new Date(a.createdAt || 0).getTime() || 0;
+      const cB = new Date(b.createdAt || 0).getTime() || 0;
+      if (cB !== cA) return cB - cA;
+      return String(b.id || "").localeCompare(String(a.id || ""));
+    });
+  }, [studentPayments, studentCharges, allGroups]);
+
+  const filteredTransactions = useMemo(() => {
+    if (paymentFilter === "charges") return combinedTransactions.filter((t) => t.kind === "charge");
+    if (paymentFilter === "payments") return combinedTransactions.filter((t) => t.kind === "payment");
+    return combinedTransactions;
+  }, [combinedTransactions, paymentFilter]);
 
   // Attendance stats
   const attendanceRecords = useMemo(() => {
@@ -537,131 +973,184 @@ export function StudentProfilePage({
     ];
   }, [currentStudent?.purchases]);
 
-  // Action Menu Items for 3-dots button (Uch nuqtada amallar menyusi)
+  // Centralized payment trigger helper: pre-selects student, group and initiates payment modal
+  const triggerPayment = useCallback(
+    (targetGrp, targetAmount, targetMonth) => {
+      const g = targetGrp || (assignedGroups.length > 0 ? assignedGroups[0] : null);
+      if (openModal) {
+        openModal({
+          type: "recordPayment",
+          student: currentStudent,
+          studentId: currentStudent.id,
+          group: g,
+          groupId: g?.id,
+          amount: targetAmount,
+          month: targetMonth,
+        });
+      } else if (openPaymentModal) {
+        openPaymentModal(currentStudent, g);
+      } else if (onRecordPayment) {
+        onRecordPayment({
+          student: currentStudent,
+          studentId: currentStudent.id,
+          group: g,
+          groupId: g?.id,
+          amount: targetAmount,
+          month: targetMonth,
+        });
+      } else {
+        setPaymentModalData({
+          student: currentStudent,
+          group: g,
+          amount: targetAmount,
+          month: targetMonth,
+        });
+      }
+    },
+    [currentStudent, assignedGroups, openModal, openPaymentModal, onRecordPayment],
+  );
+
+  // Lidga qaytarish funksiyasi (Liddan o'tmagan bo'lsa qaytarib bo'lmaydi)
+  const handleReturnToLead = useCallback(() => {
+    setShowActionsMenu(false);
+    const leads = directorData?.leads || opData?.leads || [];
+    const cleanPhone = (currentStudent?.phone || "").replace(/\D/g, "");
+    const matchingLead = leads.find(
+      (l) =>
+        (currentStudent?.leadId && String(l.id) === String(currentStudent.leadId)) ||
+        (cleanPhone && l.phone && l.phone.replace(/\D/g, "") === cleanPhone)
+    );
+    const hasLeadOrigin = Boolean(
+      currentStudent?.leadId ||
+      currentStudent?.fromLead ||
+      currentStudent?.source === "lead" ||
+      matchingLead
+    );
+
+    if (!hasLeadOrigin) {
+      setConfirmModalState({
+        title: "Lidga qaytarib bo'lmaydi",
+        message: "Ushbu o'quvchi liddan o'tmagan (to'g'ridan-to'g'ri o'quvchi sifatida ro'yxatga olingan), shuning uchun uni lidga qaytarish imkoni mavjud emas.",
+        confirmText: "Tushundim",
+        cancelText: null,
+        danger: false,
+        onConfirm: () => {},
+      });
+      return;
+    }
+
+    setConfirmModalState({
+      title: "Lidga qaytarish",
+      message: `${currentStudent?.name || "O'quvchi"}ni qayta lidlar ro'yxatiga o'tkazishni tasdiqlaysizmi? O'quvchi lidlar doskasiga qaytariladi.`,
+      confirmText: "Ha, lidga qaytarish",
+      cancelText: "Bekor qilish",
+      danger: false,
+      onConfirm: async () => {
+        try {
+          const updatedData = { status: "lead" };
+          setLocalStudent((prev) => ({ ...prev, ...updatedData }));
+          await api.updateStudent(currentStudent.id, updatedData);
+          if (matchingLead) {
+            await api.updateLead(matchingLead.id, { status: "new", stage: "new" });
+          }
+          await onUpdateStudent?.(currentStudent?.id, updatedData);
+          setSaveSuccessMsg("O'quvchi muvaffaqiyatli lidga qaytarildi!");
+          setTimeout(() => setSaveSuccessMsg(""), 2500);
+        } catch (e) {
+          console.error(e);
+        }
+      },
+    });
+  }, [currentStudent, directorData?.leads, opData?.leads, onUpdateStudent]);
+
+  // Action Menu Items for 3-dots button (Uch nuqtada 9 ta tartiblangan amallar menyusi)
   const actionMenuItems = [
+    // 1. Guruhga qo'shish option
+    {
+      key: "add_group",
+      label: "Guruhga qo'shish",
+      icon: <Users size={16} className="text-emerald-600" />,
+      onClick: () => {
+        setShowActionsMenu(false);
+        setIsAddGroupModalOpen(true);
+      },
+    },
+    // 2. Boshqa filialga o'tkazish
+    {
+      key: "transfer_branch",
+      label: "Boshqa filialga o'tkazish",
+      icon: <Building2 size={16} className="text-indigo-600" />,
+      onClick: () => {
+        setShowActionsMenu(false);
+        setTargetBranchId(currentStudent?.branchId || "");
+        setTargetGroupId("");
+        setShowTransferBranchModal(true);
+      },
+    },
+    // 3. To'lov qilish
     {
       key: "pay",
-      label: "To'lov qabul qilish",
+      label: "To'lov qilish",
       icon: <CreditCard size={16} className="text-emerald-600" />,
       onClick: () => {
         setShowActionsMenu(false);
-        if (openModal) {
-          openModal({ type: "recordPayment", student: currentStudent, studentId: currentStudent?.id });
-        } else if (onRecordPayment) {
-          onRecordPayment({ studentId: currentStudent?.id });
-        } else {
-          setActiveTab("payments");
-        }
+        triggerPayment();
       },
     },
+    // 4. Talaba balansini tahrirlash
     {
-      key: "coins",
-      label: "Coin berish",
-      icon: <Coins size={16} className="text-amber-500" />,
+      key: "edit_balance",
+      label: "Talaba balansini tahrirlash",
+      icon: <Percent size={16} className="text-blue-600" />,
       onClick: () => {
         setShowActionsMenu(false);
-        setActiveTab("coins");
+        const actualBal = tableBalance !== undefined ? tableBalance : Number(currentStudent?.balance || 0);
+        setNewBalanceInput(String(actualBal));
+        setBalanceComment("");
+        setShowEditBalanceModal(true);
       },
     },
+    // 5. To'lovni qaytarish (Refund)
+    {
+      key: "refund",
+      label: "To'lovni qaytarish",
+      icon: <RotateCcw size={16} className="text-rose-600" />,
+      onClick: () => {
+        setShowActionsMenu(false);
+        setShowRefundModal(true);
+      },
+    },
+    // 6. O'chirish umumiy barcha guruhdan
+    {
+      key: "unenroll_all",
+      label: "O'chirish (barcha guruhdan)",
+      icon: <Trash2 size={16} className="text-rose-600" />,
+      onClick: () => {
+        setShowActionsMenu(false);
+        setShowUnenrollAllModal(true);
+      },
+    },
+    // 7. Tahrirlash
     {
       key: "edit",
       label: isEditing && activeTab === "edit" ? "Tahrirni yopish" : "Tahrirlash",
-      icon: <Edit3 size={16} className="text-blue-600" />,
+      icon: <Edit3 size={16} className="text-amber-600" />,
       onClick: () => {
         setShowActionsMenu(false);
         setIsEditing(!isEditing);
         setActiveTab("edit");
       },
     },
-    {
-      key: "add_group",
-      label: "Guruhga qo'shish",
-      icon: <Plus size={16} className="text-emerald-600" />,
-      onClick: () => {
-        setShowActionsMenu(false);
-        if (openModal) {
-          openModal({ type: "assignStudentToGroup", studentId: currentStudent?.id, student: currentStudent });
-        } else if (onAssignStudentToGroup) {
-          onAssignStudentToGroup(currentStudent?.id);
-        } else {
-          setActiveTab("groups");
-        }
-      },
-    },
-    {
-      key: "edit_balance",
-      label: "Balans tahrirlash",
-      icon: <Percent size={16} className="text-indigo-600" />,
-      onClick: async () => {
-        setShowActionsMenu(false);
-        if (openModal) {
-          openModal({ type: "editStudentBalance", studentId: currentStudent?.id, student: currentStudent });
-        } else {
-          const val = prompt("Yangi balans summasini kiriting (so'mda):", currentStudent?.balance || 0);
-          if (val !== null && !isNaN(val)) {
-            try {
-              const newBal = Number(val);
-              setLocalStudent((prev) => ({ ...prev, balance: newBal }));
-              await api.updateStudent(currentStudent.id, { balance: newBal });
-              await onUpdateStudent?.(currentStudent?.id, { balance: newBal });
-              setSaveSuccessMsg("Balans yangilandi!");
-              setTimeout(() => setSaveSuccessMsg(""), 2500);
-            } catch (e) {
-              console.error(e);
-            }
-          }
-        }
-      },
-    },
-    {
-      key: "transfer_branch",
-      label: "Boshqa filialga o'tkazish",
-      icon: <ArrowLeftRight size={16} className="text-indigo-600" />,
-      onClick: () => {
-        setShowActionsMenu(false);
-        if (openModal) {
-          openModal({ type: "transferBranch", studentId: currentStudent?.id, student: currentStudent });
-        } else {
-          alert("Boshqa filialga o'tkazish xizmati");
-        }
-      },
-    },
-    {
-      key: "refund",
-      label: "To'lov qaytarish",
-      icon: <RotateCcw size={16} className="text-rose-600" />,
-      onClick: () => {
-        setShowActionsMenu(false);
-        if (openModal) {
-          openModal({ type: "refundPayment", studentId: currentStudent?.id, student: currentStudent });
-        } else {
-          alert("To'lovni qaytarish xizmati");
-        }
-      },
-    },
+    // 8. Lidga qaytarish (agar liddan o'tmagan bo'lsa qaytarib bo'lmaydi)
     {
       key: "return_to_lead",
       label: "Lidga qaytarish",
       icon: <ArrowLeftRight size={16} className="text-purple-600" />,
-      onClick: async () => {
-        setShowActionsMenu(false);
-        setConfirmModalState({
-          title: "Lidga qaytarish",
-          message: `${currentStudent?.name || "O'quvchi"}ni qayta lidlar ro'yxatiga o'tkazasizmi?`,
-          onConfirm: async () => {
-            try {
-              setLocalStudent((prev) => ({ ...prev, status: "lead" }));
-              await api.updateStudent(currentStudent.id, { status: "lead" });
-              await onUpdateStudent?.(currentStudent?.id, { status: "lead" });
-              setSaveSuccessMsg("O'quvchi lidga qaytarildi");
-              setTimeout(() => setSaveSuccessMsg(""), 2500);
-            } catch (e) {
-              console.error(e);
-            }
-          },
-        });
+      onClick: () => {
+        handleReturnToLead();
       },
     },
+    // 9. SMS jo'natish
     {
       key: "send_sms",
       label: "SMS jo'natish",
@@ -669,31 +1158,6 @@ export function StudentProfilePage({
       onClick: () => {
         setShowActionsMenu(false);
         setActiveTab("sms");
-      },
-    },
-    {
-      key: "back",
-      label: "O'quvchilar ro'yxatiga",
-      icon: <ArrowLeft size={16} className="text-slate-600 dark:text-slate-400" />,
-      onClick: () => {
-        setShowActionsMenu(false);
-        onBack?.();
-      },
-    },
-    {
-      key: "delete",
-      label: "O'chirish / arxivlash",
-      icon: <Trash2 size={16} className="text-rose-600" />,
-      onClick: () => {
-        setShowActionsMenu(false);
-        setConfirmModalState({
-          title: "O'quvchini arxivlash / o'chirish",
-          message: `${currentStudent?.name || "O'quvchi"}ni o'chirish/arxivlashni tasdiqlaysizmi?`,
-          onConfirm: () => {
-            onDeleteStudent?.(currentStudent?.id);
-            onBack?.();
-          },
-        });
       },
     },
   ];
@@ -820,6 +1284,65 @@ export function StudentProfilePage({
     }
   };
 
+  const handleSaveDiscountItem = async (discItem) => {
+    try {
+      let updatedList = [...(currentStudent?.discounts || [])];
+      const existingIdx = updatedList.findIndex((d) => d.id === discItem.id);
+      if (existingIdx >= 0) {
+        updatedList[existingIdx] = discItem;
+      } else {
+        updatedList = [discItem, ...updatedList];
+      }
+      const updatedData = {
+        discounts: updatedList,
+        discount: discItem.value,
+        discountType: discItem.type,
+        discountReason: discItem.reason,
+      };
+      setLocalStudent((prev) => ({ ...prev, ...updatedData }));
+      await api.updateStudent(currentStudent.id, updatedData);
+      if (onUpdateStudent) {
+        await onUpdateStudent(currentStudent.id, updatedData);
+      }
+      setSaveSuccessMsg("Chegirma muvaffaqiyatli saqlandi!");
+      setTimeout(() => setSaveSuccessMsg(""), 2500);
+    } catch (err) {
+      console.error(err);
+      setErrorMsg("Chegirmani saqlashda xatolik");
+    }
+  };
+
+  const handleDeleteDiscountItem = (discId) => {
+    setConfirmModalState({
+      title: "Chegirmani o'chirish",
+      message: "Ushbu chegirmani ro'yxatdan o'chirmoqchimisiz?",
+      confirmText: "O'chirish",
+      cancelText: "Bekor qilish",
+      danger: true,
+      onConfirm: async () => {
+        try {
+          const updatedList = (currentStudent?.discounts || []).filter((d) => d.id !== discId);
+          const updatedData = {
+            discounts: updatedList,
+            discount: updatedList.length > 0 ? updatedList[0].value : 0,
+            discountType: updatedList.length > 0 ? updatedList[0].type : "fixed",
+            discountReason: updatedList.length > 0 ? updatedList[0].reason : "",
+          };
+          setLocalStudent((prev) => ({ ...prev, ...updatedData }));
+          await api.updateStudent(currentStudent.id, updatedData);
+          if (onUpdateStudent) {
+            await onUpdateStudent(currentStudent.id, updatedData);
+          }
+          setSaveSuccessMsg("Chegirma muvaffaqiyatli o'chirildi!");
+          setTimeout(() => setSaveSuccessMsg(""), 2500);
+        } catch (err) {
+          console.error(err);
+          setErrorMsg("Chegirmani o'chirishda xatolik");
+        }
+      },
+    });
+  };
+
   const handleAddNote = async (e) => {
     e.preventDefault();
     if (!newNoteText.trim()) return;
@@ -876,20 +1399,31 @@ export function StudentProfilePage({
   };
 
   const handleCoinSubmit = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (coinAmount <= 0) return;
     try {
       const currentCoins = Number(currentStudent.coins || 0);
-      const diff = coinActionType === "add" ? coinAmount : -coinAmount;
+      const diff = coinActionType === "add" ? Number(coinAmount) : -Number(coinAmount);
       const newCoins = Math.max(0, currentCoins + diff);
 
-      setLocalStudent((prev) => ({ ...prev, coins: newCoins }));
-      await api.updateStudent(currentStudent.id, { coins: newCoins });
+      const newHistoryItem = {
+        id: "coin_" + Date.now(),
+        section: coinSection || "Darsdagi faollik",
+        type: coinActionType,
+        amount: Math.abs(Number(coinAmount)),
+        reason: coinReason || "Coin amali",
+        createdAt: new Date().toISOString(),
+      };
+      const updatedHistory = [newHistoryItem, ...(currentStudent.coinHistory || [])];
+
+      const updatedData = { coins: newCoins, coinHistory: updatedHistory };
+      setLocalStudent((prev) => ({ ...prev, ...updatedData }));
+      await api.updateStudent(currentStudent.id, updatedData);
 
       if (onAddCoins) {
-        await onAddCoins(currentStudent.id, diff, coinReason);
+        await onAddCoins(currentStudent.id, diff, coinReason, coinSection);
       } else if (onUpdateStudent) {
-        await onUpdateStudent(currentStudent.id, { coins: newCoins });
+        await onUpdateStudent(currentStudent.id, updatedData);
       }
 
       setSaveSuccessMsg(
@@ -898,9 +1432,10 @@ export function StudentProfilePage({
           : `🪙 -${coinAmount} Cosmos Coin ayirildi!`
       );
       setTimeout(() => setSaveSuccessMsg(""), 2500);
+      setShowGiveCoinModal(false);
     } catch (err) {
       console.error(err);
-      setErrorMsg("Coin berishda xatolik");
+      setErrorMsg("Coin amaliyotida xatolik");
     }
   };
 
@@ -1210,85 +1745,8 @@ export function StudentProfilePage({
     });
   };
 
-  const handleUnenrollAndRefund = async (grp) => {
-    const month = thisMonthKey();
-    const billingMode = grp?.billingMode || directorData?.centerSettings?.billingMode || "invoice";
-    const excusedAbsenceRefund = grp?.excusedAbsenceRefund !== undefined && grp?.excusedAbsenceRefund !== null
-      ? Boolean(grp.excusedAbsenceRefund)
-      : (directorData?.centerSettings?.excusedAbsenceRefund !== undefined ? Boolean(directorData.centerSettings.excusedAbsenceRefund) : true);
-    
-    const membership = currentStudent?.groupMemberships?.[grp.id] || currentStudent?.groupMemberships?.[String(grp.id)];
-    const fullPrice = membership?.agreedPrice ? Number(membership.agreedPrice) : Number(grp.price || 0);
-    
-    const groupPayments = (directorData?.payments || []).filter(
-      p => String(p.studentId) === String(currentStudent.id) && String(p.groupId) === String(grp.id) && p.month === month
-    );
-    const jamiTolanganSumma = groupPayments.reduce((sum, p) => sum + (Number(p.paidAmount) || Number(p.amount) || 0) + (Number(p.usedBalance) || 0), 0);
-    const groupAttendances = (opData?.attendance || []).filter(a => String(a.groupId) === String(grp.id));
-
-    const refundRes = calculateRefundAmount({
-      billingMode,
-      excusedAbsenceRefund,
-      currentBalance: currentStudent.balance,
-      fullPrice,
-      groupDays: grp.days || [],
-      monthStr: month,
-      attendances: groupAttendances,
-      totalPaidAmount: jamiTolanganSumma,
-      student: currentStudent,
-    });
-
-    const refundAmount = refundRes.refundAmount;
-    const otilganDarslar = refundRes.otilganDarslar;
-
-    setConfirmModalState({
-      title: "Guruhni tark etish (Refund bilan)",
-      message: `Haqiqatan ham o'quvchini guruhdan chiqarib, refund qayd etmoqchimisiz?
-${billingMode === 'invoice' ? `\nO'tilgan darslar: ${otilganDarslar} ta.\nHisoblangan Refund summasi: ${money(refundAmount)} so'm.` : `\nHisoblangan Refund summasi (balansdan): ${money(refundAmount)} so'm.`}`,
-      onConfirm: async () => {
-        try {
-          const targetGid = String(grp.id);
-          const remaining = (currentStudent.groupIds || []).map(String).filter(id => id !== targetGid);
-          const currentMemberships = { ...(currentStudent?.groupMemberships || {}) };
-          delete currentMemberships[targetGid];
-          
-          const updatedData = {
-            groupIds: remaining,
-            groupMemberships: currentMemberships,
-            status: "unenrolled",
-          };
-          
-          if (billingMode === "per_lesson" && refundAmount > 0) {
-            updatedData.balance = 0;
-          }
-
-          setLocalStudent(prev => ({ ...prev, ...updatedData }));
-          await api.updateStudent(currentStudent.id, updatedData);
-          
-          if (refundAmount > 0) {
-             await api.recordPayment({
-               studentId: currentStudent.id,
-               groupId: grp.id,
-               amount: -refundAmount,
-               paidAmount: -refundAmount,
-               method: "cash", // Assuming cash refund
-               note: "Refund - Guruhni tark etish (Unenroll)",
-               date: new Date().toISOString().slice(0, 10),
-               month,
-             });
-          }
-
-          if (onRemoveFromGroup) onRemoveFromGroup(currentStudent.id, grp.id);
-          if (onUpdateStudent) await onUpdateStudent(currentStudent.id, updatedData);
-          
-          setSaveSuccessMsg("O'quvchi guruhdan chiqarildi va refund qayd etildi!");
-          setTimeout(() => setSaveSuccessMsg(""), 2500);
-        } catch(err) {
-          console.error(err);
-          setErrorMsg("Xatolik yuz berdi");
-        }
-      }
-    });
+  const handleUnenrollAndRefund = (grp) => {
+    setUnenrollGroupModalData(grp);
   };
 
   return (
@@ -1352,61 +1810,51 @@ ${billingMode === 'invoice' ? `\nO'tilgan darslar: ${otilganDarslar} ta.\nHisobl
             <div className="name-block">
               <h1>{currentStudent.name || "Xusanov Bexruzbek"}</h1>
             </div>
-            <button
-              ref={actionsMenuRef}
-              type="button"
-              className="menu-btn"
-              id="menuToggle"
-              onClick={() => setShowActionsMenu((prev) => !prev)}
-              title="Qo'shimcha amallar"
-            >
-              <MoreVertical size={16} />
-            </button>
+            <div className="relative header-actions-container">
+              <button
+                ref={actionsMenuRef}
+                type="button"
+                className="menu-btn cursor-pointer"
+                id="menuToggle"
+                onClick={() => setShowActionsMenu((prev) => !prev)}
+                title="Qo'shimcha amallar"
+              >
+                <MoreVertical size={16} />
+              </button>
 
-            <MorphDropdown
-              isOpen={showActionsMenu}
-              onClose={() => setShowActionsMenu(false)}
-              triggerRef={actionsMenuRef}
-              align="right"
-              className="w-56"
-            >
-              <div className="space-y-0.5">
-                {actionMenuItems.map((item) => (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => {
-                      setShowActionsMenu(false);
-                      item.onClick();
-                    }}
-                    className={`morph-menu-item w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all ${
-                      item.key === "delete"
-                        ? "text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
-                        : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-                    }`}
-                  >
-                    <span className="icon flex items-center justify-center shrink-0">{item.icon}</span>
-                    <span>{item.label}</span>
-                  </button>
-                ))}
-              </div>
-            </MorphDropdown>
+              {showActionsMenu && (
+                <div className="absolute right-0 top-full mt-1.5 w-60 bg-white dark:bg-slate-850 rounded-2xl shadow-xl border border-slate-200/90 dark:border-slate-700 py-1.5 z-50 animate-in fade-in zoom-in-95">
+                  <div className="space-y-0.5 px-1">
+                    {actionMenuItems.map((item) => (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => {
+                          setShowActionsMenu(false);
+                          item.onClick();
+                        }}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer ${
+                          item.key === "delete" || item.key === "refund"
+                            ? "text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                            : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                        }`}
+                      >
+                        <span className="icon flex items-center justify-center shrink-0">{item.icon}</span>
+                        <span>{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* 1-Qatorda Ixcham Ko'rsatkichlar (Balans, Tanga, Kristal) */}
+          {/* 1-Qatorda Ixcham Ko'rsatkichlar (Balans, Coin, Kristal) */}
           <div className="grid grid-cols-3 gap-1.5 pt-3.5 pb-2 text-xs w-full">
             {/* 1. Balans (Tabledagi hisoblangan joriy balans) */}
             <button
               type="button"
-              onClick={() => {
-                if (openModal) {
-                  openModal({ type: "recordPayment", studentId: currentStudent.id, student: currentStudent });
-                } else if (onRecordPayment) {
-                  onRecordPayment({ studentId: currentStudent.id });
-                } else {
-                  setActiveTab("payments");
-                }
-              }}
+              onClick={() => triggerPayment()}
               title={`Tabledagi balans: ${tableBalance > 0 ? "+" : ""}${money(tableBalance)} so'm`}
               className={`flex flex-col items-start justify-center p-2 rounded-lg border text-left transition-all cursor-pointer min-w-0 ${
                 tableBalance > 0
@@ -1425,16 +1873,16 @@ ${billingMode === 'invoice' ? `\nO'tilgan darslar: ${otilganDarslar} ta.\nHisobl
               </div>
             </button>
 
-            {/* 2. Tangalar (Coins) */}
+            {/* 2. Coinlar (Coins) */}
             <button
               type="button"
               onClick={() => setActiveTab("coins")}
-              title="Tangalar boshqaruvi"
+              title="Coin tarixi boshqaruvi"
               className="flex flex-col items-start justify-center p-2 rounded-lg border bg-amber-50/70 hover:bg-amber-100/70 dark:bg-amber-950/30 dark:hover:bg-amber-950/60 border-amber-200/70 dark:border-amber-800/50 text-amber-900 dark:text-amber-300 text-left transition-all cursor-pointer min-w-0 group"
             >
               <div className="flex items-center gap-1 w-full min-w-0">
                 <Coins size={11} className="text-amber-500 shrink-0" />
-                <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 truncate">Tanga</span>
+                <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 truncate">Coin</span>
                 <Edit3 size={9} className="opacity-0 group-hover:opacity-100 transition-opacity ml-auto text-amber-500 shrink-0" />
               </div>
               <div className="font-bold font-mono text-[11px] truncate mt-0.5 w-full text-amber-900 dark:text-amber-200">
@@ -1442,20 +1890,57 @@ ${billingMode === 'invoice' ? `\nO'tilgan darslar: ${otilganDarslar} ta.\nHisobl
               </div>
             </button>
 
-            {/* 3. Kristallar (Crystals) */}
+            {/* 3. O'tgan oydan qarz */}
             <button
               type="button"
-              onClick={() => setActiveTab("coins")}
-              title="Kristallar"
-              className="flex flex-col items-start justify-center p-2 rounded-lg border bg-sky-50/70 hover:bg-sky-100/70 dark:bg-sky-950/30 dark:hover:bg-sky-950/60 border-sky-200/70 dark:border-sky-800/50 text-sky-900 dark:text-sky-300 text-left transition-all cursor-pointer min-w-0 group"
+              onClick={() => {
+                if (pastDebtInfo.hasDebt) {
+                  triggerPayment(pastDebtInfo.primaryGroup, pastDebtInfo.amount, pastDebtInfo.monthKey);
+                } else {
+                  setActiveTab("payments");
+                }
+              }}
+              title={
+                pastDebtInfo.hasDebt
+                  ? `${pastDebtInfo.monthName} qarzi: ${money(pastDebtInfo.amount)} so'm. To'lov qilish uchun bosing`
+                  : "O'tgan oydan qarz yo'q"
+              }
+              className={`flex flex-col items-start justify-center p-2 rounded-lg border text-left transition-all cursor-pointer min-w-0 group ${
+                pastDebtInfo.hasDebt
+                  ? "bg-rose-50/80 hover:bg-rose-100/80 dark:bg-rose-950/40 dark:hover:bg-rose-950/70 border-rose-200/80 dark:border-rose-800/60 text-rose-900 dark:text-rose-200"
+                  : "bg-slate-50/70 hover:bg-slate-100/70 dark:bg-slate-800/40 dark:hover:bg-slate-800/60 border-slate-200/70 dark:border-slate-700/50 text-slate-800 dark:text-slate-200"
+              }`}
             >
               <div className="flex items-center gap-1 w-full min-w-0">
-                <Sparkles size={11} className="text-sky-500 shrink-0" />
-                <span className="text-[10px] font-semibold text-sky-700 dark:text-sky-400 truncate">Kristal</span>
-                <Edit3 size={9} className="opacity-0 group-hover:opacity-100 transition-opacity ml-auto text-sky-500 shrink-0" />
+                {pastDebtInfo.hasDebt ? (
+                  <AlertCircle size={11} className="text-rose-500 shrink-0" />
+                ) : (
+                  <CheckCircle2 size={11} className="text-emerald-500 shrink-0" />
+                )}
+                <span
+                  className={`text-[10px] font-semibold truncate ${
+                    pastDebtInfo.hasDebt
+                      ? "text-rose-700 dark:text-rose-400"
+                      : "text-slate-500 dark:text-slate-400"
+                  }`}
+                >
+                  {pastDebtInfo.monthName} qarzi
+                </span>
+                <CreditCard
+                  size={9}
+                  className={`opacity-0 group-hover:opacity-100 transition-opacity ml-auto shrink-0 ${
+                    pastDebtInfo.hasDebt ? "text-rose-500" : "text-slate-400"
+                  }`}
+                />
               </div>
-              <div className="font-bold font-mono text-[11px] truncate mt-0.5 w-full text-sky-900 dark:text-sky-200">
-                {currentStudent.crystals || 0}
+              <div
+                className={`font-bold font-mono text-[11px] truncate mt-0.5 w-full ${
+                  pastDebtInfo.hasDebt
+                    ? "text-rose-600 dark:text-rose-400"
+                    : "text-emerald-600 dark:text-emerald-400"
+                }`}
+              >
+                {pastDebtInfo.hasDebt ? `-${money(pastDebtInfo.amount)} so'm` : "Qarz yo'q"}
               </div>
             </button>
           </div>
@@ -1493,10 +1978,7 @@ ${billingMode === 'invoice' ? `\nO'tilgan darslar: ${otilganDarslar} ta.\nHisobl
             <button
               type="button"
               className="icon-btn-mini"
-              onClick={() => {
-                if (openModal) openModal({ type: "recordPayment", studentId: currentStudent.id, student: currentStudent });
-                else setActiveTab("payments");
-              }}
+              onClick={() => triggerPayment()}
               title="To'lov qabul qilish"
             >
               <CreditCard size={13} />
@@ -1543,7 +2025,7 @@ ${billingMode === 'invoice' ? `\nO'tilgan darslar: ${otilganDarslar} ta.\nHisobl
             {[
               { id: "groups", label: "Guruhlar" },
               { id: "payments", label: "To'lovlar" },
-              { id: "coins", label: "Tangalar" },
+              { id: "coins", label: "Coin tarixi" },
               { id: "notes", label: "Eslatma" },
               { id: "discounts", label: "Chegirma" },
               { id: "exams", label: "Imtihonlar" },
@@ -1628,6 +2110,11 @@ ${billingMode === 'invoice' ? `\nO'tilgan darslar: ${otilganDarslar} ta.\nHisobl
                         isPartial,
                         effectiveCovered,
                         remainingDebt,
+                        prevRemainingDebt,
+                        prevMonthName,
+                        prevKey,
+                        totalGroupRemainingDebt,
+                        groupBalance,
                         isProrated,
                         proratedReason,
                         attendedLessons,
@@ -1697,15 +2184,7 @@ ${billingMode === 'invoice' ? `\nO'tilgan darslar: ${otilganDarslar} ta.\nHisobl
                                         type="button"
                                         onClick={() => {
                                           setOpenGroupMenuId(null);
-                                          if (openModal) {
-                                            openModal({
-                                              type: "recordPayment",
-                                              studentId: currentStudent.id,
-                                              groupId: grp.id,
-                                            });
-                                          } else if (onRecordPayment) {
-                                            onRecordPayment({ studentId: currentStudent.id, groupId: grp.id });
-                                          }
+                                          triggerPayment(grp);
                                         }}
                                         className="w-full px-3.5 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-200 flex items-center gap-2.5 font-semibold transition-colors cursor-pointer"
                                       >
@@ -1877,16 +2356,85 @@ ${billingMode === 'invoice' ? `\nO'tilgan darslar: ${otilganDarslar} ta.\nHisobl
                                 {money(fullPrice || grp.price || 0)} so'm
                               </span>
                             </div>
+
+                            {/* Guruh balansi */}
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-slate-800 dark:text-slate-200">Guruh balansi:</span>
+                              <span
+                                className={`font-mono font-bold text-sm text-right ${
+                                  groupBalance < 0
+                                    ? "text-rose-600 dark:text-rose-400"
+                                    : groupBalance > 0
+                                    ? "text-emerald-600 dark:text-emerald-400"
+                                    : "text-slate-700 dark:text-slate-300"
+                                }`}
+                              >
+                                {groupBalance < 0
+                                  ? `-${money(Math.abs(groupBalance))} so'm`
+                                  : groupBalance > 0
+                                  ? `+${money(groupBalance)} so'm`
+                                  : "0 so'm"}
+                              </span>
+                            </div>
+
+                            {/* To'lov holati */}
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-slate-800 dark:text-slate-200">To'lov holati:</span>
+                              <span
+                                className={`px-2.5 py-0.5 rounded text-xs font-bold ${
+                                  isTrial
+                                    ? "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
+                                    : paid && totalGroupRemainingDebt === 0
+                                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                                    : isPartial
+                                    ? "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
+                                    : "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
+                                }`}
+                              >
+                                {isTrial
+                                  ? "Sinovda"
+                                  : paid && totalGroupRemainingDebt === 0
+                                  ? "To'langan"
+                                  : isPartial
+                                  ? "Qisman to'langan"
+                                  : "To'lanmagan"}
+                              </span>
+                            </div>
+
+                            {/* O'tgan oy qarzi bo'lsa */}
+                            {prevRemainingDebt > 0 && (
+                              <div className="flex items-center justify-between text-xs py-1 px-2.5 rounded-lg bg-rose-50/70 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 font-semibold">
+                                <span>O'tgan oy ({prevMonthName}) qarzi:</span>
+                                <span className="font-mono font-bold">-{money(prevRemainingDebt)} so'm</span>
+                              </div>
+                            )}
                           </div>
 
-                          {/* Davomat & Baho button */}
-                          <button
-                            type="button"
-                            onClick={() => setAttendanceModalGroup(grp)}
-                            className="w-full py-2.5 px-4 rounded-lg border border-sky-400/90 dark:border-sky-600 bg-sky-50/40 hover:bg-sky-100/70 dark:bg-sky-950/20 text-sky-600 dark:text-sky-400 font-bold text-sm flex items-center justify-center transition-colors cursor-pointer mt-2"
-                          >
-                            Davomat & Baho
-                          </button>
+                          {/* Amallar: To'lov qilish va Davomat & Baho */}
+                          <div className="grid grid-cols-2 gap-2 mt-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                triggerPayment(
+                                  grp,
+                                  totalGroupRemainingDebt > 0 ? totalGroupRemainingDebt : fullPrice,
+                                  prevRemainingDebt > 0 && remainingDebt === 0 ? prevKey : month
+                                )
+                              }
+                              className="w-full py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                              title={`${grp.name} uchun to'lov qabul qilish`}
+                            >
+                              <CreditCard size={14} />
+                              <span>To'lov qilish</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setAttendanceModalGroup(grp)}
+                              className="w-full py-2 px-3 rounded-lg border border-sky-400/90 dark:border-sky-600 bg-sky-50/40 hover:bg-sky-100/70 dark:bg-sky-950/20 text-sky-600 dark:text-sky-400 font-bold text-xs flex items-center justify-center transition-colors cursor-pointer"
+                            >
+                              Davomat & Baho
+                            </button>
+                          </div>
                         </div>
                       );
                     })}
@@ -1902,14 +2450,6 @@ ${billingMode === 'invoice' ? `\nO'tilgan darslar: ${otilganDarslar} ta.\nHisobl
               {/* Yuqori qisqa hisob ko'rsatkichlari (Yagona toza panel) */}
               <div className="bg-white dark:bg-slate-850 rounded-xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 dark:divide-slate-800">
                 <div className="py-2 sm:py-0 sm:px-4 first:pl-0">
-                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">Joriy Balans</div>
-                  <div className={`text-xl font-black mt-0.5 ${tableBalance > 0 ? "text-emerald-600 dark:text-emerald-400" : tableBalance < 0 ? "text-rose-600 dark:text-rose-400" : "text-slate-900 dark:text-white"}`}>
-                    {tableBalance > 0 ? `+${money(tableBalance)}` : tableBalance < 0 ? `${money(tableBalance)}` : "0"} <span className="text-xs font-normal text-slate-400">so'm</span>
-                  </div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">Depozit: {money(currentStudent.balance || 0)} so'm</div>
-                </div>
-
-                <div className="py-2 sm:py-0 sm:px-4">
                   <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">Qarzdorlik</div>
                   <div className={`text-xl font-black mt-0.5 ${totalDebt > 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600"}`}>
                     {money(totalDebt)} <span className="text-xs font-normal text-slate-400">so'm</span>
@@ -1919,70 +2459,149 @@ ${billingMode === 'invoice' ? `\nO'tilgan darslar: ${otilganDarslar} ta.\nHisobl
                   </div>
                 </div>
 
-                <div className="py-2 sm:py-0 sm:px-4 last:pr-0">
+                <div className="py-2 sm:py-0 sm:px-4">
                   <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">Jami To'langan</div>
                   <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
-                    {money(totalPaidSum)} <span className="text-xs font-normal text-slate-400">so'm</span>
+                    +{money(totalPaidSum)} <span className="text-xs font-normal text-slate-400">so'm</span>
                   </div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">{studentPayments.length} ta to'lov</div>
+                  <div className="text-[11px] text-slate-400 mt-0.5">{studentPayments.length} ta to'lov (Kirim)</div>
+                </div>
+
+                <div className="py-2 sm:py-0 sm:px-4 last:pr-0">
+                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">Jami Hisoblangan</div>
+                  <div className="text-xl font-black text-rose-600 dark:text-rose-400 mt-0.5">
+                    -{money(totalChargedSum)} <span className="text-xs font-normal text-slate-400">so'm</span>
+                  </div>
+                  <div className="text-[11px] text-slate-400 mt-0.5">{studentCharges.length} ta yechim (Chiqim)</div>
                 </div>
               </div>
 
-              {/* To'lovlar ro'yxati jadvali */}
+              {/* To'lovlar va Yechimlar ro'yxati jadvali */}
               <div className="bg-white dark:bg-slate-850 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
-                <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                  <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                    <CreditCard size={16} className="text-emerald-600" />
-                    To'lovlar tarixi
-                  </h3>
-                  <span className="text-xs font-semibold text-slate-400">
-                    Jami: {studentPayments.length} ta
-                  </span>
+                <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h3 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
+                      <CreditCard size={15} className="text-emerald-600" />
+                      To'lovlar va Yechimlar tarixi
+                    </h3>
+                    {/* Filtrlash tugmalari */}
+                    <div className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-800 p-0.5 text-xs font-semibold">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentFilter("all")}
+                        className={`px-2 py-0.5 rounded-md transition-colors cursor-pointer text-xs ${
+                          paymentFilter === "all"
+                            ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs"
+                            : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-200"
+                        }`}
+                      >
+                        Barchasi ({combinedTransactions.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentFilter("charges")}
+                        className={`px-2 py-0.5 rounded-md transition-colors cursor-pointer text-xs ${
+                          paymentFilter === "charges"
+                            ? "bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-400 shadow-xs"
+                            : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-200"
+                        }`}
+                      >
+                        Yechimlar ({studentCharges.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentFilter("payments")}
+                        className={`px-2 py-0.5 rounded-md transition-colors cursor-pointer text-xs ${
+                          paymentFilter === "payments"
+                            ? "bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                            : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-200"
+                        }`}
+                      >
+                        To'lovlar ({studentPayments.length})
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowRefundModal(true)}
+                      className="px-2.5 py-1 rounded-lg border border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                    >
+                      <RotateCcw size={13} />
+                      <span>Refund</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => triggerPayment()}
+                      className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus size={13} />
+                      <span>To'lov qabul qilish</span>
+                    </button>
+                  </div>
                 </div>
 
-                {studentPayments.length === 0 ? (
-                  <div className="p-8 text-center text-slate-400 text-xs font-medium">
-                    Hozircha hech qanday to'lov mavjud emas
+                {filteredTransactions.length === 0 ? (
+                  <div className="p-6 text-center text-slate-400 text-xs font-medium">
+                    Hozircha operatsiyalar mavjud emas
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto max-h-[calc(100vh-320px)] overflow-y-auto">
                     <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 text-slate-400 font-semibold">
-                          <th className="py-3 px-4">Sana</th>
-                          <th className="py-3 px-4">Guruh</th>
-                          <th className="py-3 px-4">Summa</th>
-                          <th className="py-3 px-4">Oy</th>
-                          <th className="py-3 px-4">To'lov turi</th>
-                          <th className="py-3 px-4">Izoh</th>
+                      <thead className="sticky top-0 z-10 bg-slate-50/90 dark:bg-slate-800/90 backdrop-blur-xs">
+                        <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold">
+                          <th className="py-2.5 px-3">Sana</th>
+                          <th className="py-2.5 px-3">Guruh</th>
+                          <th className="py-2.5 px-3">Summa</th>
+                          <th className="py-2.5 px-3">Oy</th>
+                          <th className="py-2.5 px-3">Usul / Manba</th>
+                          <th className="py-2.5 px-3">Izoh</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-                        {studentPayments.map((p) => {
-                          const grp = allGroups.find((g) => g.id === p.groupId);
+                        {filteredTransactions.map((item) => {
+                          const isPayment = item.kind === "payment";
+                          const isRefund = item.isRefund || (isPayment && Number(item.amount || 0) < 0);
+                          const noteText = item.note || (isPayment ? (isRefund ? "Refund (Pul qaytarish)" : "To'lov (Kirim)") : (item.chargeType || "Yechim"));
+
                           return (
-                            <tr key={p.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                              <td className="py-3.5 px-4 font-mono font-semibold text-slate-900 dark:text-white whitespace-nowrap">
-                                {formatDate(p.date || p.createdAt?.slice(0, 10))}
+                            <tr key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                              <td className="py-2 px-3 font-mono font-semibold text-slate-900 dark:text-white whitespace-nowrap">
+                                {formatDate(item.date)}
                               </td>
-                              <td className="py-3.5 px-4">
+                              <td className="py-2 px-3">
                                 <span className="font-bold text-slate-800 dark:text-slate-200">
-                                  {grp?.name || "Umumiy to'lov"}
+                                  {item.groupName}
                                 </span>
                               </td>
-                              <td className="py-3.5 px-4 font-bold text-emerald-600 dark:text-emerald-400 text-sm whitespace-nowrap">
-                                +{money(p.amount)} so'm
+                              <td className="py-2 px-3 whitespace-nowrap">
+                                {isPayment ? (
+                                  isRefund ? (
+                                    <span className="font-bold font-mono text-rose-600 dark:text-rose-400 text-xs sm:text-sm">
+                                      {money(item.amount)} so'm
+                                    </span>
+                                  ) : (
+                                    <span className="font-bold font-mono text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">
+                                      +{money(item.amount)} so'm
+                                    </span>
+                                  )
+                                ) : (
+                                  <span className="font-bold font-mono text-rose-600 dark:text-rose-400 text-xs sm:text-sm">
+                                    -{money(item.amount)} so'm
+                                  </span>
+                                )}
                               </td>
-                              <td className="py-3.5 px-4 font-mono text-slate-500 whitespace-nowrap">
-                                {p.month || "—"}
+                              <td className="py-2 px-3 font-mono text-slate-500 whitespace-nowrap">
+                                {item.month || "—"}
                               </td>
-                              <td className="py-3.5 px-4">
+                              <td className="py-2 px-3 whitespace-nowrap">
                                 <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium text-[11px]">
-                                  {p.method || p.type || "Naqd pul"}
+                                  {item.method || "Naqd pul"}
                                 </span>
                               </td>
-                              <td className="py-3.5 px-4 text-slate-500 max-w-xs truncate">
-                                {p.comment || p.note || "—"}
+                              <td className="py-2 px-3 text-slate-600 dark:text-slate-300 max-w-xs truncate" title={noteText}>
+                                {noteText}
                               </td>
                             </tr>
                           );
@@ -2113,75 +2732,109 @@ ${billingMode === 'invoice' ? `\nO'tilgan darslar: ${otilganDarslar} ta.\nHisobl
           {/* TAB 4: CHEGIRMA (DISCOUNTS) */}
           {activeTab === "discounts" && (
             <div className="bg-white dark:bg-slate-850 rounded-xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-6">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
                   <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
                     <Tag size={18} className="text-violet-600" />
-                    O'quvchi chegirmasi va imtiyozlari
+                    O'quvchi chegirmalari ({studentDiscounts.length} ta)
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    O'quvchi uchun maxsus chegirma foizini yoki belgilangan summani biriktiring
+                    O'quvchiga biriktirilgan guruh chegirmalari va ularning amal qilish muddatlari
                   </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingDiscount(null);
+                    setShowAddDiscountModal(true);
+                  }}
+                  className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Plus size={14} />
+                  <span>Chegirma berish</span>
+                </button>
               </div>
 
-              <form onSubmit={handleSaveDiscount} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className={LABEL_CLS}>Chegirma miqdori</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={discountVal}
-                      onChange={(e) => setDiscountVal(e.target.value)}
-                      placeholder="Masalan: 10 yoki 50000"
-                      className={INPUT_CLS}
-                    />
-                  </div>
-
-                  <div>
-                    <label className={LABEL_CLS}>Chegirma turi</label>
-                    <select
-                      value={discountType}
-                      onChange={(e) => setDiscountType(e.target.value)}
-                      className={INPUT_CLS}
-                    >
-                      <option value="percent">Foizda (%)</option>
-                      <option value="fixed">Summada (so'm)</option>
-                    </select>
-                  </div>
+              {studentDiscounts.length === 0 ? (
+                <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-slate-400 text-xs">
+                  Hozircha hech qanday chegirma biriktirilmagan. "Chegirma berish" tugmasi orqali yangi chegirma qo'shishingiz mumkin.
                 </div>
-
-                <div>
-                  <label className={LABEL_CLS}>Chegirma berish sababi</label>
-                  <input
-                    type="text"
-                    value={discountReason}
-                    onChange={(e) => setDiscountReason(e.target.value)}
-                    placeholder="Masalan: Ikkinchi farzand / Grant / Aktsiya"
-                    className={INPUT_CLS}
-                  />
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-200 dark:border-slate-700 bg-slate-50/75 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300">
+                        <th className="py-3 px-3.5 font-bold">Guruh</th>
+                        <th className="py-3 px-3.5 font-bold">Qiymat</th>
+                        <th className="py-3 px-3.5 font-bold">Dan</th>
+                        <th className="py-3 px-3.5 font-bold">Gacha</th>
+                        <th className="py-3 px-3.5 font-bold">O'qituvchi ulushiga ta'sir qiladimi</th>
+                        <th className="py-3 px-3.5 font-bold">Sabab</th>
+                        <th className="py-3 px-3.5 font-bold text-right">Amallar</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {studentDiscounts.map((d) => {
+                        const grpName = d.groupName || (d.groupId ? allGroups.find((g) => String(g.id) === String(d.groupId))?.name : "Barcha guruhlar") || "Barcha guruhlar";
+                        const isAffects = d.affectsTeacherShare !== false && d.affectsTeacherShare !== "false";
+                        return (
+                          <tr key={d.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                            <td className="py-3 px-3.5 font-semibold text-slate-900 dark:text-white">
+                              {grpName}
+                            </td>
+                            <td className="py-3 px-3.5 font-mono font-bold text-violet-600 dark:text-violet-400">
+                              {d.type === "percent" ? `${d.value}%` : `${money(d.value)} so'm`}
+                            </td>
+                            <td className="py-3 px-3.5 font-mono text-slate-600 dark:text-slate-300">
+                              {d.startDate ? formatDate(d.startDate) : "—"}
+                            </td>
+                            <td className="py-3 px-3.5 font-mono text-slate-600 dark:text-slate-300">
+                              {d.endDate ? formatDate(d.endDate) : "—"}
+                            </td>
+                            <td className="py-3 px-3.5">
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                                  isAffects
+                                    ? "bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                                    : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                                }`}
+                              >
+                                {isAffects ? "Ta'sir qiladi" : "Ta'sir qilmaydi"}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3.5 text-slate-700 dark:text-slate-300 max-w-xs truncate" title={d.reason}>
+                              {d.reason || "—"}
+                            </td>
+                            <td className="py-3 px-3.5 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingDiscount(d);
+                                    setShowAddDiscountModal(true);
+                                  }}
+                                  className="p-1.5 text-slate-500 hover:text-violet-600 dark:hover:text-violet-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                                  title="Tahrirlash"
+                                >
+                                  <Edit3 size={14} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteDiscountItem(d.id)}
+                                  className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                                  title="O'chirish"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-
-                <div className="p-4 rounded-xl bg-violet-50 dark:bg-violet-950/40 border border-violet-200 dark:border-violet-800 text-xs space-y-1">
-                  <div className="font-bold text-violet-900 dark:text-violet-200">
-                    Joriy holat: {discountVal > 0 ? `${discountVal} ${discountType === "percent" ? "%" : "so'm"} chegirma` : "Chegirma yo'q"}
-                  </div>
-                  <p className="text-slate-600 dark:text-slate-300">
-                    Chegirma o'quvchining har oylik guruh to'lovlarida avtomatik ravishda inobatga olinadi.
-                  </p>
-                </div>
-
-                <div className="flex justify-end">
-                  <button
-                    type="submit"
-                    className="px-6 py-2.5 bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-2"
-                  >
-                    <Save size={14} />
-                    <span>Chegirmani saqlash</span>
-                  </button>
-                </div>
-              </form>
+              )}
             </div>
           )}
 
@@ -2384,130 +3037,77 @@ ${billingMode === 'invoice' ? `\nO'tilgan darslar: ${otilganDarslar} ta.\nHisobl
 
           {/* TAB 9: COIN XISOBOTI */}
           {activeTab === "coins" && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Form */}
-              <div className="bg-white dark:bg-slate-850 rounded-xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-4">
-                <h3 className="font-extrabold text-base text-slate-900 dark:text-white flex items-center gap-2">
-                  <Coins size={18} className="text-amber-500" />
-                  Coin Berish / Ayirish
-                </h3>
-
-                <form onSubmit={handleCoinSubmit} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setCoinActionType("add")}
-                      className={`py-2.5 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
-                        coinActionType === "add"
-                          ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
-                          : "bg-slate-50 dark:bg-slate-800 text-slate-600 border-slate-200 dark:border-slate-700"
-                      }`}
-                    >
-                      + Coin qo'shish
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCoinActionType("deduct")}
-                      className={`py-2.5 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
-                        coinActionType === "deduct"
-                          ? "bg-rose-600 text-white border-rose-600 shadow-xs"
-                          : "bg-slate-50 dark:bg-slate-800 text-slate-600 border-slate-200 dark:border-slate-700"
-                      }`}
-                    >
-                      - Coin ayirish
-                    </button>
-                  </div>
-
-                  <div>
-                    <label className={LABEL_CLS}>Coin miqdori</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="1000"
-                      value={coinAmount}
-                      onChange={(e) => setCoinAmount(Number(e.target.value))}
-                      className={INPUT_CLS}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className={LABEL_CLS}>Sabab</label>
-                    <div className="flex flex-wrap gap-1.5 mb-2">
-                      {[
-                        "Darsdagi a'lo faollik",
-                        "Uyga vazifa 100%",
-                        "Musobaqa g'olibi",
-                        "Intizom va odob",
-                      ].map((preset) => (
-                        <button
-                          key={preset}
-                          type="button"
-                          onClick={() => setCoinReason(preset)}
-                          className="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl text-[10px] font-semibold transition-colors cursor-pointer"
-                        >
-                          {preset}
-                        </button>
-                      ))}
-                    </div>
-                    <input
-                      type="text"
-                      value={coinReason}
-                      onChange={(e) => setCoinReason(e.target.value)}
-                      placeholder="Sababni yozing..."
-                      className={INPUT_CLS}
-                      required
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    className={`w-full py-2.5 text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer ${
-                      coinActionType === "add"
-                        ? "bg-amber-500 hover:bg-amber-600"
-                        : "bg-rose-600 hover:bg-rose-700"
-                    }`}
-                  >
-                    {coinActionType === "add" ? `🪙 +${coinAmount} Coin berish` : `🪙 -${coinAmount} Coin ayirish`}
-                  </button>
-                </form>
-              </div>
-
+            <div className="space-y-6">
               {/* Coins Report Banner */}
-              <div className="lg:col-span-2 space-y-6">
-                <div className="bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 rounded-xl p-6 text-white shadow-lg shadow-amber-500/20 flex items-center justify-between flex-wrap gap-4">
-                  <div className="space-y-1">
-                    <div className="text-xs font-bold uppercase tracking-wider text-amber-100">
-                      Cosmos Coin Balansi
-                    </div>
-                    <div className="text-4xl font-black flex items-center gap-2">
-                      <span>🪙 {currentStudent.coins || 0}</span>
-                      <span className="text-sm font-semibold text-amber-100">Cosmos Coin</span>
-                    </div>
-                    <p className="text-xs text-amber-100 pt-1">
-                      O'quvchining jamlangan coin hisoboti
-                    </p>
+              <div className="bg-gradient-to-br from-amber-500 via-orange-500 to-amber-600 rounded-2xl p-6 md:p-8 text-white shadow-lg shadow-amber-500/20 flex items-center justify-between flex-wrap gap-6">
+                <div className="space-y-1.5">
+                  <div className="text-xs font-bold uppercase tracking-widest text-amber-100">
+                    Cosmos Coin Balansi
                   </div>
-                  <div className="w-16 h-16 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-3xl shrink-0">
+                  <div className="text-4xl md:text-5xl font-black flex items-center gap-2">
+                    <span>🪙 {(currentStudent.coins || 0).toLocaleString()}</span>
+                  </div>
+                  <p className="text-sm text-amber-100 pt-1 font-medium">
+                    O'quvchining joriy coinlari
+                  </p>
+                </div>
+                
+                <div className="flex items-center gap-4">
+                  <div className="hidden sm:flex w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md items-center justify-center text-3xl shrink-0">
                     🏆
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowGiveCoinModal(true)}
+                    className="px-6 py-3 bg-white text-amber-600 hover:bg-amber-50 rounded-xl text-sm font-bold shadow-sm transition-colors"
+                  >
+                    Coin berish / ayirish
+                  </button>
                 </div>
+              </div>
 
-                <div className="bg-white dark:bg-slate-850 rounded-xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs">
-                  <h3 className="font-extrabold text-sm text-slate-900 dark:text-white mb-3">
-                    Coinlar Hisoboti & Tarixi
-                  </h3>
-                  <div className="space-y-2 text-xs">
-                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between">
-                      <span className="font-semibold text-slate-700 dark:text-slate-300">Darslardagi a'lo faollik uchun</span>
-                      <span className="font-bold text-emerald-600">+10 Coin</span>
-                    </div>
-                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between">
-                      <span className="font-semibold text-slate-700 dark:text-slate-300">To'lovni o'z vaqtida qilgani uchun</span>
-                      <span className="font-bold text-emerald-600">+5 Coin</span>
-                    </div>
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+                <h3 className="font-extrabold text-sm text-slate-900 dark:text-white p-5 border-b border-slate-100 dark:border-slate-800">
+                  Coinlar Hisoboti & Tarixi
+                </h3>
+                {studentCoinHistory.length === 0 ? (
+                  <div className="p-8 text-center text-slate-400 text-sm">
+                    Hozircha coinlar tarixi yo'q.
                   </div>
-                </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-sm">
+                        <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700 text-xs font-semibold">
+                          <tr>
+                            <th className="py-3 px-4">Bo'lim turi</th>
+                            <th className="py-3 px-4">Sabab</th>
+                            <th className="py-3 px-4">Soni</th>
+                            <th className="py-3 px-4 text-right">Yaratilgan vaqti</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {studentCoinHistory.map((h) => (
+                            <tr key={h.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                              <td className="py-3 px-4 font-semibold text-slate-900 dark:text-white">
+                                {h.section || "Darsdagi faollik"}
+                              </td>
+                              <td className="py-3 px-4 text-slate-600 dark:text-slate-300 text-xs">
+                                {h.reason || "Coin amali"}
+                              </td>
+                              <td className="py-3 px-4 font-mono font-bold">
+                                <span className={h.type === "add" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}>
+                                  {h.type === "add" ? "+" : "-"}{h.amount} Coin
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-slate-500 dark:text-slate-400 text-right font-mono text-xs">
+                                {formatDate(h.createdAt)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
               </div>
             </div>
           )}
@@ -2766,20 +3366,21 @@ ${billingMode === 'invoice' ? `\nO'tilgan darslar: ${otilganDarslar} ta.\nHisobl
         />
       )}
 
-      {/* Add Group Modal */}
+      {/* Add Group Modal (Tepadan tushadigan modal, guruh qidirish va ro'yxat) */}
       {isAddGroupModalOpen && (
         <Modal
           isOpen={isAddGroupModalOpen}
+          position="top"
           onClose={() => {
             setIsAddGroupModalOpen(false);
             setGroupToAssign("");
           }}
-          title="Guruhga biriktirish"
-          subtitle={`${currentStudent?.name || "O'quvchi"}ni yangi guruhga qo'shish`}
+          title="Guruhga qo'shish"
+          wide={true}
         >
           <div className="space-y-4">
             <div>
-              <label className={LABEL_CLS}>Guruhni tanlang</label>
+              <label className={LABEL_CLS}>Guruhni qidirish va tanlash</label>
               <SearchableGroupSelect
                 groups={allGroups.filter((g) => !(currentStudent.groupIds || []).some((id) => String(id) === String(g.id)))}
                 courses={courses}
@@ -2787,7 +3388,7 @@ ${billingMode === 'invoice' ? `\nO'tilgan darslar: ${otilganDarslar} ta.\nHisobl
                 students={opData?.students || []}
                 value={groupToAssign}
                 onChange={(gid) => setGroupToAssign(gid)}
-                placeholder="Guruh nomi, kursi, o'qituvchisi yoki vaqtini qidiring..."
+                placeholder="Guruh nomi, kurs yoki o'qituvchini qidiring..."
               />
             </div>
 
@@ -2813,7 +3414,7 @@ ${billingMode === 'invoice' ? `\nO'tilgan darslar: ${otilganDarslar} ta.\nHisobl
                   await handleQuickAssignGroup(groupToAssign);
                   setIsAddGroupModalOpen(false);
                 }}
-                className="px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs"
               >
                 Guruhga qo'shish
               </button>
@@ -2836,6 +3437,393 @@ ${billingMode === 'invoice' ? `\nO'tilgan darslar: ${otilganDarslar} ta.\nHisobl
           }}
           onCancel={() => setConfirmModalState(null)}
         />
+      )}
+
+      {showRefundModal && (
+        <RefundPaymentModal
+          student={currentStudent}
+          studentId={currentStudent?.id}
+          groups={allGroups}
+          currentBalance={tableBalance !== undefined ? tableBalance : Number(currentStudent?.balance || 0)}
+          onSubmit={async (payload) => {
+            await api.recordPayment(payload);
+            const curBal = tableBalance !== undefined ? tableBalance : Number(currentStudent?.balance || 0);
+            const newBal = curBal - Math.abs(payload.amount);
+            setLocalStudent((prev) => ({ ...prev, balance: newBal }));
+            await api.updateStudent(currentStudent.id, { balance: newBal });
+            if (onUpdateStudent) {
+              onUpdateStudent(currentStudent.id, { balance: newBal });
+            }
+            if (onRecordPayment) {
+              onRecordPayment(payload);
+            }
+            setSaveSuccessMsg("To'lov muvaffaqiyatli qaytarildi (Refund)!");
+            setTimeout(() => setSaveSuccessMsg(""), 3000);
+          }}
+          onClose={() => setShowRefundModal(false)}
+        />
+      )}
+
+      {showUnenrollAllModal && (
+        <UnenrollAllGroupsModal
+          isOpen={showUnenrollAllModal}
+          onClose={() => setShowUnenrollAllModal(false)}
+          student={currentStudent}
+          assignedGroups={assignedGroups}
+          directorData={directorData}
+          opData={opData}
+          onSuccess={async ({ paymentPayloads, updatedStudentData }) => {
+            setLocalStudent((prev) => ({ ...prev, ...updatedStudentData }));
+            if (onUpdateStudent) {
+              await onUpdateStudent(currentStudent.id, updatedStudentData);
+            }
+            if (onRecordPayment && paymentPayloads) {
+              paymentPayloads.forEach((p) => onRecordPayment(p));
+            }
+            setSaveSuccessMsg("O'quvchi barcha guruhlardan chiqarildi va to'lovlar tarixiga saqlandi!");
+            setTimeout(() => setSaveSuccessMsg(""), 3000);
+          }}
+        />
+      )}
+
+      {unenrollGroupModalData && (
+        <UnenrollGroupModal
+          isOpen={Boolean(unenrollGroupModalData)}
+          onClose={() => setUnenrollGroupModalData(null)}
+          student={currentStudent}
+          group={unenrollGroupModalData}
+          directorData={directorData}
+          opData={opData}
+          onSuccess={async ({ paymentPayload, updatedStudentData }) => {
+            setLocalStudent((prev) => ({ ...prev, ...updatedStudentData }));
+            if (onRemoveFromGroup) {
+              onRemoveFromGroup(currentStudent.id, unenrollGroupModalData.id);
+            }
+            if (onUpdateStudent) {
+              await onUpdateStudent(currentStudent.id, updatedStudentData);
+            }
+            if (onRecordPayment && paymentPayload) {
+              onRecordPayment(paymentPayload);
+            }
+            setSaveSuccessMsg("O'quvchi guruhdan chiqarildi va to'lovlar tarixiga saqlandi!");
+            setTimeout(() => setSaveSuccessMsg(""), 3000);
+          }}
+        />
+      )}
+
+      {paymentModalData && (
+        <RecordPaymentModal
+          student={paymentModalData.student || currentStudent}
+          preselectedGroup={paymentModalData.group}
+          group={paymentModalData.group}
+          initialAmount={paymentModalData.amount}
+          initialMonth={paymentModalData.month}
+          scopeBranches={directorData?.branches || []}
+          directorData={directorData}
+          opData={opData}
+          students={opData?.students || directorData?.students || []}
+          groups={opData?.groups || directorData?.groups || []}
+          paymentMethods={directorData?.paymentTypes || []}
+          onSubmit={async (payload) => {
+            await api.recordPayment(payload);
+            setPaymentModalData(null);
+            setSaveSuccessMsg("To'lov muvaffaqiyatli saqlandi!");
+            setTimeout(() => setSaveSuccessMsg(""), 3000);
+            if (onRecordPayment) onRecordPayment(payload);
+          }}
+          onClose={() => setPaymentModalData(null)}
+        />
+      )}
+
+      {showGiveCoinModal && (
+        <Modal
+          isOpen={showGiveCoinModal}
+          onClose={() => setShowGiveCoinModal(false)}
+          title="Coin berish / ayirish"
+          position="center"
+        >
+          <form onSubmit={handleCoinSubmit} className="space-y-4 p-1 flex-1">
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setCoinActionType("add")}
+                className={`py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                  coinActionType === "add"
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/30 dark:text-emerald-400"
+                    : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                }`}
+              >
+                + Qo'shish
+              </button>
+              <button
+                type="button"
+                onClick={() => setCoinActionType("deduct")}
+                className={`py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                  coinActionType === "deduct"
+                    ? "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/10 dark:border-rose-500/30 dark:text-rose-400"
+                    : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                }`}
+              >
+                - Ayirish
+              </button>
+            </div>
+
+            <div>
+              <label className={LABEL_CLS}>Bo'lim turi</label>
+              <select
+                value={coinSection}
+                onChange={(e) => setCoinSection(e.target.value)}
+                className={INPUT_CLS}
+              >
+                <option value="Darsdagi faollik">Darsdagi faollik</option>
+                <option value="Uyga vazifa">Uyga vazifa</option>
+                <option value="Musobaqa">Musobaqa</option>
+                <option value="Intizom">Intizom</option>
+                <option value="Boshqa">Boshqa</option>
+              </select>
+            </div>
+
+            <div>
+              <label className={LABEL_CLS}>Coin miqdori</label>
+              <input
+                type="number"
+                min="1"
+                max="1000"
+                value={coinAmount}
+                onChange={(e) => setCoinAmount(Number(e.target.value))}
+                className={INPUT_CLS}
+                required
+              />
+            </div>
+
+            <div>
+              <label className={LABEL_CLS}>Sabab</label>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {[
+                  "Darsdagi a'lo faollik",
+                  "Uyga vazifa 100%",
+                  "Musobaqa g'olibi",
+                  "Intizom va odob",
+                ].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setCoinReason(preset)}
+                    className="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl text-[10px] font-semibold transition-colors cursor-pointer"
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+              <input
+                type="text"
+                value={coinReason}
+                onChange={(e) => setCoinReason(e.target.value)}
+                placeholder="Sababni yozing..."
+                className={INPUT_CLS}
+                required
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowGiveCoinModal(false)}
+                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold cursor-pointer"
+              >
+                Bekor qilish
+              </button>
+              <button
+                type="submit"
+                className={`px-4 py-2 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs ${
+                  coinActionType === "add" ? "bg-amber-500 hover:bg-amber-600" : "bg-rose-600 hover:bg-rose-700"
+                }`}
+              >
+                {coinActionType === "add" ? "Saqlash" : "Ayirish"}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {showEditBalanceModal && (
+        <Modal
+          isOpen={showEditBalanceModal}
+          onClose={() => setShowEditBalanceModal(false)}
+          title="Balansni tahrirlash"
+          position="center"
+        >
+          <div className="space-y-4 p-1">
+            <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between text-xs">
+              <span className="text-slate-500 dark:text-slate-400 font-medium">Joriy balans:</span>
+              <span className={`font-bold font-mono ${(tableBalance !== undefined ? tableBalance : Number(currentStudent?.balance || 0)) >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                {money(tableBalance !== undefined ? tableBalance : Number(currentStudent?.balance || 0))} so'm
+              </span>
+            </div>
+
+            <div>
+              <label className={LABEL_CLS}>Yangi balans summasi (so'm)</label>
+              <input
+                type="number"
+                value={newBalanceInput}
+                onChange={(e) => setNewBalanceInput(e.target.value)}
+                placeholder="0"
+                className={INPUT_CLS}
+                autoFocus
+              />
+            </div>
+
+            <div>
+              <label className={LABEL_CLS}>Izoh</label>
+              <input
+                type="text"
+                value={balanceComment}
+                onChange={(e) => setBalanceComment(e.target.value)}
+                placeholder="Balans to'g'rilash sababi"
+                className={INPUT_CLS}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowEditBalanceModal(false)}
+                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold cursor-pointer"
+              >
+                Bekor qilish
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const newBal = Number(newBalanceInput) || 0;
+                  setLocalStudent((prev) => ({ ...prev, balance: newBal }));
+                  await api.updateStudent(currentStudent.id, { balance: newBal });
+                  await onUpdateStudent?.(currentStudent.id, { balance: newBal });
+                  setShowEditBalanceModal(false);
+                  setSaveSuccessMsg("Balans muvaffaqiyatli yangilandi!");
+                  setTimeout(() => setSaveSuccessMsg(""), 3000);
+                }}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs"
+              >
+                Saqlash
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {showAddDiscountModal && (
+        <AddDiscountModal
+          isOpen={showAddDiscountModal}
+          onClose={() => setShowAddDiscountModal(false)}
+          student={currentStudent}
+          assignedGroups={allGroups}
+          editingDiscount={editingDiscount}
+          onSave={handleSaveDiscountItem}
+        />
+      )}
+
+      {showTransferBranchModal && (
+        <Modal
+          isOpen={showTransferBranchModal}
+          onClose={() => setShowTransferBranchModal(false)}
+          title="Boshqa filialga o'tkazish"
+        >
+          <div className="space-y-4 p-1">
+            {/* 1. Filial dropdown */}
+            <div>
+              <label className={LABEL_CLS}>Yangi filialni tanlang</label>
+              <select
+                value={targetBranchId}
+                onChange={(e) => {
+                  setTargetBranchId(e.target.value);
+                  setTargetGroupId("");
+                }}
+                className={INPUT_CLS}
+              >
+                <option value="">Filialni tanlang</option>
+                {(directorData?.branches || []).map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* 2. Guruh dropdown */}
+            {targetBranchId && (
+              <div>
+                <label className={LABEL_CLS}>Guruhni tanlang</label>
+                <select
+                  value={targetGroupId}
+                  onChange={(e) => setTargetGroupId(e.target.value)}
+                  className={INPUT_CLS}
+                >
+                  <option value="">Guruhsiz o'tkazish</option>
+                  {allGroups
+                    .filter(
+                      (g) =>
+                        String(g.branchId) === String(targetBranchId) &&
+                        !(currentStudent.groupIds || []).some(
+                          (id) => String(id) === String(g.id)
+                        )
+                    )
+                    .map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.name} {g.course ? `(${g.course})` : ""} — {money(g.price || 0)} so'm
+                      </option>
+                    ))}
+                </select>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowTransferBranchModal(false)}
+                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold cursor-pointer"
+              >
+                Bekor qilish
+              </button>
+              <button
+                type="button"
+                disabled={!targetBranchId}
+                onClick={async () => {
+                  const targetG = targetGroupId ? allGroups.find((g) => String(g.id) === String(targetGroupId)) : null;
+                  const newGids = targetG
+                    ? Array.from(new Set([...(currentStudent.groupIds || []).map(String), String(targetG.id)]))
+                    : currentStudent.groupIds || [];
+                  
+                  const newMemberships = { ...(currentStudent.groupMemberships || {}) };
+                  if (targetG) {
+                    newMemberships[String(targetG.id)] = {
+                      status: "trial",
+                      joinedAt: new Date().toISOString(),
+                      enrolledAt: new Date().toISOString(),
+                      agreedPrice: targetG.price || 0,
+                    };
+                  }
+
+                  const updatePayload = {
+                    branchId: targetBranchId,
+                    groupIds: newGids,
+                    groupMemberships: newMemberships,
+                  };
+
+                  setLocalStudent((prev) => ({ ...prev, ...updatePayload }));
+                  await api.updateStudent(currentStudent.id, updatePayload);
+                  await onUpdateStudent?.(currentStudent.id, updatePayload);
+                  setShowTransferBranchModal(false);
+                  setSaveSuccessMsg("O'quvchi boshqa filialga muvaffaqiyatli o'tkazildi!");
+                  setTimeout(() => setSaveSuccessMsg(""), 3000);
+                }}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs"
+              >
+                O'tkazish
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );
@@ -2892,221 +3880,198 @@ function ActivateGroupModal({
   const nextLesson = allLessonDates.find((d) => d >= todayStr) || todayStr;
 
   return (
-    <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto flex flex-col">
-        {/* Modal Header */}
-        <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-violet-100 dark:bg-violet-950/80 text-violet-600 dark:text-violet-400 flex items-center justify-center font-bold">
-              <Zap size={20} />
-            </div>
-            <div>
-              <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
-                Guruhda faollashtirish
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                {group.name} · {student?.name}
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Modal Body */}
-        <div className="p-5 space-y-4 text-xs flex-1">
-          {/* Status Selection */}
-          <div className="space-y-1.5">
-            <label className="font-bold text-slate-800 dark:text-slate-200 text-xs block">
-              Guruhdagi holati
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => setStatus("active")}
-                className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                  status === "active"
-                    ? "bg-emerald-50 border-emerald-500 text-emerald-700 dark:bg-emerald-950/50 dark:border-emerald-500 dark:text-emerald-300 ring-2 ring-emerald-500/20"
-                    : "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
-                }`}
-              >
-                <CheckCircle2 size={15} className="text-emerald-500" />
-                <span>Faol</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatus("trial")}
-                className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                  status === "trial"
-                    ? "bg-amber-50 border-amber-500 text-amber-700 dark:bg-amber-950/50 dark:border-amber-500 dark:text-amber-300 ring-2 ring-amber-500/20"
-                    : "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
-                }`}
-              >
-                <Sparkles size={15} className="text-amber-500" />
-                <span>Sinovda</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatus("paused")}
-                className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                  status === "paused"
-                    ? "bg-sky-50 border-sky-500 text-sky-700 dark:bg-sky-950/50 dark:border-sky-500 dark:text-sky-300 ring-2 ring-sky-500/20"
-                    : "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
-                }`}
-              >
-                <Clock size={15} className="text-sky-500" />
-                <span>Muzlatilgan</span>
-              </button>
-            </div>
-          </div>
-
-          {status === "active" && (
-            <>
-              {/* Activation Date picker */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="font-bold text-slate-800 dark:text-slate-200 text-xs">
-                    Faollashtirish sanasi
-                  </label>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => handleQuickDate(firstLesson)}
-                      className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:bg-violet-100 hover:text-violet-700 dark:hover:bg-violet-950 dark:hover:text-violet-300 cursor-pointer"
-                    >
-                      Oy boshi
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleQuickDate(todayStr)}
-                      className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:bg-violet-100 hover:text-violet-700 dark:hover:bg-violet-950 dark:hover:text-violet-300 cursor-pointer"
-                    >
-                      Bugun
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleQuickDate(nextLesson)}
-                      className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:bg-violet-100 hover:text-violet-700 dark:hover:bg-violet-950 dark:hover:text-violet-300 cursor-pointer"
-                    >
-                      Keyingi dars
-                    </button>
-                  </div>
-                </div>
-                <input
-                  type="date"
-                  value={activationDate}
-                  onChange={(e) => setActivationDate(e.target.value)}
-                  className={INPUT_CLS}
-                />
-              </div>
-
-              {/* Lesson breakdown in current month */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">
-                    Oydagi darslar taqvimi
-                  </span>
-                  <span className="text-slate-500 dark:text-slate-400 font-semibold text-xs">
-                    Jami {totalLessons} ta dars · {attendedLessons} ta hisoblanadi
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-36 overflow-y-auto p-2 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200/80 dark:border-slate-700">
-                  {allLessonDates.map((dateStr, idx) => {
-                    const isBefore = dateStr < activationDate;
-                    return (
-                      <div
-                        key={dateStr}
-                        className={`p-2 rounded-lg text-[11px] flex items-center justify-between border transition-all ${
-                          isBefore
-                            ? "bg-slate-100/80 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-400 line-through"
-                            : "bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 font-semibold"
-                        }`}
-                      >
-                        <span>
-                          #{idx + 1} {dateStr.slice(5)}
-                        </span>
-                        <span className="text-[10px] font-bold">
-                          {isBefore ? "0 so'm" : `${money(pricePerLesson)}`}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Real-time Calculation Summary Block */}
-              <div className="p-3.5 bg-violet-50/70 dark:bg-violet-950/30 rounded-xl border border-violet-200 dark:border-violet-800/80 space-y-2">
-                <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
-                  <span>Guruh narxi</span>
-                  <span className="font-bold text-slate-900 dark:text-white">{money(price)} so'm</span>
-                </div>
-                <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
-                  <span>1 ta dars qiymati</span>
-                  <span className="font-semibold text-slate-700 dark:text-slate-300">{money(pricePerLesson)} so'm</span>
-                </div>
-                <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
-                  <span>O'tgan darslar</span>
-                  <span className="font-medium text-slate-500 line-through">{missedLessons} ta dars (0 so'm)</span>
-                </div>
-                <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
-                  <span>Hisoblanadigan darslar</span>
-                  <span className="font-bold text-emerald-600 dark:text-emerald-400">{attendedLessons} ta dars</span>
-                </div>
-                <div className="h-px bg-violet-200 dark:bg-violet-800 my-1" />
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-extrabold text-violet-950 dark:text-violet-200">
-                    Hisoblangan to'lov
-                  </span>
-                  <span className="font-black text-violet-700 dark:text-violet-300 text-base">
-                    {money(calculatedFee)} so'm
-                  </span>
-                </div>
-              </div>
-            </>
-          )}
-
-          {status === "trial" && (
-            <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 flex items-center justify-between text-xs font-semibold">
-              <span className="flex items-center gap-1.5">
-                <Sparkles size={15} className="text-amber-500" />
-                Sinov darsi holati
-              </span>
-              <span className="font-bold text-amber-900 dark:text-amber-100">0 so'm (To'lovsiz)</span>
-            </div>
-          )}
-
-          {status === "paused" && (
-            <div className="p-3.5 bg-sky-50 dark:bg-sky-950/40 rounded-xl border border-sky-200 dark:border-sky-800 text-sky-800 dark:text-sky-200 flex items-center justify-between text-xs font-semibold">
-              <span className="flex items-center gap-1.5">
-                <Clock size={15} className="text-sky-500" />
-                Guruh muzlatilgan
-              </span>
-              <span className="font-bold text-sky-900 dark:text-sky-100">0 so'm</span>
-            </div>
-          )}
-
-          {/* Notes */}
-          <div className="space-y-1">
-            <label className="font-semibold text-slate-700 dark:text-slate-300 text-xs block">
-              Izoh
-            </label>
-            <input
-              type="text"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Izoh yozing..."
-              className={INPUT_CLS}
-            />
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Guruhda faollashtirish"
+      description={`${group.name} · ${student?.name}`}
+    >
+      <div className="p-5 space-y-4 text-xs flex-1">
+        {/* Status Selection */}
+        <div className="space-y-1.5">
+          <label className="font-bold text-slate-800 dark:text-slate-200 text-xs block">
+            Guruhdagi holati
+          </label>
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => setStatus("active")}
+              className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                status === "active"
+                  ? "bg-emerald-50 border-emerald-500 text-emerald-700 dark:bg-emerald-950/50 dark:border-emerald-500 dark:text-emerald-300 ring-2 ring-emerald-500/20"
+                  : "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+              }`}
+            >
+              <CheckCircle2 size={15} className="text-emerald-500" />
+              <span>Faol</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatus("trial")}
+              className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                status === "trial"
+                  ? "bg-amber-50 border-amber-500 text-amber-700 dark:bg-amber-950/50 dark:border-amber-500 dark:text-amber-300 ring-2 ring-amber-500/20"
+                  : "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+              }`}
+            >
+              <Sparkles size={15} className="text-amber-500" />
+              <span>Sinovda</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatus("paused")}
+              className={`py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                status === "paused"
+                  ? "bg-sky-50 border-sky-500 text-sky-700 dark:bg-sky-950/50 dark:border-sky-500 dark:text-sky-300 ring-2 ring-sky-500/20"
+                  : "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+              }`}
+            >
+              <Clock size={15} className="text-sky-500" />
+              <span>Muzlatilgan</span>
+            </button>
           </div>
         </div>
 
-        {/* Modal Footer */}
-        <div className="p-5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2.5">
+        {status === "active" && (
+          <>
+            {/* Activation Date picker */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                  Faollashtirish sanasi
+                </label>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDate(firstLesson)}
+                    className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:bg-violet-100 hover:text-violet-700 dark:hover:bg-violet-950 dark:hover:text-violet-300 cursor-pointer"
+                  >
+                    Oy boshi
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDate(todayStr)}
+                    className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:bg-violet-100 hover:text-violet-700 dark:hover:bg-violet-950 dark:hover:text-violet-300 cursor-pointer"
+                  >
+                    Bugun
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickDate(nextLesson)}
+                    className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:bg-violet-100 hover:text-violet-700 dark:hover:bg-violet-950 dark:hover:text-violet-300 cursor-pointer"
+                  >
+                    Keyingi dars
+                  </button>
+                </div>
+              </div>
+              <input
+                type="date"
+                value={activationDate}
+                onChange={(e) => setActivationDate(e.target.value)}
+                className={INPUT_CLS}
+              />
+            </div>
+
+            {/* Lesson breakdown in current month */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                  Oydagi darslar taqvimi
+                </span>
+                <span className="text-slate-500 dark:text-slate-400 font-semibold text-xs">
+                  Jami {totalLessons} ta dars · {attendedLessons} ta hisoblanadi
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-36 overflow-y-auto p-2 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200/80 dark:border-slate-700">
+                {allLessonDates.map((dateStr, idx) => {
+                  const isBefore = dateStr < activationDate;
+                  return (
+                    <div
+                      key={dateStr}
+                      className={`p-2 rounded-lg text-[11px] flex items-center justify-between border transition-all ${
+                        isBefore
+                          ? "bg-slate-100/80 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-400 line-through"
+                          : "bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 font-semibold"
+                      }`}
+                    >
+                      <span>
+                        #{idx + 1} {dateStr.slice(5)}
+                      </span>
+                      <span className="text-[10px] font-bold">
+                        {isBefore ? "0 so'm" : `${money(pricePerLesson)}`}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Real-time Calculation Summary Block */}
+            <div className="p-3.5 bg-violet-50/70 dark:bg-violet-950/30 rounded-xl border border-violet-200 dark:border-violet-800/80 space-y-2">
+              <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
+                <span>Guruh narxi</span>
+                <span className="font-bold text-slate-900 dark:text-white">{money(price)} so'm</span>
+              </div>
+              <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
+                <span>1 ta dars qiymati</span>
+                <span className="font-semibold text-slate-700 dark:text-slate-300">{money(pricePerLesson)} so'm</span>
+              </div>
+              <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
+                <span>O'tgan darslar</span>
+                <span className="font-medium text-slate-500 line-through">{missedLessons} ta dars (0 so'm)</span>
+              </div>
+              <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
+                <span>Hisoblanadigan darslar</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">{attendedLessons} ta dars</span>
+              </div>
+              <div className="h-px bg-violet-200 dark:bg-violet-800 my-1" />
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-extrabold text-violet-950 dark:text-violet-200">
+                  Hisoblangan to'lov
+                </span>
+                <span className="font-black text-violet-700 dark:text-violet-300 text-base">
+                  {money(calculatedFee)} so'm
+                </span>
+              </div>
+            </div>
+          </>
+        )}
+
+        {status === "trial" && (
+          <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 flex items-center justify-between text-xs font-semibold">
+            <span className="flex items-center gap-1.5">
+              <Sparkles size={15} className="text-amber-500" />
+              Sinov darsi holati
+            </span>
+            <span className="font-bold text-amber-900 dark:text-amber-100">0 so'm (To'lovsiz)</span>
+          </div>
+        )}
+
+        {status === "paused" && (
+          <div className="p-3.5 bg-sky-50 dark:bg-sky-950/40 rounded-xl border border-sky-200 dark:border-sky-800 text-sky-800 dark:text-sky-200 flex items-center justify-between text-xs font-semibold">
+            <span className="flex items-center gap-1.5">
+              <Clock size={15} className="text-sky-500" />
+              Guruh muzlatilgan
+            </span>
+            <span className="font-bold text-sky-900 dark:text-sky-100">0 so'm</span>
+          </div>
+        )}
+
+        {/* Notes */}
+        <div className="space-y-1">
+          <label className="font-semibold text-slate-700 dark:text-slate-300 text-xs block">
+            Izoh
+          </label>
+          <input
+            type="text"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Izoh yozing..."
+            className={INPUT_CLS}
+          />
+        </div>
+
+        <div className="pt-4 flex items-center justify-end gap-2.5">
           <button
             type="button"
             onClick={onClose}
@@ -3131,7 +4096,7 @@ function ActivateGroupModal({
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -3157,30 +4122,14 @@ function TransferGroupModal({
   );
 
   return (
-    <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-lg w-full p-5 space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
-              <ArrowLeftRight size={18} />
-            </div>
-            <div>
-              <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
-                Boshqa guruhga o'tkazish
-              </h3>
-              <p className="text-xs text-slate-500">Joriy guruh: {currentGroup.name}</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="space-y-3.5 text-xs">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Boshqa guruhga o'tkazish"
+      description={`Joriy guruh: ${currentGroup.name}`}
+    >
+      <div className="p-5 space-y-4 text-xs flex-1">
+        <div className="space-y-3.5">
           <div>
             <label className="font-extrabold text-slate-900 dark:text-white block mb-1">
               O'tkaziladigan yangi guruhni tanlang:
@@ -3275,7 +4224,7 @@ function TransferGroupModal({
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

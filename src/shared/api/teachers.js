@@ -228,3 +228,36 @@ export async function addTeacherPayment(payload) {
   }
 }
 
+export async function deleteTeacherPayment(id) {
+  try {
+    const { error } = await supabase.from('teacher_payments').delete().eq('id', id);
+    if (error) throw error;
+    const cached = getCachedData('teacher_payments', []);
+    setCachedData('teacher_payments', cached.filter(p => String(p.id) !== String(id)));
+    return true;
+  } catch (err) {
+    const cached = getCachedData('teacher_payments', []);
+    setCachedData('teacher_payments', cached.filter(p => String(p.id) !== String(id)));
+    return true;
+  }
+}
+
+export async function updateTeacherPayment(id, payload) {
+  try {
+    const { data, error } = await supabase.from('teacher_payments').update({
+      type: payload.type,
+      amount: payload.amount,
+      date: payload.date,
+      note: payload.note,
+    }).eq('id', id).select().single();
+    if (error) throw error;
+    const cached = getCachedData('teacher_payments', []);
+    setCachedData('teacher_payments', cached.map(p => String(p.id) === String(id) ? { ...p, ...payload } : p));
+    return data;
+  } catch (err) {
+    const cached = getCachedData('teacher_payments', []);
+    setCachedData('teacher_payments', cached.map(p => String(p.id) === String(id) ? { ...p, ...payload } : p));
+    return { id, ...payload };
+  }
+}
+

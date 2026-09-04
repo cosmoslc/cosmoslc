@@ -137,8 +137,17 @@ create table if not exists finance (
   date           date not null,
   status         text not null default 'approved', -- 'approved' | 'pending'
   approval_mode  text,            -- 'manager' | 'director'
+  expense_type   text default 'variable', -- 'variable' | 'fixed'
+  payment_method text default 'naqd',     -- 'naqd' | 'plastik' | 'bank' | 'click'
+  staff_id       text,
+  staff_name     text,
   created_at     timestamptz default now()
 );
+
+alter table finance add column if not exists expense_type text default 'variable';
+alter table finance add column if not exists payment_method text default 'naqd';
+alter table finance add column if not exists staff_id text;
+alter table finance add column if not exists staff_name text;
 
 -- 9. Courses (Kurslar)
 create table if not exists courses (
@@ -489,38 +498,63 @@ create table if not exists archive (
   archived_at timestamptz default now()
 );
 
+-- 29. Expense Categories (Xarajat turlari / bo'limlari)
+create table if not exists expense_categories (
+  id           text primary key default gen_random_uuid()::text,
+  name         text not null,
+  all_branches boolean not null default true,
+  branch_ids   jsonb not null default '[]',
+  created_at   timestamptz default now()
+);
+
+-- 30. Expense Plans (Xarajatlarni rejalashtirish / limitlar)
+create table if not exists expense_plans (
+  id             text primary key default gen_random_uuid()::text,
+  category       text not null,
+  amount         numeric not null default 0,
+  payment_method text default 'all',
+  month          text not null, -- 'YYYY-MM'
+  staff_id       text default 'all',
+  staff_name     text default 'Barcha xodimlar',
+  branch_id      text,
+  note           text,
+  created_at     timestamptz default now()
+);
+
 -- ============================================================
 -- Row Level Security & Policies
 -- ============================================================
 
-alter table directors        enable row level security;
-alter table branches         enable row level security;
-alter table managers         enable row level security;
-alter table manager_payments enable row level security;
-alter table teachers_hr      enable row level security;
-alter table teacher_payments enable row level security;
-alter table holidays         enable row level security;
-alter table finance          enable row level security;
-alter table courses          enable row level security;
-alter table rooms            enable row level security;
-alter table groups           enable row level security;
-alter table students         enable row level security;
-alter table attendance       enable row level security;
-alter table payments         enable row level security;
-alter table teacher_account  enable row level security;
-alter table tasks            enable row level security;
-alter table postponed        enable row level security;
-alter table app_settings     enable row level security;
-alter table coin_settings    enable row level security;
-alter table coin_transactions enable row level security;
-alter table center_settings  enable row level security;
-alter table sms_settings     enable row level security;
-alter table sms_templates    enable row level security;
+alter table directors           enable row level security;
+alter table branches            enable row level security;
+alter table managers            enable row level security;
+alter table manager_payments    enable row level security;
+alter table teachers_hr         enable row level security;
+alter table teacher_payments    enable row level security;
+alter table holidays            enable row level security;
+alter table finance             enable row level security;
+alter table courses             enable row level security;
+alter table rooms               enable row level security;
+alter table groups              enable row level security;
+alter table students            enable row level security;
+alter table attendance          enable row level security;
+alter table payments            enable row level security;
+alter table teacher_account     enable row level security;
+alter table tasks               enable row level security;
+alter table postponed           enable row level security;
+alter table app_settings        enable row level security;
+alter table coin_settings       enable row level security;
+alter table coin_transactions   enable row level security;
+alter table center_settings     enable row level security;
+alter table sms_settings        enable row level security;
+alter table sms_templates       enable row level security;
 alter table employee_attendance enable row level security;
-alter table leads            enable row level security;
-alter table lead_forms       enable row level security;
-alter table notifications    enable row level security;
-alter table archive          enable row level security;
+alter table leads               enable row level security;
+alter table lead_forms          enable row level security;
+alter table notifications       enable row level security;
+alter table archive             enable row level security;
+alter table expense_categories  enable row level security;
+alter table expense_plans       enable row level security;
 
 do $$
 declare t text;
@@ -530,7 +564,7 @@ begin
     'holidays','finance','courses','rooms','groups','students','attendance','payments',
     'teacher_account','tasks','postponed','app_settings','coin_settings','coin_transactions',
     'center_settings','sms_settings','sms_templates','employee_attendance','leads',
-    'lead_forms','notifications','archive'
+    'lead_forms','notifications','archive','expense_categories','expense_plans'
   ])
   loop
     execute format('drop policy if exists "dev_open_all" on %I;', t);

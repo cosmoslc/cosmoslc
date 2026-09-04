@@ -12,6 +12,10 @@ function fromRow(f) {
     date: f.date,
     status: f.status,
     approvalMode: f.approval_mode || f.approvalMode,
+    expenseType: f.expense_type || f.expenseType || "variable",
+    paymentMethod: f.payment_method || f.paymentMethod || "naqd",
+    staffId: f.staff_id || f.staffId || f.managerId,
+    staffName: f.staff_name || f.staffName || f.managerName,
     createdAt: f.createdAt || (f.created_at ? new Date(f.created_at).getTime() : Date.now()),
   };
 }
@@ -47,6 +51,10 @@ export async function addFinance(entry) {
       date: entry.date,
       status: entry.status || 'approved',
       approval_mode: entry.approvalMode,
+      expense_type: entry.expenseType || entry.expense_type || 'variable',
+      payment_method: entry.paymentMethod || entry.payment_method || 'naqd',
+      staff_id: entry.staffId || entry.staff_id,
+      staff_name: entry.staffName || entry.staff_name,
     }).select().single();
     if (error) throw error;
     const row = fromRow(data);
@@ -62,6 +70,35 @@ export async function addFinance(entry) {
     const cached = getCachedData('finance', []);
     setCachedData('finance', [...cached, localRow]);
     return localRow;
+  }
+}
+
+export async function updateFinance(id, entry) {
+  try {
+    const { data, error } = await supabase.from('finance').update({
+      branch_id: entry.branchId,
+      type: entry.type,
+      amount: entry.amount,
+      category: entry.category,
+      note: entry.note,
+      date: entry.date,
+      status: entry.status || 'approved',
+      approval_mode: entry.approvalMode,
+      expense_type: entry.expenseType || entry.expense_type,
+      payment_method: entry.paymentMethod || entry.payment_method,
+      staff_id: entry.staffId || entry.staff_id,
+      staff_name: entry.staffName || entry.staff_name,
+    }).eq('id', id).select().single();
+    if (error) throw error;
+    const row = fromRow(data);
+    const cached = getCachedData('finance', []);
+    setCachedData('finance', cached.map(f => f.id === id ? row : f));
+    return row;
+  } catch (err) {
+    const cached = getCachedData('finance', []);
+    const updated = cached.map(f => f.id === id ? { ...f, ...entry } : f);
+    setCachedData('finance', updated);
+    return { id, ...entry };
   }
 }
 
@@ -81,5 +118,9 @@ export async function rejectFinance(id) {
   } catch {}
   const cached = getCachedData('finance', []);
   setCachedData('finance', cached.filter(f => f.id !== id));
+}
+
+export async function deleteFinance(id) {
+  return rejectFinance(id);
 }
 

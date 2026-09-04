@@ -15,6 +15,7 @@ export function StudentProfileModal({
   onDelete,
   groups: availableGroups = [],
   openModal,
+  openPaymentModal,
 }) {
   if (!student) return null;
 
@@ -33,6 +34,7 @@ export function StudentProfileModal({
           onRemoveFromGroup={onRemoveFromGroup}
           onBack={onClose}
           openModal={openModal}
+          openPaymentModal={openPaymentModal}
         />
       </div>
     </div>

@@ -221,7 +221,7 @@ export function calculateStudentGroupFee({
 }
 
 /**
- * CRM — Refund (pul qaytarish) logikasi
+ * CRM — Refund va Chiqish (Unenroll) logikasi
  */
 export function calculateRefundAmount({
   billingMode = "invoice",
@@ -234,28 +234,37 @@ export function calculateRefundAmount({
   totalPaidAmount = 0,
   student,
 }) {
-  if (billingMode === "per_lesson") {
-    // Rejim B: agar balans plyusda bo'lsa -> shu plyus summa refund qilinadi, minusda bo'lsa 0
-    const refundAmount = Math.max(0, Number(currentBalance || 0));
-    return {
-      refundAmount,
-      otilganDarslar: 0,
-      pricePerLesson: 0,
-      foydalanilganSumma: 0,
-      billingMode: "per_lesson",
-    };
-  }
-
-  // Rejim A: Otilgan_darslar * Dars_narxi = Foydalanilgan_summa
-  // Refund = Jami_tolangan - Foydalanilgan
   const now = new Date();
   const activeMonth = monthStr || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const allLessonDates = getMonthLessonDates(activeMonth, groupDays);
   const totalLessons = allLessonDates.length || 12;
   const pricePerLesson = totalLessons > 0 ? Math.round(Number(fullPrice || 0) / totalLessons) : 0;
-
   const studentIdStr = String(student?.id || "");
+
+  if (billingMode === "per_lesson") {
+    // Rejim B: agar balans plyusda bo'lsa -> shu plyus summa refund qilinadi, minusda bo'lsa 0
+    const refundAmount = Math.max(0, Number(currentBalance || 0));
+    return {
+      refundAmount,
+      debtAmount: Math.max(0, -Number(currentBalance || 0)),
+      otilganDarslar: 0,
+      attendedLessons: 0,
+      excusedLessons: 0,
+      absentLessons: 0,
+      totalLessons,
+      pricePerLesson,
+      foydalanilganSumma: 0,
+      totalPaidAmount: Number(totalPaidAmount || 0),
+      netDifference: Number(currentBalance || 0),
+      billingMode: "per_lesson",
+    };
+  }
+
+  // Rejim A: Otilgan_darslar * Dars_narxi = Foydalanilgan_summa (To'lanishi kerak bo'lgan summa)
   let otilganDarslar = 0;
+  let attendedLessons = 0;
+  let excusedLessons = 0;
+  let absentLessons = 0;
 
   for (const a of attendances) {
     if (!a?.date || !a.date.startsWith(activeMonth)) continue;
@@ -263,26 +272,48 @@ export function calculateRefundAmount({
     if (a.records && studentIdStr) {
       rec = a.records[studentIdStr] || a.records[student?.id];
     }
-    if (!rec) continue;
+    if (!rec || !rec.status) continue;
 
     if (rec.status === "present" || rec.status === "late") {
       otilganDarslar++;
-    } else if (rec.status === "absent") {
-      if (excusedAbsenceRefund && rec.reason) {
-        // Sababli kelmagan darslar "o'tilgan" deb hisoblanmaydi -> refundga qo'shiladi
+      attendedLessons++;
+    } else if (rec.status === "absent" || rec.status === "excused") {
+      if (excusedAbsenceRefund && (rec.reason || rec.status === "excused")) {
+        excusedLessons++;
+        // Sababli kelmagan darslar "o'tilgan" deb hisoblanmaydi -> to'lovdan chiqariladi
       } else {
         otilganDarslar++;
+        absentLessons++;
       }
     }
   }
 
+  // Agar davomat kiritilmagan bo'lsa lekin shu kungacha bo'lgan darslar o'tilgan bo'lsa
+  if (otilganDarslar === 0 && attendances.length === 0) {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const pastLessonDates = allLessonDates.filter((d) => d <= todayStr);
+    otilganDarslar = pastLessonDates.length;
+    attendedLessons = pastLessonDates.length;
+  }
+
   const foydalanilganSumma = otilganDarslar * pricePerLesson;
-  const refundAmount = Math.max(0, Number(totalPaidAmount || 0) - foydalanilganSumma);
+  const paid = Number(totalPaidAmount || 0);
+  const netDifference = paid - foydalanilganSumma;
+  const refundAmount = Math.max(0, netDifference);
+  const debtAmount = Math.max(0, foydalanilganSumma - paid);
+
   return {
     refundAmount,
+    debtAmount,
     otilganDarslar,
+    attendedLessons,
+    excusedLessons,
+    absentLessons,
+    totalLessons,
     pricePerLesson,
     foydalanilganSumma,
+    totalPaidAmount: paid,
+    netDifference,
     billingMode: "invoice",
   };
 }

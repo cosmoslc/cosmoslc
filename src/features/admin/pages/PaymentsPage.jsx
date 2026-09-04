@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import {
   Wallet,
   CreditCard,
@@ -24,6 +24,7 @@ import {
   Calendar,
   X,
   FileText,
+  MoreVertical,
   Layers,
   ShieldCheck,
   Check,
@@ -34,7 +35,7 @@ import { INPUT_CLS, PrimaryButton, GLASS } from "../theme/tokens";
 import { money, formatDate, normalizePhone, thisMonthKey } from "../utils/helpers";
 import { calculateStudentGroupFee } from "../../../shared/utils/prorata";
 import { filterCoursesByBranch, filterGroupsByBranch, filterPaymentsByBranch, filterStudentsByBranch, opGroups, opStudentsInGroups } from "../utils/dataHelpers";
-import { Avatar, EmptyState } from "../components/primitives";
+import { Avatar, EmptyState, Modal } from "../components/primitives";
 import * as api from "../../../shared/api";
 
 const MONTHS_LIST = [
@@ -60,7 +61,7 @@ const METHOD_OPTIONS = [
   { value: "click", label: "Click", icon: "🔵" },
   { value: "card", label: "Plastik karta (Uzcard/Humo)", icon: "💳" },
   { value: "bank", label: "Bank o'tkazmasi", icon: "🏛️" },
-  { value: "coin", label: "Coin (Tangalar)", icon: "🪙" },
+  { value: "coin", label: "Coin (Coinlar)", icon: "🪙" },
 ];
 
 const STATUS_OPTIONS = [
@@ -77,6 +78,8 @@ export function PaymentsPage({
   directorData = {},
   opData = {},
   openModal = () => {},
+  openStudentProfile,
+  openGroupProfile,
   onRefresh,
   goTo,
 }) {
@@ -85,6 +88,35 @@ export function PaymentsPage({
   const currentYearStr = String(now.getFullYear());
   const currentMonthNum = String(now.getMonth() + 1).padStart(2, "0");
   const todayISOStr = now.toISOString().slice(0, 10);
+
+  const handleOpenStudentProfile = (rec) => {
+    const student = allStudents.find((s) => String(s.id) === String(rec.studentId)) || {
+      id: rec.studentId,
+      name: rec.studentName,
+      phone: rec.studentPhone,
+    };
+    if (openStudentProfile) {
+      openStudentProfile(student);
+    } else if (openModal) {
+      openModal({ type: "studentProfile", student });
+    } else if (goTo) {
+      goTo("studentProfile", { student });
+    }
+  };
+
+  const handleOpenGroupProfile = (rec) => {
+    const grp = groups.find((g) => String(g.id) === String(rec.groupId)) || {
+      id: rec.groupId,
+      name: rec.groupName,
+    };
+    if (openGroupProfile) {
+      openGroupProfile(grp);
+    } else if (openModal) {
+      openModal({ type: "groupProfile", group: grp });
+    } else if (goTo) {
+      goTo("groupProfile", { group: grp, groupId: rec.groupId });
+    }
+  };
 
   // Period Filters
   const [selectedYear, setSelectedYear] = useState(currentYearStr);
@@ -96,6 +128,10 @@ export function PaymentsPage({
   const [statusFilter, setStatusFilter] = useState("all");
   const [methodFilter, setMethodFilter] = useState("all");
   const [groupFilter, setGroupFilter] = useState("all");
+  const [teacherFilter, setTeacherFilter] = useState("all");
+  const [staffFilter, setStaffFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -105,9 +141,23 @@ export function PaymentsPage({
   const [receiptModalPayment, setReceiptModalPayment] = useState(null);
   const [deleteConfirmPayment, setDeleteConfirmPayment] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState(null);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setActiveDropdown(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Base datasets
   const allBranchesCount = (directorData?.branches || scopeBranches || []).length;
+  const allTeachers = useMemo(() => directorData?.teachersHR || opData?.teachersHR || [], [directorData?.teachersHR, opData?.teachersHR]);
+  const allManagers = useMemo(() => directorData?.managers || opData?.managers || [], [directorData?.managers, opData?.managers]);
   const scopeBranchIds = useMemo(() => {
     if (currentBranchId && currentBranchId !== "all") return [currentBranchId];
     if (passedScopeBranchIds && passedScopeBranchIds.length > 0) return passedScopeBranchIds;
@@ -155,13 +205,9 @@ export function PaymentsPage({
     }
   }
 
-  // Combined Rows of Payments and Unpaid Debtor records
+  // Only actual recorded payments
   const allEnrichedRecords = useMemo(() => {
-    const list = [];
-    const paymentStudentGroupKeys = new Set();
-
-    // 1. Process actual recorded payments
-    allPayments.forEach((p) => {
+    return allPayments.map((p) => {
       const student = allStudents.find((s) => s.id === p.studentId);
       const group = groups.find((g) => g.id === p.groupId);
       const course = courses.find((c) => c.id === group?.courseId);
@@ -170,19 +216,25 @@ export function PaymentsPage({
       const pYear = pDate ? pDate.slice(0, 4) : "";
       const pMonth = p.month ? p.month.slice(5, 7) : pDate ? pDate.slice(5, 7) : "";
 
-      list.push({
+      const teacherId = group?.teacherHrId || group?.teacherId || null;
+      const teacherObj = allTeachers.find((t) => String(t.id) === String(teacherId));
+
+      return {
         id: p.id,
         isPaymentRecord: true,
         type: "payment",
         paymentId: p.id,
         studentId: p.studentId,
-        studentName: student?.name || "Noma'lum o'quvchi",
-        studentPhone: student?.phone || "",
+        studentName: student?.name || p.studentName || "Noma'lum o'quvchi",
+        studentPhone: student?.phone || p.studentPhone || "",
         studentAvatar: student?.name || "U",
         groupId: p.groupId,
         groupName: group?.name || "Asosiy guruh",
         groupColor: group?.color || "#6366f1",
         courseName: course?.name || "Kurs",
+        teacherId: teacherId,
+        teacherName: teacherObj?.name || "Biriktirilmagan",
+        staffName: p.staffName || p.createdBy || "Admin",
         price: group?.price || course?.price || 0,
         amount: Number(p.amount || 0),
         method: p.method || "cash",
@@ -193,78 +245,9 @@ export function PaymentsPage({
         monthNum: pMonth,
         comment: p.comment || p.note || "",
         raw: p,
-      });
-
-      if (p.studentId && p.groupId && (p.month || pDate)) {
-        const mKey = p.month || pDate.slice(0, 7);
-        paymentStudentGroupKeys.add(`${p.studentId}_${p.groupId}_${mKey}`);
-      }
+      };
     });
-
-    // 2. Identify Pending / Debtor Students for the active selected month
-    const targetMonthKey =
-      selectedYear !== "all" && selectedMonth !== "all"
-        ? `${selectedYear}-${selectedMonth}`
-        : thisMonthKey();
-
-    groups.forEach((g) => {
-      const course = courses.find((c) => c.id === g.courseId);
-      const groupPrice = Number(g.price || course?.price || 0);
-      if (groupPrice <= 0) return;
-
-      const groupStudentList = opStudentsInGroups(opData, [g.id]);
-      groupStudentList.forEach((s) => {
-        const membership = s.groupMemberships?.[g.id] || s.groupMemberships?.[String(g.id)] || s;
-        const feeInfo = calculateStudentGroupFee({
-          fullMonthlyFee: groupPrice,
-          groupDays: g.days || ["Dush", "Chor", "Juma"],
-          monthStr: targetMonthKey,
-          membership,
-          student: s,
-        });
-
-        const expectedFee = feeInfo.calculatedFee;
-
-        const paidSoFar = allPayments
-          .filter(
-            (p) =>
-              p.studentId === s.id &&
-              p.groupId === g.id &&
-              (p.month === targetMonthKey || (p.date && p.date.startsWith(targetMonthKey)))
-          )
-          .reduce((sum, p) => sum + Number(p.amount || 0), 0);
-
-        if (paidSoFar < expectedFee) {
-          const debt = expectedFee - paidSoFar;
-          list.push({
-            id: `pending-${s.id}-${g.id}-${targetMonthKey}`,
-            isPaymentRecord: false,
-            type: "pending",
-            studentId: s.id,
-            studentName: s.name,
-            studentPhone: s.phone || "",
-            studentAvatar: s.name,
-            groupId: g.id,
-            groupName: g.name,
-            groupColor: g.color || "#6366f1",
-            courseName: course?.name || "Kurs",
-            price: expectedFee,
-            amount: debt,
-            paidSoFar,
-            method: "unpaid",
-            status: paidSoFar > 0 ? "partial" : "pending",
-            date: targetMonthKey + "-01",
-            month: targetMonthKey,
-            year: targetMonthKey.slice(0, 4),
-            monthNum: targetMonthKey.slice(5, 7),
-            comment: `To'lov kutilmoqda (Qarz: ${money(debt)} so'm)`,
-          });
-        }
-      });
-    });
-
-    return list;
-  }, [allPayments, allStudents, groups, courses, opData, selectedYear, selectedMonth]);
+  }, [allPayments, allStudents, groups, courses, allTeachers]);
 
   // Calculate Overall KPI Metrics based on selected period
   const kpiStats = useMemo(() => {
@@ -383,6 +366,23 @@ export function PaymentsPage({
       // 5. Method Filter
       if (methodFilter !== "all" && rec.method !== methodFilter) return false;
 
+      // Date From Filter
+      if (dateFrom && rec.date < dateFrom) return false;
+      // Date To Filter
+      if (dateTo && rec.date > dateTo) return false;
+      // Search (Name)
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const matchesName = rec.studentName?.toLowerCase().includes(q);
+        const matchesPhone = rec.studentPhone?.toLowerCase().includes(q);
+        const matchesNote = rec.comment?.toLowerCase().includes(q);
+        if (!matchesName && !matchesPhone && !matchesNote) return false;
+      }
+      // Teacher Filter
+      if (teacherFilter !== "all" && String(rec.teacherId) !== String(teacherFilter)) return false;
+      // Staff Filter (Dummy since we hardcoded "Admin")
+      if (staffFilter !== "all" && rec.staffName !== staffFilter) return false;
+
       // 6. Group Filter
       if (groupFilter !== "all" && rec.groupId !== groupFilter) return false;
 
@@ -438,6 +438,10 @@ export function PaymentsPage({
     setStatusFilter("all");
     setMethodFilter("all");
     setGroupFilter("all");
+    setTeacherFilter("all");
+    setStaffFilter("all");
+    setDateFrom("");
+    setDateTo("");
     setSelectedYear(currentYearStr);
     setSelectedMonth(currentMonthNum);
     setQuickPeriod("thisMonth");
@@ -725,10 +729,10 @@ export function PaymentsPage({
           </div>
         </div>
 
-        {/* Inputs: Search, Status Dropdown, Method Dropdown, Group Dropdown */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+        {/* Inputs: Search, Date Range, Teacher, Group, Method, Staff */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2.5">
           {/* Search */}
-          <div className="relative">
+          <div className="relative sm:col-span-2 lg:col-span-2">
             <Search
               size={15}
               className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
@@ -740,43 +744,36 @@ export function PaymentsPage({
                 setSearchQuery(e.target.value);
                 setCurrentPage(1);
               }}
-              placeholder="O'quvchi ismi, telefon, chek..."
+              placeholder="O'quvchi ismi, telefon..."
               className={`${INPUT_CLS} pl-9 text-xs`}
             />
           </div>
 
-          {/* Status Dropdown */}
-          <div>
-            <select
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-                setCurrentPage(1);
-              }}
-              className={`${INPUT_CLS} text-xs`}
-            >
-              {STATUS_OPTIONS.map((st) => (
-                <option key={st.value} value={st.value}>
-                  {st.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => { setDateFrom(e.target.value); setCurrentPage(1); }}
+            className={`${INPUT_CLS} text-xs`}
+            title="Sanadan"
+          />
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => { setDateTo(e.target.value); setCurrentPage(1); }}
+            className={`${INPUT_CLS} text-xs`}
+            title="Sanagacha"
+          />
 
-          {/* Payment Method Dropdown */}
+          {/* Teacher Dropdown */}
           <div>
             <select
-              value={methodFilter}
-              onChange={(e) => {
-                setMethodFilter(e.target.value);
-                setCurrentPage(1);
-              }}
+              value={teacherFilter}
+              onChange={(e) => { setTeacherFilter(e.target.value); setCurrentPage(1); }}
               className={`${INPUT_CLS} text-xs`}
             >
-              {METHOD_OPTIONS.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.icon} {m.label}
-                </option>
+              <option value="all">Barcha o'qituvchilar</option>
+              {allTeachers.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
               ))}
             </select>
           </div>
@@ -799,211 +796,153 @@ export function PaymentsPage({
               ))}
             </select>
           </div>
+
+          {/* Payment Method Dropdown */}
+          <div>
+            <select
+              value={methodFilter}
+              onChange={(e) => {
+                setMethodFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className={`${INPUT_CLS} text-xs`}
+            >
+              {METHOD_OPTIONS.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.icon} {m.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
       {/* ========================================================= */}
       {/* 4. PAYMENTS TABLE                                        */}
       {/* ========================================================= */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 font-bold">
-                <th className="py-3.5 px-4 w-12 text-center">#</th>
-                <th className="py-3.5 px-4">O'quvchi</th>
-                <th className="py-3.5 px-4">Summa</th>
-                <th className="py-3.5 px-4">To'lov usuli</th>
-                <th className="py-3.5 px-4">Holat</th>
-                <th className="py-3.5 px-4">Sana</th>
-                <th className="py-3.5 px-4 text-right">Amallar</th>
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs">
+        <div className="overflow-x-auto max-h-[calc(100vh-340px)] overflow-y-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead className="sticky top-0 z-10 bg-slate-50/90 dark:bg-slate-800/90 backdrop-blur-xs">
+              <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold">
+                <th className="py-2.5 px-3 w-12 text-center">Tr</th>
+                <th className="py-2.5 px-3">Sana</th>
+                <th className="py-2.5 px-3">Ism Familiya</th>
+                <th className="py-2.5 px-3">Narx</th>
+                <th className="py-2.5 px-3">To'lov usuli</th>
+                <th className="py-2.5 px-3">O'qituvchilar</th>
+                <th className="py-2.5 px-3">Guruh</th>
+                <th className="py-2.5 px-3">Xodim</th>
+                <th className="py-2.5 px-3 text-right">Amallar</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
               {paginatedRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-16 text-center">
+                  <td colSpan={9} className="py-12 text-center">
                     <EmptyState
                       icon={CreditCard}
                       title="To'lovlar topilmadi"
-                      subtitle="Belgilangan filtrlar yoki qidiruv bo'yicha ma'lumot mavjud emas."
+                      subtitle="Belgilangan filtrlar yoki qidiruv bo'yicha to'lovlar mavjud emas."
                     />
                   </td>
                 </tr>
               ) : (
                 paginatedRecords.map((rec, idx) => {
                   const rowNumber = (currentPage - 1) * pageSize + idx + 1;
-                  const isCompleted = rec.status === "completed";
-                  const isPending = rec.status === "pending";
-                  const isPartial = rec.status === "partial";
 
                   return (
                     <tr
                       key={rec.id}
                       className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors group"
                     >
-                      {/* Row Index */}
-                      <td className="py-3.5 px-4 text-center font-mono text-slate-400 text-[11px]">
+                      <td className="py-2 px-3 text-center font-mono text-slate-400 text-[11px]">
                         {rowNumber}
                       </td>
-
-                      {/* Student Info & Group */}
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-3">
-                          <Avatar
-                            name={rec.studentName}
-                            color={rec.groupColor}
-                            size={34}
-                          />
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <p className="font-bold text-slate-900 dark:text-white text-xs">
-                                {rec.studentName}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2 mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-                              <span>{rec.studentPhone || "—"}</span>
-                              <span>•</span>
-                              <span
-                                className="px-1.5 py-0.5 rounded text-[10px] font-semibold"
-                                style={{
-                                  backgroundColor: `${rec.groupColor}15`,
-                                  color: rec.groupColor,
-                                }}
-                              >
-                                {rec.groupName}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
+                      <td className="py-2 px-3 font-mono text-[11px] text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                        {rec.date}
                       </td>
-
-                      {/* Payment Amount */}
-                      <td className="py-3.5 px-4 font-display font-extrabold text-sm">
-                        <span
-                          className={
-                            isCompleted
-                              ? "text-emerald-600 dark:text-emerald-400"
-                              : isPartial
-                              ? "text-amber-600 dark:text-amber-400"
-                              : "text-rose-600 dark:text-rose-400"
-                          }
+                      <td className="py-2 px-3">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenStudentProfile(rec)}
+                          className="text-left font-bold text-[13px] text-slate-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors block cursor-pointer"
+                          title="O'quvchi profilini ochish"
                         >
-                          {money(rec.amount)}
-                        </span>{" "}
-                        <span className="text-[10px] font-normal text-slate-400">so'm</span>
-                        {isPartial && (
-                          <div className="text-[10px] text-slate-400 font-normal mt-0.5">
-                            To'landi: {money(rec.paidSoFar)} / {money(rec.price)}
+                          {rec.studentName}
+                        </button>
+                        {rec.studentPhone && (
+                          <div className="text-[10px] text-slate-500 font-mono">
+                            {rec.studentPhone}
                           </div>
                         )}
                       </td>
-
-                      {/* Payment Method Badge */}
-                      <td className="py-3.5 px-4">
-                        {rec.method === "cash" && (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-900/40">
-                            💵 Naqd pul
-                          </span>
-                        )}
-                        {rec.method === "payme" && (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-semibold bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 border border-teal-200/60 dark:border-teal-900/40">
-                            🟢 Payme
-                          </span>
-                        )}
-                        {rec.method === "click" && (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-semibold bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 border border-sky-200/60 dark:border-sky-900/40">
-                            🔵 Click
-                          </span>
-                        )}
-                        {(rec.method === "card" || rec.method === "plastik") && (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-semibold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-900/40">
-                            💳 Plastik karta
-                          </span>
-                        )}
-                        {rec.method === "bank" && (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-semibold bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-900/40">
-                            🏛️ Bank o'tkazmasi
-                          </span>
-                        )}
-                        {rec.method === "coin" && (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-semibold bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200/60 dark:border-purple-900/40">
-                            🪙 Coin to'lovi
-                          </span>
-                        )}
-                        {rec.method === "unpaid" && (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500">
-                            ⏳ Kutilmoqda
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Status Badge */}
-                      <td className="py-3.5 px-4">
-                        {isCompleted && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-900/40">
-                            <CheckCircle2 size={12} /> Tugallangan
-                          </span>
-                        )}
-                        {isPartial && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border border-amber-200/60 dark:border-amber-900/40">
-                            <Clock size={12} /> Qisman
-                          </span>
-                        )}
-                        {isPending && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border border-rose-200/60 dark:border-rose-900/40">
-                            <AlertCircle size={12} /> Kutilmoqda
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Date */}
-                      <td className="py-3.5 px-4">
-                        <div className="font-semibold text-slate-800 dark:text-slate-200">
-                          {formatDate(rec.date)}
-                        </div>
-                        <div className="text-[10px] text-slate-400">
-                          Oy: {rec.month || "—"}
+                      <td className="py-2 px-3 whitespace-nowrap">
+                        <div className="font-bold text-[13px] text-emerald-600 dark:text-emerald-400">
+                          {money(rec.amount)} <span className="text-[10px] font-normal text-slate-400">so'm</span>
                         </div>
                       </td>
-
-                      {/* Actions */}
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {/* Print Receipt Button */}
+                      <td className="py-2 px-3 text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1">
+                          {METHOD_OPTIONS.find((m) => m.value === rec.method)?.icon || "💵"} {METHOD_OPTIONS.find((m) => m.value === rec.method)?.label || "Naqd"}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3 text-slate-700 dark:text-slate-200 text-xs">
+                        {rec.teacherName}
+                      </td>
+                      <td className="py-2 px-3">
+                        {rec.groupId ? (
                           <button
-                            onClick={() => handleOpenReceipt(rec)}
-                            className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-200/70 dark:border-slate-700 transition-colors"
-                            title="Chek / Kvitansiyani ko'rish va chop etish"
+                            type="button"
+                            onClick={() => handleOpenGroupProfile(rec)}
+                            className="text-left text-xs font-semibold text-slate-800 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors block cursor-pointer"
+                            title="Guruh profilini ochish"
                           >
-                            <Printer size={14} />
+                            {rec.groupName}
                           </button>
-
-                          {/* If recorded payment, allow delete */}
-                          {rec.isPaymentRecord && (
-                            <button
-                              onClick={() => setDeleteConfirmPayment(rec)}
-                              className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                              title="To'lovni o'chirish"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          )}
-
-                          {/* If pending, allow quick pay */}
-                          {!rec.isPaymentRecord && (
-                            <button
-                              onClick={() => {
-                                openModal({
-                                  type: "recordPayment",
-                                  studentId: rec.studentId,
-                                  groupId: rec.groupId,
-                                });
-                              }}
-                              className="px-2.5 py-1 rounded-xl bg-indigo-600 text-white text-[11px] font-bold hover:bg-indigo-700 transition-colors flex items-center gap-1 shadow-xs"
-                            >
-                              <CreditCard size={12} /> To'lash
-                            </button>
+                        ) : (
+                          <div className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                            {rec.groupName}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-2 px-3 text-xs text-slate-600 dark:text-slate-300">
+                        {rec.staffName || "Admin"}
+                      </td>
+                      <td className="py-2 px-3 text-right">
+                        <div className="relative flex justify-end" ref={activeDropdown === rec.id ? dropdownRef : null}>
+                          <button
+                            onClick={() => setActiveDropdown(activeDropdown === rec.id ? null : rec.id)}
+                            className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                          >
+                            <MoreVertical size={16} />
+                          </button>
+                          
+                          {activeDropdown === rec.id && (
+                            <div className="absolute right-0 top-8 w-40 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg py-1 z-50 overflow-hidden">
+                              <button
+                                onClick={() => { setReceiptModalPayment(rec.raw || rec); setActiveDropdown(null); }}
+                                className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2"
+                              >
+                                <Printer size={14} className="text-blue-500" />
+                                Chop etish
+                              </button>
+                              <button
+                                onClick={() => { if(openModal) openModal("payment", { editMode: true, ...rec }); setActiveDropdown(null); }}
+                                className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                Tahrirlash
+                              </button>
+                              <div className="h-px bg-slate-100 dark:bg-slate-700 my-1"></div>
+                              <button
+                                onClick={() => { setDeleteConfirmPayment(rec); setActiveDropdown(null); }}
+                                className="w-full text-left px-4 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 flex items-center gap-2"
+                              >
+                                <Trash2 size={14} />
+                                O'chirish
+                              </button>
+                            </div>
                           )}
                         </div>
                       </td>

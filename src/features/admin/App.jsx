@@ -111,7 +111,9 @@ import { CourseFormModal } from "./modals/CourseFormModal";
 import { GroupFormModal } from "./modals/GroupFormModal";
 import { ImportGroupsModal } from "./modals/ImportGroupsModal";
 import { GroupProfilePage } from "./pages/GroupProfilePage";
+import { TeacherProfilePage } from "./pages/TeacherProfilePage";
 import { RecordPaymentModal } from "./modals/RecordPaymentModal";
+import { RefundPaymentModal } from "./modals/RefundPaymentModal";
 import { AddStudentModal } from "./modals/AddStudentModal";
 import { ImportStudentsModal } from "./modals/ImportStudentsModal";
 import { SetStudentStatusModal } from "./modals/SetStudentStatusModal";
@@ -150,6 +152,7 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
   }, [currentBranchId]);
   const [modal, setModal] = useState(null);
   const [selectedGroupProfile, setSelectedGroupProfile] = useState(null);
+  const [selectedTeacherProfile, setSelectedTeacherProfile] = useState(null);
   const [previousView, setPreviousView] = useState(null);
   const [toasts, setToasts] = useState([]);
   const [notifLog, setNotifLog] = useState([]);
@@ -781,6 +784,23 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
     }
   };
 
+  const handleSaveRefund = async (refundData) => {
+    try {
+      if (!refundData.branchId || refundData.branchId === "all") {
+        if (currentBranchId && currentBranchId !== "all") {
+          refundData.branchId = currentBranchId;
+        }
+      }
+      const res = await api.recordPayment(refundData);
+      addToast("To'lov muvaffaqiyatli qaytarildi (Refund)");
+      await refreshData();
+      return res;
+    } catch (e) {
+      console.error(e);
+      addToast("To'lovni qaytarishda xatolik", "error");
+    }
+  };
+
   const handleDeletePayment = async (paymentId) => {
     try {
       await api.deletePayment(paymentId);
@@ -799,24 +819,88 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
           financeData.branchId = currentBranchId;
         }
       }
-      await api.addFinance(financeData);
-      addToast("Moliya yozuvi saqlandi");
+      let res;
+      if (financeData.id && directorData?.finance?.some((f) => String(f.id) === String(financeData.id))) {
+        res = await api.updateFinance(financeData.id, financeData);
+        addToast("Xarajat muvaffaqiyatli tahrirlandi");
+      } else {
+        res = await api.addFinance(financeData);
+        addToast("Yangi xarajat qo'shildi");
+      }
       await refreshData();
+      return res;
     } catch (e) {
       console.error(e);
-      addToast("Moliyani saqlashda xatolik", "error");
+      addToast("Xarajatni saqlashda xatolik", "error");
     }
   };
 
   const handleDeleteFinanceRecord = async (financeId) => {
     try {
-      // Reject or remove
-      await api.rejectFinance(financeId);
-      addToast("Moliya yozuvi o'chirildi");
+      await api.deleteFinance(financeId);
+      addToast("Xarajat o'chirildi");
       await refreshData();
     } catch (e) {
       console.error(e);
-      addToast("Moliya yozuvini o'chirishda xatolik", "error");
+      addToast("Xarajatni o'chirishda xatolik", "error");
+    }
+  };
+
+  const handleSaveExpenseCategory = async (catData) => {
+    try {
+      let res;
+      if (catData.id && directorData?.expenseCategories?.some((c) => String(c.id) === String(catData.id))) {
+        res = await api.updateExpenseCategory(catData.id, catData);
+        addToast("Xarajat turi tahrirlandi");
+      } else {
+        res = await api.addExpenseCategory(catData);
+        addToast("Yangi xarajat turi qo'shildi");
+      }
+      await refreshData();
+      return res;
+    } catch (e) {
+      console.error(e);
+      addToast("Xarajat turini saqlashda xatolik", "error");
+    }
+  };
+
+  const handleDeleteExpenseCategory = async (catId) => {
+    try {
+      await api.deleteExpenseCategory(catId);
+      addToast("Xarajat turi o'chirildi");
+      await refreshData();
+    } catch (e) {
+      console.error(e);
+      addToast("Xarajat turini o'chirishda xatolik", "error");
+    }
+  };
+
+  const handleSaveExpensePlan = async (planData) => {
+    try {
+      let res;
+      if (planData.id && directorData?.expensePlans?.some((p) => String(p.id) === String(planData.id))) {
+        res = await api.updateExpensePlan(planData.id, planData);
+        addToast("Xarajat rejasi yangilandi");
+      } else {
+        res = await api.addExpensePlan(planData);
+        addToast("Yangi xarajat rejasi kiritildi");
+      }
+      await refreshData();
+      return res;
+    } catch (e) {
+      console.error(e);
+      addToast("Xarajat rejasini saqlashda xatolik", "error");
+    }
+  };
+
+  const handleDeleteExpensePlan = async (planId) => {
+    try {
+      await api.deleteExpensePlan(planId);
+      addToast("Xarajat rejasi o'chirildi");
+      await refreshData();
+    } catch (e) {
+      console.error(e);
+      addToast("Xarajat rejasini o'chirishda xatolik", "error");
     }
   };
 
@@ -1209,6 +1293,11 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
               openStudentProfile={(student) =>
                 setModal({ type: "studentProfile", student })
               }
+              openTeacherProfile={(teacher) => {
+                setPreviousView("groupProfile");
+                setSelectedTeacherProfile(teacher);
+                setView("teacherProfile");
+              }}
               onEditGroup={(grp) =>
                 setModal({
                   type: "groupForm",
@@ -1263,10 +1352,52 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
               openTeacherModal={(teacher) =>
                 setModal({ type: "teacherHRForm", teacher })
               }
-              openPayrollModal={(teacher) =>
-                setModal({ type: "teacherPayroll", teacher })
-              }
+              openTeacherProfile={(teacher) => {
+                setPreviousView(view);
+                setSelectedTeacherProfile(teacher);
+                setView("teacherProfile");
+              }}
+              openPayrollModal={(teacher) => {
+                setPreviousView(view);
+                setSelectedTeacherProfile(teacher);
+                setView("teacherProfile");
+              }}
               onDeleteTeacher={handleDeleteTeacherHR}
+              onRefresh={refreshData}
+              addToast={addToast}
+              goTo={setView}
+            />
+          )}
+
+          {view === "teacherProfile" && selectedTeacherProfile && (
+            <TeacherProfilePage
+              teacher={
+                (directorData?.teachersHR || []).find(
+                  (t) => String(t.id) === String(selectedTeacherProfile.id)
+                ) || selectedTeacherProfile
+              }
+              directorData={directorData}
+              opData={opData}
+              scopeBranches={scopeBranches}
+              canEdit={canEdit}
+              onClose={() => {
+                setView(previousView || "teachers");
+                setSelectedTeacherProfile(null);
+              }}
+              onEditTeacher={(teacher) =>
+                setModal({ type: "teacherHRForm", editing: teacher, teacher })
+              }
+              openGroupProfile={(group) => {
+                setPreviousView("teacherProfile");
+                setSelectedGroupProfile(group);
+                setView("groupProfile");
+              }}
+              openStudentProfile={(student) => {
+                setModal({ type: "studentProfile", student });
+              }}
+              openModal={setModal}
+              onRefresh={refreshData}
+              addToast={addToast}
             />
           )}
 
@@ -1322,7 +1453,16 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
               currentBranchId={currentBranchId}
               openModal={(m) => setModal(m)}
               openPaymentModal={() => setModal({ type: "recordPayment" })}
+              openStudentProfile={(student) =>
+                setModal({ type: "studentProfile", student })
+              }
+              openGroupProfile={(group) => {
+                setPreviousView(view);
+                setSelectedGroupProfile(group);
+                setView("groupProfile");
+              }}
               onDeletePayment={handleDeletePayment}
+              goTo={goTo}
             />
           )}
 
@@ -1350,10 +1490,15 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
           {view === "expenses" && (
             <ExpensesPage
               directorData={directorData}
+              opData={opData}
               scopeBranches={scopeBranches}
               scopeBranchIds={scopeBranchIds}
               onSaveExpense={handleSaveFinanceRecord}
               onDeleteExpense={handleDeleteFinanceRecord}
+              onSaveExpenseCategory={handleSaveExpenseCategory}
+              onDeleteExpenseCategory={handleDeleteExpenseCategory}
+              onSaveExpensePlan={handleSaveExpensePlan}
+              onDeleteExpensePlan={handleDeleteExpensePlan}
             />
           )}
 
@@ -1468,7 +1613,30 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
           )}
 
           {view === "salaries" && (
-            <SalariesPage directorData={directorData} />
+            <SalariesPage
+              directorData={directorData}
+              opData={opData}
+              openModal={setModal}
+              openTeacherProfile={(teacher) => {
+                setPreviousView("salaries");
+                setSelectedTeacherProfile(teacher);
+                setView("teacherProfile");
+              }}
+              openManagerProfile={(manager) => {
+                setModal({ type: "managerPayroll", manager });
+              }}
+              openTeacherPayroll={(teacher) => {
+                setPreviousView("salaries");
+                setSelectedTeacherProfile(teacher);
+                setView("teacherProfile");
+              }}
+              openManagerPayroll={(manager) => {
+                setModal({ type: "managerPayroll", manager });
+              }}
+              goTo={setView}
+              onRefresh={refreshData}
+              addToast={addToast}
+            />
           )}
 
           {view === "positions" && (
@@ -1675,13 +1843,55 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
 
         {modal?.type === "recordPayment" && (
           <RecordPaymentModal
-            preselectedStudent={modal.student}
-            preselectedGroup={modal.group}
-            students={opData?.students || []}
-            groups={opData?.groups || []}
+            preselectedStudent={
+              modal.student ||
+              (modal.studentId
+                ? (opData?.students || directorData?.students || []).find(
+                    (s) => String(s.id) === String(modal.studentId),
+                  )
+                : null)
+            }
+            preselectedGroup={
+              modal.group ||
+              (modal.groupId
+                ? (opData?.groups || directorData?.groups || []).find(
+                    (g) => String(g.id) === String(modal.groupId),
+                  )
+                : null)
+            }
+            student={modal.student}
+            group={modal.group}
+            initialStudentId={modal.studentId || modal.student?.id}
+            initialGroupId={modal.groupId || modal.group?.id}
+            initialMonth={modal.month}
+            initialAmount={modal.amount}
+            scopeBranches={scopeBranches}
+            directorData={directorData}
+            opData={opData}
+            students={opData?.students || directorData?.students || []}
+            groups={opData?.groups || directorData?.groups || []}
             paymentMethods={directorData?.paymentTypes || []}
             onSubmit={handleSavePayment}
             onClose={() => setModal(null)}
+          />
+        )}
+
+        {modal?.type === "refundPayment" && (
+          <RefundPaymentModal
+            student={
+              modal.student ||
+              (modal.studentId
+                ? (opData?.students || directorData?.students || []).find(
+                    (s) => String(s.id) === String(modal.studentId),
+                  )
+                : null)
+            }
+            studentId={modal.studentId || modal.student?.id}
+            group={modal.group}
+            groups={opData?.groups || directorData?.groups || []}
+            onSubmit={handleSaveRefund}
+            onClose={() => setModal(null)}
+            onRefresh={refreshData}
           />
         )}
 
@@ -1808,9 +2018,16 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
           />
         )}
 
-        {modal?.type === "assignStudentGroup" && (
+        {(modal?.type === "assignStudentGroup" || modal?.type === "assignStudentToGroup") && (
           <AssignStudentToGroupModal
-            student={modal.student}
+            student={
+              modal.student ||
+              (modal.studentId
+                ? (opData?.students || directorData?.students || []).find(
+                    (s) => String(s.id) === String(modal.studentId)
+                  )
+                : null)
+            }
             groups={opData?.groups || []}
             onSubmit={handleSaveStudent}
             onClose={() => setModal(null)}

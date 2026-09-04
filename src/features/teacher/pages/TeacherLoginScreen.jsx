@@ -89,7 +89,7 @@ export function TeacherLoginScreen({ teachersHR = [], onLoginTeacher }) {
             </h1>
 
             <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed mb-8">
-              Kunlik dars jadvali, 1-bosishda davomat, uyga vazifalar tekshiruvi, tangalar (Coin) taqdirlash tizimi va oylik reytinglar.
+              Kunlik dars jadvali, 1-bosishda davomat, uyga vazifalar tekshiruvi, coinlar (Coin) taqdirlash tizimi va oylik reytinglar.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mb-8">

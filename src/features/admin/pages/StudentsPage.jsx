@@ -148,6 +148,7 @@ export function StudentsPage({
           studentGids.includes(String(g.id)),
         );
         let totalUnpaid = 0;
+        let totalOverpaid = 0;
         groupList.forEach((group) => {
           let price = Number(group.price || 0);
           if (price > 0) {
@@ -166,7 +167,11 @@ export function StudentsPage({
               group.id,
               month,
             );
-            totalUnpaid += Math.max(0, expected - paid);
+            if (paid < expected) {
+              totalUnpaid += (expected - paid);
+            } else if (paid > expected) {
+              totalOverpaid += (paid - expected);
+            }
           }
         });
         const isTrial =
@@ -177,7 +182,7 @@ export function StudentsPage({
               return !m?.activationDate || m?.status === "trial";
             }));
 
-        const rawBal = Number(student.balance || 0) - totalUnpaid;
+        const rawBal = Number(student.balance || 0) + totalOverpaid - totalUnpaid;
         const netBal = isTrial && rawBal <= 0 ? 0 : rawBal;
         const isDebtor = netBal < 0;
         return debtFilter === "debtors" ? isDebtor : !isDebtor;
@@ -537,6 +542,7 @@ export function StudentsPage({
                 .join("") || "N";
 
             let totalUnpaidFee = 0;
+            let totalOverpaidFee = 0;
             studentGroups.forEach((g) => {
               const fullPrice = Number(g.price || 0);
               if (fullPrice > 0) {
@@ -555,7 +561,11 @@ export function StudentsPage({
                   g.id,
                   month
                 );
-                totalUnpaidFee += Math.max(0, expectedFee - paidAmount);
+                if (paidAmount < expectedFee) {
+                  totalUnpaidFee += (expectedFee - paidAmount);
+                } else if (paidAmount > expectedFee) {
+                  totalOverpaidFee += (paidAmount - expectedFee);
+                }
               }
             });
 
@@ -567,7 +577,7 @@ export function StudentsPage({
                   return !m?.activationDate || m?.status === "trial";
                 }));
 
-            const rawBal = Number(student.balance || 0) - totalUnpaidFee;
+            const rawBal = Number(student.balance || 0) + totalOverpaidFee - totalUnpaidFee;
             const bal = isTrial && rawBal <= 0 ? 0 : rawBal;
 
             return (

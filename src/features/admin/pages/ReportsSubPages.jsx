@@ -577,7 +577,7 @@ export const CoinsReportPage = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Tanga (Coin) va Rag'batlantirish Hisoboti</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Coin (Coin) va Rag'batlantirish Hisoboti</h1>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -589,27 +589,31 @@ export const CoinsReportPage = () => {
 
       <FilterBar search={search} setSearch={setSearch} placeholder="Talaba ismini qidirish..." />
 
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
-        <table className="w-full text-left text-xs">
-          <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700 text-xs font-semibold">
             <tr>
-              <th className="p-4 font-semibold">Talaba F.I.Sh</th>
-              <th className="p-4 font-semibold">Guruh Nomi</th>
-              <th className="p-4 font-semibold">Ishlangan Coin</th>
-              <th className="p-4 font-semibold">Sarflangan Coin</th>
-              <th className="p-4 font-semibold">Joriy Balans</th>
-              <th className="p-4 font-semibold">Reyting O'rni</th>
+              <th className="py-3 px-4">Talaba F.I.Sh</th>
+              <th className="py-3 px-4">Guruh Nomi</th>
+              <th className="py-3 px-4">Ishlangan Coin</th>
+              <th className="py-3 px-4">Sarflangan Coin</th>
+              <th className="py-3 px-4">Joriy Balans</th>
+              <th className="py-3 px-4">Reyting O'rni</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {coins.map((c, i) => (
-              <tr key={i} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                <td className="p-4 font-bold text-slate-900 dark:text-white">{c.student}</td>
-                <td className="p-4 text-slate-500">{c.group}</td>
-                <td className="p-4 font-bold text-amber-500">{c.earned}</td>
-                <td className="p-4 font-semibold text-rose-500">{c.spent}</td>
-                <td className="p-4 font-bold text-emerald-600">{c.balance}</td>
-                <td className="p-4"><span className="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-600 font-bold">{c.rank}</span></td>
+              <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                <td className="py-3 px-4 font-semibold text-slate-900 dark:text-white">{c.student}</td>
+                <td className="py-3 px-4 text-slate-500 dark:text-slate-400 text-xs">{c.group}</td>
+                <td className="py-3 px-4 font-bold font-mono text-amber-600 dark:text-amber-400">{c.earned}</td>
+                <td className="py-3 px-4 font-semibold font-mono text-rose-500 dark:text-rose-400">{c.spent}</td>
+                <td className="py-3 px-4 font-bold font-mono text-emerald-600 dark:text-emerald-400">{c.balance}</td>
+                <td className="py-3 px-4">
+                  <span className="px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold text-xs border border-amber-200/50 dark:border-amber-500/30">
+                    {c.rank}
+                  </span>
+                </td>
               </tr>
             ))}
           </tbody>

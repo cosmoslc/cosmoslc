@@ -31,3 +31,14 @@ export function PrimaryButton({ children, className = '', style, ...props }) {
     </button>
   );
 }
+
+export function SecondaryButton({ children, className = '', ...props }) {
+  return (
+    <button
+      {...props}
+      className={`${BTN_SECONDARY} ${className}`}
+    >
+      {children}
+    </button>
+  );
+}

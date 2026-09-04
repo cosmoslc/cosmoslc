@@ -97,6 +97,20 @@ export async function recordPayment(payload, branchId) {
     }
   }
 
+  // If student deposit balance was used, deduct it from student's balance
+  if (payload.studentId && Number(payload.usedBalance) > 0) {
+    try {
+      const { data: stRow } = await supabase.from('students').select('balance').eq('id', payload.studentId).single();
+      if (stRow) {
+        const curBal = Number(stRow.balance || 0);
+        const newBal = Math.max(0, curBal - Number(payload.usedBalance));
+        await supabase.from('students').update({ balance: newBal }).eq('id', payload.studentId);
+      }
+    } catch (balErr) {
+      console.warn('Supabase recordPayment student balance update error:', balErr);
+    }
+  }
+
   return {
     ...fromRow(payRow),
     paidAmount: payload.paidAmount !== undefined ? payload.paidAmount : payload.amount,

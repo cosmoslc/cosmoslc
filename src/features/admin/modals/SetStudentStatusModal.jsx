@@ -42,6 +42,7 @@ export function SetStudentStatusModal({ student, onSave, onClose }) {
     <Modal
       title={`Holatni o'zgartirish — ${student?.name || "o'quvchi"}`}
       onClose={onClose}
+      position="center"
     >
       <div className="space-y-4 text-sm">
         <div>

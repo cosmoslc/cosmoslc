@@ -86,14 +86,14 @@ export function PointsGradingPage() {
   // Handle Save for Right Block (Coins per grade)
   const handleSaveCoins = (e) => {
     e.preventDefault();
-    setCoinsSavedMsg("Baho tangalari saqlandi!");
+    setCoinsSavedMsg("Baho coinlari saqlandi!");
     setTimeout(() => setCoinsSavedMsg(""), 3000);
   };
 
   // Handle Save for Below Block (Attendance coins)
   const handleSaveAttendance = (e) => {
     e.preventDefault();
-    setAttendanceSavedMsg("Davomat tangalari va reyting sozlamalari saqlandi!");
+    setAttendanceSavedMsg("Davomat coinlari va reyting sozlamalari saqlandi!");
     setTimeout(() => setAttendanceSavedMsg(""), 3000);
   };
 
@@ -194,7 +194,7 @@ export function PointsGradingPage() {
               <div className="p-3.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-900/40 text-blue-800 dark:text-blue-300 text-xs leading-relaxed flex items-start gap-2.5">
                 <Info size={16} className="text-blue-500 shrink-0 mt-0.5" />
                 <span>
-                  O'zgartirish saqlangach, o'ng tarafdagi blockda <strong>{minBall}</strong> dan <strong>{maxBall}</strong> gacha bo'lgan barcha baholar uchun avtomatik tanga (coin) kiritish maydonlari shakllanadi.
+                  O'zgartirish saqlangach, o'ng tarafdagi blockda <strong>{minBall}</strong> dan <strong>{maxBall}</strong> gacha bo'lgan barcha baholar uchun avtomatik coin (coin) kiritish maydonlari shakllanadi.
                 </span>
               </div>
             </form>
@@ -222,7 +222,7 @@ export function PointsGradingPage() {
           </div>
         </div>
 
-        {/* RIGHT BLOCK: Har bir baho uchun tangalar soni */}
+        {/* RIGHT BLOCK: Har bir baho uchun coinlar soni */}
         <div className={`${GLASS} p-5 sm:p-6 rounded-2xl space-y-5 flex flex-col justify-between`}>
           <div className="space-y-4">
             <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
@@ -231,10 +231,10 @@ export function PointsGradingPage() {
               </div>
               <div>
                 <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                  Har bir baho uchun tangalar soni
+                  Har bir baho uchun coinlar soni
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  O'quvchi har bir ball olganda beriladigan tangalar (Coins)
+                  O'quvchi har bir ball olganda beriladigan coinlar (Coins)
                 </p>
               </div>
             </div>
@@ -251,7 +251,7 @@ export function PointsGradingPage() {
                         {ball}
                       </span>
                       <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                        {ball}-ball uchun tanga:
+                        {ball}-ball uchun coin:
                       </span>
                     </div>
 
@@ -266,7 +266,7 @@ export function PointsGradingPage() {
                         placeholder="0"
                       />
                       <span className="text-xs font-semibold text-slate-400 shrink-0">
-                        tanga
+                        coin
                       </span>
                     </div>
                   </div>
@@ -298,7 +298,7 @@ export function PointsGradingPage() {
         </div>
       </div>
 
-      {/* BELOW BLOCK: Davomat va Dars Faolligi Tangalari + Guruh Reyting Tizimi */}
+      {/* BELOW BLOCK: Davomat va Dars Faolligi Coinlari + Guruh Reyting Tizimi */}
       <div className={`${GLASS} p-5 sm:p-6 rounded-2xl space-y-6`}>
         {/* Header */}
         <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
@@ -307,7 +307,7 @@ export function PointsGradingPage() {
           </div>
           <div>
             <h3 className="font-bold text-base text-slate-900 dark:text-white">
-              Davomat va Dars Faolligi Uchun Tangalar
+              Davomat va Dars Faolligi Uchun Coinlar
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Talabalarning darsga kelish intizomi va reyting tizimidan foydalanish qoidalari
@@ -333,7 +333,7 @@ export function PointsGradingPage() {
                   placeholder="10"
                 />
                 <span className="absolute right-3 top-2.5 text-xs font-semibold text-slate-400">
-                  tanga
+                  coin
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -345,7 +345,7 @@ export function PointsGradingPage() {
             <div className="p-4 rounded-xl bg-amber-50/50 dark:bg-amber-950/30 border border-amber-200/70 dark:border-amber-900/50 space-y-2">
               <label className="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
                 <Clock size={16} className="text-amber-500 shrink-0" />
-                Kech qolib kirgan uchun tanga
+                Kech qolib kirgan uchun coin
               </label>
               <div className="relative">
                 <input
@@ -356,11 +356,11 @@ export function PointsGradingPage() {
                   placeholder="5"
                 />
                 <span className="absolute right-3 top-2.5 text-xs font-semibold text-slate-400">
-                  tanga
+                  coin
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Darsga kechikib kelganligi sababli beriladigan kamaytirilgan tangalar miqdori
+                Darsga kechikib kelganligi sababli beriladigan kamaytirilgan coinlar miqdori
               </p>
             </div>
 
@@ -368,7 +368,7 @@ export function PointsGradingPage() {
             <div className="p-4 rounded-xl bg-rose-50/50 dark:bg-rose-950/30 border border-rose-200/70 dark:border-rose-900/50 space-y-2">
               <label className="text-xs font-bold text-rose-900 dark:text-rose-200 flex items-center gap-1.5">
                 <UserX size={16} className="text-rose-500 shrink-0" />
-                Kelmagan uchun tanga
+                Kelmagan uchun coin
               </label>
               <div className="relative">
                 <input
@@ -379,11 +379,11 @@ export function PointsGradingPage() {
                   placeholder="0"
                 />
                 <span className="absolute right-3 top-2.5 text-xs font-semibold text-slate-400">
-                  tanga
+                  coin
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Sababsiz darsga kelmaganda beriladigan (yoki ayriladigan) tanga miqdori
+                Sababsiz darsga kelmaganda beriladigan (yoki ayriladigan) coin miqdori
               </p>
             </div>
           </div>
@@ -432,7 +432,7 @@ export function PointsGradingPage() {
                   </h4>
                 </div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-2xl">
-                  Ushbu parametr yoqilganda, guruhlar ichida talabalarning to'plagan tangalari hamda baholari bo'yicha oylik va umumiy peshqadamlar jadvali (Leaderboard) avtomatik shakllantiriladi hamda talabaning shaxsiy kabinetida ko'rinadi.
+                  Ushbu parametr yoqilganda, guruhlar ichida talabalarning to'plagan coinlari hamda baholari bo'yicha oylik va umumiy peshqadamlar jadvali (Leaderboard) avtomatik shakllantiriladi hamda talabaning shaxsiy kabinetida ko'rinadi.
                 </p>
               </div>
 
@@ -458,7 +458,7 @@ export function PointsGradingPage() {
       {showResetConfirm && (
         <ConfirmModal
           title="Boshlang'ich holatga qaytarish"
-          message="Davomat tangalari sozlamalarini boshlang'ich qiymatga qaytarmoqchimisiz?"
+          message="Davomat coinlari sozlamalarini boshlang'ich qiymatga qaytarmoqchimisiz?"
           confirmText="Ha, qaytarish"
           cancelText="Bekor qilish"
           danger={false}

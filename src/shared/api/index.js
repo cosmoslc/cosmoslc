@@ -3,8 +3,8 @@
 // change from the old window.storage version.
 import { fetchDirectors, fetchBranches, updateDirector as _updateDirector, addDirector as _addDirector, addBranch as _addBranch, updateBranch as _updateBranch, deleteBranch as _deleteBranch } from './directors';
 import { fetchManagers, findManagerByPhoneAndHash, addManager as _addManager, updateManager as _updateManager, updateManagerPermissions as _updateManagerPermissions, deleteManager as _deleteManager } from './managers';
-import { fetchTeachersHR, fetchTeacherPayments, addTeacherHR as _addTeacherHR, updateTeacherHR as _updateTeacherHR, deleteTeacherHR as _deleteTeacherHR, addTeacherPayment as _addTeacherPayment } from './teachers';
-import { fetchFinance, addFinance as _addFinance, approveFinance as _approveFinance, rejectFinance as _rejectFinance } from './finance';
+import { fetchTeachersHR, fetchTeacherPayments, addTeacherHR as _addTeacherHR, updateTeacherHR as _updateTeacherHR, deleteTeacherHR as _deleteTeacherHR, addTeacherPayment as _addTeacherPayment, deleteTeacherPayment as _deleteTeacherPayment, updateTeacherPayment as _updateTeacherPayment } from './teachers';
+import { fetchFinance, addFinance as _addFinance, updateFinance as _updateFinance, deleteFinance as _deleteFinance, approveFinance as _approveFinance, rejectFinance as _rejectFinance } from './finance';
 import { fetchCourses, addCourse as _addCourse, updateCourse as _updateCourse, deleteCourse as _deleteCourse } from './courses';
 import { fetchHolidays, addHoliday as _addHoliday, removeHoliday as _removeHoliday } from './holidays';
 import { fetchGroups, addGroup as _addGroup, updateGroup as _updateGroup, deleteGroup as _deleteGroup } from './groups';
@@ -19,7 +19,9 @@ import { fetchCenterSettings as _fetchCenterSettings, updateCenterSettings as _u
 import { fetchLeads as _fetchLeads, addLead as _addLead, updateLead as _updateLead, deleteLead as _deleteLead, fetchLeadForms as _fetchLeadForms, addLeadForm as _addLeadForm, updateLeadForm as _updateLeadForm, deleteLeadForm as _deleteLeadForm } from './leads';
 import { fetchNotifications as _fetchNotifications, addNotification as _addNotification, markNotificationRead as _markNotificationRead, markAllNotificationsRead as _markAllNotificationsRead, clearNotifications as _clearNotifications } from './notifications';
 import { fetchEmployeeAttendance as _fetchEmployeeAttendance, addEmployeeAttendance as _addEmployeeAttendance, updateEmployeeAttendance as _updateEmployeeAttendance } from './employeeAttendance';
-import { fetchManagerPayments as _fetchManagerPayments, addManagerPayment as _addManagerPayment } from './managerPayments';
+import { fetchManagerPayments as _fetchManagerPayments, addManagerPayment as _addManagerPayment, deleteManagerPayment as _deleteManagerPayment, updateManagerPayment as _updateManagerPayment } from './managerPayments';
+import { fetchExpenseCategories, addExpenseCategory as _addExpenseCategory, updateExpenseCategory as _updateExpenseCategory, deleteExpenseCategory as _deleteExpenseCategory } from './expenseCategories';
+import { fetchExpensePlans, addExpensePlan as _addExpensePlan, updateExpensePlan as _updateExpensePlan, deleteExpensePlan as _deleteExpensePlan } from './expensePlans';
 import {
   fetchArchives as _fetchArchives,
   archiveRecord as _archiveRecord,
@@ -30,12 +32,12 @@ import {
 
 export async function fetchDirectorData() {
   try {
-    const [directors, branches, managers, teachersHR, teacherPayments, holidays, finance, courses, payments, managerPayments, coinSettings, centerSettings, notifications, leads, leadForms] =
+    const [directors, branches, managers, teachersHR, teacherPayments, holidays, finance, courses, payments, managerPayments, coinSettings, centerSettings, notifications, leads, leadForms, expenseCategories, expensePlans] =
       await Promise.all([
         fetchDirectors(), fetchBranches(), fetchManagers(), fetchTeachersHR(),
         fetchTeacherPayments(), fetchHolidays(), fetchFinance(), fetchCourses(), fetchPayments(),
         _fetchManagerPayments(), _fetchCoinSettings(), _fetchCenterSettings(), _fetchNotifications(),
-        _fetchLeads(), _fetchLeadForms(),
+        _fetchLeads(), _fetchLeadForms(), fetchExpenseCategories(), fetchExpensePlans(),
       ]);
     return {
       directors: directors || [],
@@ -53,6 +55,8 @@ export async function fetchDirectorData() {
       notifications: notifications || [],
       leads: leads || [],
       leadForms: leadForms || [],
+      expenseCategories: expenseCategories || [],
+      expensePlans: expensePlans || [],
     };
   } catch (err) {
     console.error("fetchDirectorData exception:", err);
@@ -60,6 +64,7 @@ export async function fetchDirectorData() {
       directors: [], branches: [], managers: [], teachersHR: [], teacherPayments: [],
       holidays: [], finance: [], courses: [], payments: [], managerPayments: [],
       coinSettings: {}, centerSettings: {}, notifications: [], leads: [], leadForms: [],
+      expenseCategories: [],
     };
   }
 }
@@ -120,7 +125,8 @@ export {
   _updateStudent as updateStudent,
   _addStudent as addStudent, _deleteStudent as deleteStudent,
   _addTeacherHR as addTeacherHR, _updateTeacherHR as updateTeacherHR, _deleteTeacherHR as deleteTeacherHR, _addTeacherPayment as addTeacherPayment,
-  _addFinance as addFinance, _approveFinance as approveFinance, _rejectFinance as rejectFinance,
+  _deleteTeacherPayment as deleteTeacherPayment, _updateTeacherPayment as updateTeacherPayment,
+  _addFinance as addFinance, _updateFinance as updateFinance, _deleteFinance as deleteFinance, _approveFinance as approveFinance, _rejectFinance as rejectFinance,
   _addCourse as addCourse, _updateCourse as updateCourse, _deleteCourse as deleteCourse,
   _addHoliday as addHoliday, _removeHoliday as removeHoliday,
   _addGroup as addGroup, _updateGroup as updateGroup, _deleteGroup as deleteGroup,
@@ -154,6 +160,16 @@ export {
   _updateEmployeeAttendance as updateEmployeeAttendance,
   _fetchManagerPayments as fetchManagerPayments,
   _addManagerPayment as addManagerPayment,
+  _deleteManagerPayment as deleteManagerPayment,
+  _updateManagerPayment as updateManagerPayment,
+  fetchExpenseCategories,
+  _addExpenseCategory as addExpenseCategory,
+  _updateExpenseCategory as updateExpenseCategory,
+  _deleteExpenseCategory as deleteExpenseCategory,
+  fetchExpensePlans,
+  _addExpensePlan as addExpensePlan,
+  _updateExpensePlan as updateExpensePlan,
+  _deleteExpensePlan as deleteExpensePlan,
   _fetchArchives as fetchArchives,
   _archiveRecord as archiveRecord,
   _restoreRecord as restoreRecord,

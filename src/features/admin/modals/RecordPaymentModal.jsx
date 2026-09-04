@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Check,
   Calendar,
@@ -118,14 +118,23 @@ export function RecordPaymentModal({
   onSubmit,
   onClose,
 }) {
-  const resolvedStudent = preselectedStudent || student;
-  const resolvedGroup = preselectedGroup || group;
-  const targetStudentId = initialStudentId || propStudentId || resolvedStudent?.id || "";
-  const targetGroupId = initialGroupId || propGroupId || resolvedGroup?.id || "";
+  const resolvedStudent = useMemo(() => {
+    if (preselectedStudent && typeof preselectedStudent === "object") return preselectedStudent;
+    if (student && typeof student === "object") return student;
+    const sId = String(initialStudentId || propStudentId || "");
+    if (sId) {
+      const list = propStudents || opData?.students || directorData?.students || [];
+      return list.find((s) => String(s.id) === sId) || null;
+    }
+    return null;
+  }, [preselectedStudent, student, initialStudentId, propStudentId, propStudents, opData?.students, directorData?.students]);
+
+  const targetStudentId = String(initialStudentId || propStudentId || resolvedStudent?.id || "");
+  const targetGroupId = String(initialGroupId || propGroupId || preselectedGroup?.id || group?.id || "");
   const targetMonth = initialMonth || propMonth || thisMonthKey();
   const targetAmount = initialAmount || propAmount || "";
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(resolvedStudent?.name || "");
   const [studentId, setStudentId] = useState(targetStudentId);
   const [groupId, setGroupId] = useState(targetGroupId);
   const [amount, setAmount] = useState(targetAmount ? String(targetAmount) : "");
@@ -149,20 +158,46 @@ export function RecordPaymentModal({
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
 
-  const scopeIds = (scopeBranches || []).map((b) => b.id);
-  const courses = (directorData?.courses || opData?.courses || []).filter(
-    (c) => scopeIds.length === 0 || scopeIds.includes(c.branchId),
-  );
-  const courseIds = courses.map((c) => c.id);
+  const rawCourses = directorData?.courses || opData?.courses || [];
+  const courses = useMemo(() => {
+    const scopeIds = (scopeBranches || []).map((b) => String(b.id));
+    return rawCourses.filter(
+      (c) => scopeIds.length === 0 || scopeIds.includes(String(c.branchId)),
+    );
+  }, [rawCourses, scopeBranches]);
+  const courseIds = useMemo(() => courses.map((c) => String(c.id)), [courses]);
 
-  const rawGroups = propGroups || opGroups(opData) || [];
-  const groups =
-    courseIds.length > 0
-      ? rawGroups.filter((g) => courseIds.includes(g.courseId))
+  const rawGroups = propGroups || opGroups(opData) || directorData?.groups || [];
+  const resolvedGroup = useMemo(() => {
+    if (preselectedGroup && typeof preselectedGroup === "object") return preselectedGroup;
+    if (group && typeof group === "object") return group;
+    if (targetGroupId) {
+      return rawGroups.find((g) => String(g.id) === targetGroupId) || null;
+    }
+    return null;
+  }, [preselectedGroup, group, targetGroupId, rawGroups]);
+
+  const groups = useMemo(() => {
+    let list = courseIds.length > 0
+      ? rawGroups.filter((g) => courseIds.includes(String(g.courseId)))
       : rawGroups;
+    if (resolvedGroup && !list.some((g) => String(g.id) === String(resolvedGroup.id))) {
+      list = [resolvedGroup, ...list];
+    }
+    return list;
+  }, [rawGroups, courseIds, resolvedGroup]);
 
-  const rawStudents = propStudents || opStudentsInGroups(opData, groups.map((g) => g.id)) || [];
-  const allStudents = rawStudents.length > 0 ? rawStudents : (opData?.students || directorData?.students || []);
+  const allStudents = useMemo(() => {
+    let list = propStudents && propStudents.length > 0
+      ? propStudents
+      : (opData?.students && opData.students.length > 0
+        ? opData.students
+        : (directorData?.students || []));
+    if (resolvedStudent && !list.some((s) => String(s.id) === String(resolvedStudent.id))) {
+      list = [resolvedStudent, ...list];
+    }
+    return list;
+  }, [propStudents, opData?.students, directorData?.students, resolvedStudent]);
 
   const availablePaymentMethods = useMemo(() => {
     const customTypes = directorData?.paymentTypes || paymentMethods || [];
@@ -184,23 +219,53 @@ export function RecordPaymentModal({
           .slice(0, 8)
       : [];
 
-  const selectedStudent = allStudents.find((s) => s.id === studentId) || resolvedStudent;
+  const selectedStudent = useMemo(() => {
+    if (studentId) {
+      const found = allStudents.find((s) => String(s.id) === String(studentId));
+      if (found) return found;
+    }
+    return resolvedStudent || null;
+  }, [studentId, allStudents, resolvedStudent]);
+
   const studentBalance = Math.max(0, Number(selectedStudent?.balance || 0));
 
+  const selectedGroupObj = useMemo(() => {
+    if (groupId) {
+      const found = groups.find((g) => String(g.id) === String(groupId));
+      if (found) return found;
+    }
+    return resolvedGroup || null;
+  }, [groupId, groups, resolvedGroup]);
+
   const studentGids = (selectedStudent?.groupIds || []).map(String);
-  const studentGroupOptions = selectedStudent && studentGids.length > 0
-    ? groups
+  const studentGroupOptions = useMemo(() => {
+    let opts = [];
+    if (selectedStudent && studentGids.length > 0) {
+      opts = groups
         .filter((g) => studentGids.includes(String(g.id)))
         .map((g) => ({
           group: g,
-          course: courses.find((c) => c.id === g.courseId),
-        }))
-    : groups.map((g) => ({
+          course: courses.find((c) => String(c.id) === String(g.courseId)),
+        }));
+    }
+    if (opts.length === 0) {
+      opts = groups.map((g) => ({
         group: g,
-        course: courses.find((c) => c.id === g.courseId),
+        course: courses.find((c) => String(c.id) === String(g.courseId)),
       }));
+    }
+    if (selectedGroupObj && !opts.some((opt) => String(opt.group.id) === String(selectedGroupObj.id))) {
+      opts = [
+        {
+          group: selectedGroupObj,
+          course: courses.find((c) => String(c.id) === String(selectedGroupObj.courseId)),
+        },
+        ...opts,
+      ];
+    }
+    return opts;
+  }, [selectedStudent, studentGids, groups, courses, selectedGroupObj]);
 
-  const selectedGroupObj = groups.find((g) => g.id === groupId) || resolvedGroup;
   const baseGroupPrice = selectedGroupObj ? Number(selectedGroupObj.price) || 0 : 0;
 
   const prorataInfo = useMemo(() => {
@@ -224,8 +289,8 @@ export function RecordPaymentModal({
     return allPayments
       .filter(
         (p) =>
-          p.studentId === studentId &&
-          p.groupId === groupId &&
+          String(p.studentId) === String(studentId) &&
+          String(p.groupId) === String(groupId) &&
           p.month === selectedMonth,
       )
       .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
@@ -236,8 +301,8 @@ export function RecordPaymentModal({
     return allPayments
       .filter(
         (p) =>
-          p.studentId === studentId &&
-          p.groupId === groupId &&
+          String(p.studentId) === String(studentId) &&
+          String(p.groupId) === String(groupId) &&
           p.month === selectedMonth,
       )
       .reduce((sum, p) => sum + (Number(p.discount) || 0), 0);
@@ -263,11 +328,11 @@ export function RecordPaymentModal({
   const calcDefaultAmount = useCallback(
     (sId, gId, mth, shouldUseBal = useBalance) => {
       if (!gId) return "";
-      const grp = groups.find((g) => g.id === gId);
+      const grp = groups.find((g) => String(g.id) === String(gId)) || resolvedGroup;
       const rawPrice = grp ? Number(grp.price) || 0 : 0;
       if (!sId || !mth) return rawPrice > 0 ? String(rawPrice) : "";
 
-      const st = allStudents.find((s) => s.id === sId) || resolvedStudent;
+      const st = allStudents.find((s) => String(s.id) === String(sId)) || resolvedStudent;
       const membership = st?.groupMemberships?.[gId] || st?.groupMemberships?.[String(gId)] || st;
       const feeInfo = calculateStudentGroupFee({
         fullMonthlyFee: rawPrice,
@@ -281,13 +346,19 @@ export function RecordPaymentModal({
 
       const paid = allPayments
         .filter(
-          (p) => p.studentId === sId && p.groupId === gId && p.month === mth,
+          (p) =>
+            String(p.studentId) === String(sId) &&
+            String(p.groupId) === String(gId) &&
+            p.month === mth,
         )
         .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
       const disc = allPayments
         .filter(
-          (p) => p.studentId === sId && p.groupId === gId && p.month === mth,
+          (p) =>
+            String(p.studentId) === String(sId) &&
+            String(p.groupId) === String(gId) &&
+            p.month === mth,
         )
         .reduce((sum, p) => sum + (Number(p.discount) || 0), 0);
 
@@ -300,7 +371,7 @@ export function RecordPaymentModal({
 
       return String(cashNeeded);
     },
-    [groups, allPayments, allStudents, useBalance, resolvedStudent],
+    [groups, allPayments, allStudents, useBalance, resolvedStudent, resolvedGroup],
   );
 
   function handleGroupChange(newGroupId) {
@@ -317,45 +388,83 @@ export function RecordPaymentModal({
     }
   }
 
+  const initialKey = `${targetStudentId}_${targetGroupId}_${targetMonth}_${targetAmount !== undefined && targetAmount !== null ? targetAmount : ""}`;
+  const initializedKeyRef = useRef("");
+
   useEffect(() => {
+    // Agar modal avval shu parametrlarda ochilgan bo'lsa, foydalanuvchi kiritayotgan yoki o'chirayotgan summani qayta ustiga yozib yubormaslik
+    if (initializedKeyRef.current === initialKey) return;
+    initializedKeyRef.current = initialKey;
+
     const activeMonth = targetMonth || selectedMonth || thisMonthKey();
     if (targetMonth && targetMonth !== selectedMonth) {
       setSelectedMonth(targetMonth);
     }
-    const st = selectedStudent || (targetStudentId ? allStudents.find((s) => s.id === targetStudentId) : null);
-    if (st) {
-      if (!studentId) setStudentId(st.id);
-      if (!search) setSearch(st.name || "");
-      const gId = targetGroupId || (st.groupIds && st.groupIds[0]) || (groups[0] ? groups[0].id : "");
-      if (gId && !groupId) {
-        setGroupId(gId);
-        if (targetAmount) {
-          setAmount(String(targetAmount));
-        } else {
-          setAmount(calcDefaultAmount(st.id, gId, activeMonth, true));
-        }
+
+    const currentTargetStudent =
+      resolvedStudent ||
+      (targetStudentId
+        ? allStudents.find((s) => String(s.id) === targetStudentId)
+        : null);
+    const effStudentId = currentTargetStudent?.id || studentId;
+
+    if (currentTargetStudent) {
+      if (!studentId || String(studentId) !== String(currentTargetStudent.id)) {
+        setStudentId(currentTargetStudent.id);
       }
-    } else if (targetGroupId && !groupId) {
-      setGroupId(targetGroupId);
-      if (targetAmount) {
-        setAmount(String(targetAmount));
-      } else {
-        setAmount(calcDefaultAmount(studentId, targetGroupId, activeMonth, useBalance));
+      if (!search) {
+        setSearch(currentTargetStudent.name || "");
       }
-    } else if (targetAmount && !amount) {
-      setAmount(String(targetAmount));
     }
-  }, [targetStudentId, targetGroupId, targetMonth, targetAmount, allStudents.length]);
+
+    let effGroupId = groupId;
+    if (targetGroupId) {
+      effGroupId = targetGroupId;
+      if (!groupId || String(groupId) !== targetGroupId) {
+        setGroupId(targetGroupId);
+      }
+    } else if (!effGroupId && currentTargetStudent) {
+      const stGids = (currentTargetStudent.groupIds || []).map(String);
+      const fallbackGid =
+        stGids.length > 0 ? stGids[0] : groups[0] ? groups[0].id : "";
+      if (fallbackGid) {
+        effGroupId = fallbackGid;
+        setGroupId(fallbackGid);
+      }
+    }
+
+    if (targetAmount !== "" && targetAmount !== undefined && targetAmount !== null) {
+      setAmount(String(targetAmount));
+    } else if (effStudentId && effGroupId) {
+      const def = calcDefaultAmount(effStudentId, effGroupId, activeMonth, true);
+      if (def) setAmount(def);
+    }
+  }, [
+    initialKey,
+    targetStudentId,
+    targetGroupId,
+    targetMonth,
+    targetAmount,
+    allStudents,
+    groups,
+    resolvedStudent,
+    calcDefaultAmount,
+  ]);
 
   function selectStudent(s) {
     setStudentId(s.id);
     setSearch(s.name);
     const sGids = (s?.groupIds || []).map(String);
-    const opts = groups.filter((g) => sGids.includes(String(g.id)));
-    const tGroupId = opts.length > 0 ? opts[0].id : groupId;
-    if (tGroupId) {
-      setGroupId(tGroupId);
-      setAmount(calcDefaultAmount(s.id, tGroupId, selectedMonth, true));
+    const keepCurrentGroup = groupId && sGids.includes(String(groupId));
+    const targetG = keepCurrentGroup
+      ? groupId
+      : sGids.length > 0
+      ? sGids[0]
+      : groupId;
+
+    if (targetG) {
+      setGroupId(targetG);
+      setAmount(calcDefaultAmount(s.id, targetG, selectedMonth, true));
     }
   }
 
@@ -413,7 +522,7 @@ export function RecordPaymentModal({
     const effectiveMethod =
       paidVal === 0 && applicableBalance > 0 ? "balance" : method;
 
-    const effectiveTotalAmount = Math.min(netDueNow, totalCovering);
+    const actualRecordedAmount = paidVal > 0 ? paidVal : applicableBalance;
 
     const tagSuffix = tags.length > 0 ? ` [Teglar: ${tags.join(", ")}]` : "";
     const finalNote = ((note || "") + tagSuffix).trim() ||
@@ -425,7 +534,7 @@ export function RecordPaymentModal({
       onSubmit({
         studentId,
         groupId,
-        amount: effectiveTotalAmount > 0 ? effectiveTotalAmount : paidVal,
+        amount: actualRecordedAmount,
         paidAmount: paidVal,
         usedBalance: applicableBalance,
         surplusToBalance: surplusToBalance,
@@ -596,9 +705,14 @@ export function RecordPaymentModal({
               To'lov summasi <span className="text-rose-500">*</span>
             </label>
             {remainingCashDue > 0 ? (
-              <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
+              <button
+                type="button"
+                onClick={() => setAmount(String(remainingCashDue))}
+                className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                title="Qoldiq summasini qo'yish"
+              >
                 Qoldiq: {money(remainingCashDue)} so'm
-              </span>
+              </button>
             ) : applicableBalance >= netDueNow && netDueNow > 0 ? (
               <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
                 Balansdan qoplanadi

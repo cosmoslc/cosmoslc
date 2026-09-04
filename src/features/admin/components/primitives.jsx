@@ -307,18 +307,18 @@ export function PhoneInput({ value, onChange, autoFocus, onKeyDown }) {
 export function Modal({ title, onClose, children, wide, position = "right" }) {
   if (typeof document === "undefined") return null;
 
-  if (position === "center") {
+  if (position === "top") {
     return createPortal(
       <div
-        className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/50 dark:bg-slate-950/70 backdrop-blur-md animate-backdrop-fade"
+        className="fixed inset-0 z-[99999] flex justify-center items-start pt-10 sm:pt-16 px-4 bg-slate-950/60 dark:bg-slate-950/80 backdrop-blur-xs animate-in fade-in"
         onClick={onClose}
       >
         <div
           onClick={(e) => e.stopPropagation()}
-          className={`${GLASS} rounded-2xl p-5 sm:p-6 w-full ${wide ? "max-w-2xl" : "max-w-md"} max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white`}
+          className={`rounded-2xl p-5 sm:p-6 w-full ${wide ? "max-w-2xl" : "max-w-md"} max-h-[85vh] overflow-y-auto shadow-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white animate-in slide-in-from-top-6 duration-250`}
         >
           <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
-            <h3 className="font-display text-lg font-bold text-slate-900 dark:text-white">
+            <h3 className="font-display text-base font-bold text-slate-900 dark:text-white">
               {title}
             </h3>
             <button onClick={onClose} className={BTN_ICON}>
@@ -332,26 +332,51 @@ export function Modal({ title, onClose, children, wide, position = "right" }) {
     );
   }
 
+  if (position === "right") {
+    return createPortal(
+      <div
+        className="fixed inset-0 z-[99999] flex justify-end bg-slate-950/60 dark:bg-slate-950/80 backdrop-blur-xs animate-in fade-in"
+        onClick={onClose}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className={`relative h-full min-h-screen w-full ${wide ? "max-w-2xl sm:max-w-xl" : "max-w-md sm:max-w-lg"} bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xl border-l border-slate-200/80 dark:border-slate-800/80 flex flex-col overflow-hidden animate-slide-in-right`}
+        >
+          <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between shrink-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
+            <h3 className="font-display text-base font-bold text-slate-900 dark:text-white">
+              {title}
+            </h3>
+            <button onClick={onClose} className={BTN_ICON}>
+              <X size={19} />
+            </button>
+          </div>
+          <div className="p-5 sm:p-6 flex-1 overflow-y-auto space-y-4">
+            {children}
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  }
+
   return createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex justify-end bg-slate-950/50 dark:bg-slate-950/70 backdrop-blur-md animate-backdrop-fade"
+      className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/60 dark:bg-slate-950/80 backdrop-blur-xs animate-in fade-in"
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`relative h-full min-h-screen w-full ${wide ? "max-w-2xl sm:max-w-xl" : "max-w-md sm:max-w-lg"} bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xl border-l border-slate-200/80 dark:border-slate-800/80 flex flex-col overflow-hidden animate-slide-in-right`}
+        className={`rounded-2xl p-5 sm:p-6 w-full ${wide ? "max-w-2xl" : "max-w-md"} max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white animate-in zoom-in-95`}
       >
-        <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between shrink-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md">
-          <h3 className="font-display text-lg font-bold text-slate-900 dark:text-white">
+        <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <h3 className="font-display text-base font-bold text-slate-900 dark:text-white">
             {title}
           </h3>
           <button onClick={onClose} className={BTN_ICON}>
-            <X size={19} />
+            <X size={18} />
           </button>
         </div>
-        <div className="p-5 sm:p-6 flex-1 overflow-y-auto space-y-4">
-          {children}
-        </div>
+        {children}
       </div>
     </div>,
     document.body

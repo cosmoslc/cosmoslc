@@ -46,6 +46,7 @@ import {
 import { JS_DAY_NAMES, MONTHS_UZ, WEEK_DAYS } from "../utils/constants";
 import * as api from "../../../shared/api/index";
 import { RecordPaymentModal } from "../modals/RecordPaymentModal";
+import { UnenrollGroupModal } from "../modals/UnenrollGroupModal";
 import { calculateStudentGroupFee } from "../../../shared/utils/prorata";
 
 function formatShortDate(iso) {
@@ -74,6 +75,7 @@ export function GroupProfilePage({
   onUpdateGroup,
   onUpdateStudent,
   onAddStudent,
+  openTeacherProfile,
   openModal,
   onRefresh,
 }) {
@@ -97,6 +99,7 @@ export function GroupProfilePage({
 
   // Payment Student for Unified RecordPaymentModal
   const [paymentStudent, setPaymentStudent] = useState(null);
+  const [unenrollStudentModalData, setUnenrollStudentModalData] = useState(null);
 
   // Telegram state
   const [telegramUsername, setTelegramUsername] = useState(
@@ -457,27 +460,10 @@ export function GroupProfilePage({
   }, [groupStudents, localAttendance]);
 
   // Remove single student from group
-  async function handleRemoveStudent(studentId) {
-    const student = (opData?.students || []).find((s) => s.id === studentId);
+  function handleRemoveStudent(studentId) {
+    const student = (opData?.students || directorData?.students || []).find((s) => s.id === studentId);
     if (!student) return;
-    const targetGid = String(group.id);
-    const newGroupIds = (student.groupIds || []).filter((id) => String(id) !== targetGid);
-    const currentMemberships = { ...(student.groupMemberships || {}) };
-    delete currentMemberships[targetGid];
-    const payload = {
-      groupIds: newGroupIds,
-      groupMemberships: currentMemberships,
-    };
-    try {
-      await api.updateStudent(studentId, payload);
-      if (onUpdateStudent) {
-        onUpdateStudent(studentId, payload);
-      }
-      setSelectedStudentIds((prev) => prev.filter((id) => id !== studentId));
-      if (onRefresh) onRefresh();
-    } catch (e) {
-      console.error("Error removing student:", e);
-    }
+    setUnenrollStudentModalData(student);
   }
 
   // Bulk remove selected students
@@ -712,6 +698,23 @@ export function GroupProfilePage({
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              if (openModal) {
+                openModal({
+                  type: "recordPayment",
+                  group: group,
+                  groupId: group.id,
+                });
+              } else {
+                setPaymentStudent({ id: "", name: "" });
+              }
+            }}
+            className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+          >
+            <CreditCard size={14} /> To'lov qabul qilish
+          </button>
           {canEdit && onEditGroup && (
             <button
               onClick={() => {
@@ -735,11 +738,16 @@ export function GroupProfilePage({
       {/* 1. FIRST ROW: 7 KEY STAT CARDS */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         {/* Card 1: O'qituvchi */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3.5 flex flex-col justify-between shadow-xs">
+        <div
+          onClick={() => teacher && openTeacherProfile?.(teacher)}
+          className={`bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-3.5 flex flex-col justify-between shadow-xs ${
+            teacher ? "cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors" : ""
+          }`}
+        >
           <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-400 flex items-center gap-1.5">
             <GraduationCap size={13} className="text-indigo-500" /> O'qituvchi
           </span>
-          <p className="font-display text-sm font-bold text-slate-900 dark:text-white mt-1.5 truncate">
+          <p className="font-display text-sm font-bold text-slate-900 dark:text-white mt-1.5 truncate hover:text-indigo-600 dark:hover:text-indigo-400">
             {teacher?.name || "Belgilanmagan"}
           </p>
           <span className="text-[10px] text-slate-400 truncate mt-0.5">
@@ -1645,15 +1653,46 @@ export function GroupProfilePage({
       )}
 
       {/* ======================================================= */}
+      {/* UNENROLL STUDENT MODAL (WITH LESSON FEE & PAYMENT LOG)  */}
+      {/* ======================================================= */}
+      {unenrollStudentModalData && (
+        <UnenrollGroupModal
+          isOpen={Boolean(unenrollStudentModalData)}
+          onClose={() => setUnenrollStudentModalData(null)}
+          student={unenrollStudentModalData}
+          group={group}
+          directorData={directorData}
+          opData={opData}
+          onSuccess={async ({ paymentPayload, updatedStudentData }) => {
+            if (onUpdateStudent) {
+              onUpdateStudent(unenrollStudentModalData.id, updatedStudentData);
+            }
+            if (onRecordPayment && paymentPayload) {
+              onRecordPayment(paymentPayload);
+            }
+            setSelectedStudentIds((prev) => prev.filter((id) => id !== unenrollStudentModalData.id));
+            if (onRefresh) onRefresh();
+          }}
+        />
+      )}
+
+      {/* ======================================================= */}
       {/* UNIFIED RECORD PAYMENT MODAL                           */}
       {/* ======================================================= */}
       {paymentStudent && (
         <RecordPaymentModal
-          initialStudentId={paymentStudent.id}
+          preselectedStudent={paymentStudent.id ? paymentStudent : null}
+          student={paymentStudent.id ? paymentStudent : null}
+          initialStudentId={paymentStudent.id || ""}
+          preselectedGroup={group}
+          group={group}
           initialGroupId={group.id}
           scopeBranches={scopeBranches}
           directorData={directorData}
           opData={opData}
+          students={opData?.students || directorData?.students || []}
+          groups={opData?.groups || directorData?.groups || []}
+          paymentMethods={directorData?.paymentTypes || []}
           onSubmit={async (payload) => {
             await handleRecordPayment(payload);
             setPaymentStudent(null);
