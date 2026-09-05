@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { INPUT_CLS, LABEL_CLS, SecondaryButton } from "../theme/tokens";
 import { money } from "../utils/helpers";
+import { MoneyInput } from "../components/primitives";
 import * as api from "../../../shared/api";
 
 export function RefundPaymentModal({
@@ -227,13 +228,11 @@ export function RefundPaymentModal({
           <div>
             <label className={LABEL_CLS}>Qaytarish summasi</label>
             <div className="relative">
-              <input
-                type="number"
-                min="100"
-                step="1000"
+              <MoneyInput
+                min={0}
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="Summani kiriting"
+                onChange={(val) => setAmount(val)}
+                placeholder="0"
                 className={INPUT_CLS}
                 required
                 autoFocus

@@ -2,17 +2,27 @@ import { supabase } from './supabaseClient';
 import { getCachedData, setCachedData, isNetworkError } from './cacheHelper';
 
 function fromRow(m) {
+  const allowed = m.allowed_pages || m.allowedPages || [];
   return {
     id: m.id,
     branchIds: m.branch_ids || m.branchIds || [],
+    branchId: (m.branch_ids && m.branch_ids[0]) || m.branchId || null,
     name: m.name,
     phone: m.phone,
     birthDate: m.birth_date || m.birthDate,
     address: m.address,
     passwordHash: m.password_hash || m.passwordHash,
+    rawPassword: m.rawPassword || m.raw_password || m.password,
+    password: m.rawPassword || m.raw_password || m.password,
     monthlySalary: m.monthly_salary || m.monthlySalary || 0,
+    salaryAmount: m.monthly_salary || m.monthlySalary || 0,
     rating: m.rating || 0,
-    allowedPages: m.allowed_pages || m.allowedPages || [],
+    allowedPages: allowed,
+    permissions: m.permissions || allowed,
+    roleIds: m.role_ids || m.roleIds || (m.role_id ? [m.role_id] : []),
+    roleId: m.role_id || m.roleId || null,
+    roleNames: m.role_names || m.roleNames || [],
+    roleName: m.role_name || m.roleName || 'Xodim',
   };
 }
 

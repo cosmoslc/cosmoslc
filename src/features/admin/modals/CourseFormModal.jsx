@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Icon } from "../components/Icon";
 import { INPUT_CLS, LABEL_CLS, PrimaryButton } from "../theme/tokens";
-import { Modal, MoneyInput } from "../components/primitives";
+import { Modal, MoneyInput, NumberInput } from "../components/primitives";
 import { Check, Palette, Sparkles } from "lucide-react";
 
 const PRESET_COLORS = [
@@ -97,10 +97,10 @@ export function CourseFormModal({ editing, branches = [], defaultBranchId, onSub
           </div>
           <div>
             <label className={LABEL_CLS}>Davomiyligi</label>
-            <input
-              type="number"
+            <NumberInput
+              min={1}
               value={durationMonths}
-              onChange={(e) => setDurationMonths(e.target.value)}
+              onChange={setDurationMonths}
               className={INPUT_CLS}
               placeholder="3"
             />

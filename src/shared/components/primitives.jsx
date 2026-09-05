@@ -235,8 +235,13 @@ export function StarRating({
   );
 }
 
-export function Avatar({ name, color = "#8b5cf6", size = 40, photo, onClick }) {
-  const style = { width: size, height: size, minWidth: size };
+export function Avatar({ name, color = "#8b5cf6", size = 40, photo, onClick, className = "" }) {
+  const numericSize = typeof size === "number" ? size : parseFloat(size);
+  const hasValidNum = !isNaN(numericSize) && numericSize > 0;
+  const isClassSize = typeof size === "string" && !hasValidNum;
+  const style = hasValidNum ? { width: numericSize, height: numericSize, minWidth: numericSize } : {};
+  const fontSize = hasValidNum ? numericSize * 0.38 : undefined;
+
   if (photo)
     return (
       <img
@@ -244,14 +249,14 @@ export function Avatar({ name, color = "#8b5cf6", size = 40, photo, onClick }) {
         alt={name}
         style={style}
         onClick={onClick}
-        className={`rounded-full object-cover border-2 border-white ${onClick ? "cursor-pointer" : ""}`}
+        className={`rounded-full object-cover border-2 border-white ${isClassSize ? size : ""} ${onClick ? "cursor-pointer" : ""} ${className}`}
       />
     );
   return (
     <div
-      style={{ ...style, background: color, fontSize: size * 0.38 }}
+      style={{ ...style, background: color, ...(fontSize ? { fontSize } : {}) }}
       onClick={onClick}
-      className={`font-display rounded-full flex items-center justify-center font-bold text-white border-2 border-white shrink-0 ${onClick ? "cursor-pointer hover:scale-105 transition-transform" : ""}`}
+      className={`font-display rounded-full flex items-center justify-center font-bold text-white border-2 border-white shrink-0 ${isClassSize ? size : ""} ${onClick ? "cursor-pointer hover:scale-105 transition-transform" : ""} ${className}`}
     >
       {initials(name)}
     </div>
@@ -448,14 +453,55 @@ export function MoneyInput({
   min,
   max,
   autoFocus = false,
+  allowNegative = false,
+  allowEmpty = true,
   ...props
 }) {
-  const displayValue = formatMoneyInput(value);
+  const displayValue = formatMoneyInput(value, allowNegative);
 
   const handleChange = (e) => {
     const raw = e.target.value;
-    const cleanNum = parseMoneyInput(raw);
+    if (raw === "") {
+      onChange(allowEmpty ? "" : 0);
+      return;
+    }
+    const cleanNum = parseMoneyInput(raw, allowNegative);
+    if (min !== undefined && cleanNum !== "" && cleanNum < min) return;
+    if (max !== undefined && cleanNum !== "" && cleanNum > max) return;
     onChange(cleanNum);
+  };
+
+  const handleKeyDown = (e) => {
+    if (
+      e.key === "Backspace" ||
+      e.key === "Delete" ||
+      e.key === "Tab" ||
+      e.key === "Escape" ||
+      e.key === "Enter" ||
+      e.key === "ArrowLeft" ||
+      e.key === "ArrowRight" ||
+      e.key === "ArrowUp" ||
+      e.key === "ArrowDown" ||
+      e.key === "Home" ||
+      e.key === "End" ||
+      e.ctrlKey ||
+      e.metaKey
+    ) {
+      return;
+    }
+    if (allowNegative && e.key === "-" && !String(value).includes("-")) {
+      return;
+    }
+    if (!/^\d$/.test(e.key)) {
+      e.preventDefault();
+    }
+  };
+
+  const handlePaste = (e) => {
+    const pasteData = e.clipboardData?.getData("text") || "";
+    if (!/\d/.test(pasteData)) {
+      e.preventDefault();
+    }
   };
 
   return (
@@ -465,6 +511,8 @@ export function MoneyInput({
       inputMode="numeric"
       value={displayValue}
       onChange={handleChange}
+      onKeyDown={handleKeyDown}
+      onPaste={handlePaste}
       placeholder={placeholder}
       disabled={disabled}
       autoFocus={autoFocus}
@@ -473,4 +521,96 @@ export function MoneyInput({
     />
   );
 }
+
+export function NumberInput({
+  value,
+  onChange,
+  className = INPUT_CLS,
+  placeholder = "0",
+  disabled = false,
+  id,
+  min,
+  max,
+  allowNegative = false,
+  allowFloat = false,
+  autoFocus = false,
+  ...props
+}) {
+  const handleChange = (e) => {
+    const raw = e.target.value;
+    if (raw === "") {
+      onChange("");
+      return;
+    }
+    let clean = raw;
+    if (!allowNegative) {
+      clean = clean.replace(/-/g, "");
+    }
+    if (!allowFloat) {
+      clean = clean.replace(/\D/g, "");
+    } else {
+      clean = clean.replace(/,/g, ".").replace(/[^0-9.]/g, "");
+      const parts = clean.split(".");
+      if (parts.length > 2) {
+        clean = parts[0] + "." + parts.slice(1).join("");
+      }
+    }
+    if (clean === "" || clean === "-") {
+      onChange(clean);
+      return;
+    }
+    const num = Number(clean);
+    if (!isNaN(num)) {
+      if (min !== undefined && num < min) return;
+      if (max !== undefined && num > max) return;
+      onChange(num);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (
+      e.key === "Backspace" ||
+      e.key === "Delete" ||
+      e.key === "Tab" ||
+      e.key === "Escape" ||
+      e.key === "Enter" ||
+      e.key === "ArrowLeft" ||
+      e.key === "ArrowRight" ||
+      e.key === "ArrowUp" ||
+      e.key === "ArrowDown" ||
+      e.key === "Home" ||
+      e.key === "End" ||
+      e.ctrlKey ||
+      e.metaKey
+    ) {
+      return;
+    }
+    if (allowNegative && e.key === "-" && !String(value).includes("-")) {
+      return;
+    }
+    if (allowFloat && (e.key === "." || e.key === ",") && !String(value).includes(".")) {
+      return;
+    }
+    if (!/^\d$/.test(e.key)) {
+      e.preventDefault();
+    }
+  };
+
+  return (
+    <input
+      id={id}
+      type="text"
+      inputMode={allowFloat ? "decimal" : "numeric"}
+      value={value ?? ""}
+      onChange={handleChange}
+      onKeyDown={handleKeyDown}
+      placeholder={placeholder}
+      disabled={disabled}
+      autoFocus={autoFocus}
+      className={className}
+      {...props}
+    />
+  );
+}
+
 

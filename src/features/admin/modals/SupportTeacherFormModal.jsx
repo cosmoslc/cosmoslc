@@ -3,7 +3,7 @@ import { Icon } from "../components/Icon";
 import { INPUT_CLS, LABEL_CLS, PrimaryButton } from "../theme/tokens";
 import { Modal, MoneyInput, PhoneInput } from "../components/primitives";
 import { hashPassword } from "../utils/helpers";
-import { Clock, Calendar, UserCheck, ShieldCheck } from "lucide-react";
+import { Clock, Calendar } from "lucide-react";
 
 const WEEKDAYS = [
   { id: "mon", label: "Du", full: "Dushanba" },
@@ -27,7 +27,6 @@ export function SupportTeacherFormModal({
     editing?.branchId || (defaultBranchId && defaultBranchId !== "all" ? defaultBranchId : "") || branches[0]?.id || "",
   );
   const effectiveBranchId = branchId || editing?.branchId || branches[0]?.id || "";
-  // Assigned Main Teacher ID
   const [assignedTeacherId, setAssignedTeacherId] = useState(
     editing?.assignedTeacherId || (teachers.length > 0 ? teachers[0].id : ""),
   );
@@ -35,16 +34,13 @@ export function SupportTeacherFormModal({
   const [phone, setPhone] = useState(editing?.phone || "");
   const [password, setPassword] = useState("");
   
-  // Week days selection
   const [selectedDays, setSelectedDays] = useState(
     editing?.workingDays || ["mon", "wed", "fri"],
   );
 
-  // Time to time works input
   const [startTime, setStartTime] = useState(editing?.startTime || "09:00");
   const [endTime, setEndTime] = useState(editing?.endTime || "18:00");
 
-  // Salary & Notes
   const [salaryType, setSalaryType] = useState(editing?.salaryType || "fixed");
   const [fixedSalary, setFixedSalary] = useState(editing?.fixedSalary ?? "");
   const [note, setNote] = useState(editing?.note || "");
@@ -72,7 +68,6 @@ export function SupportTeacherFormModal({
     }
   }
 
-  // When teacher dropdown changes, auto-suggest or link
   function handleTeacherSelect(tId) {
     setAssignedTeacherId(tId);
     if (!name && tId) {
@@ -85,7 +80,7 @@ export function SupportTeacherFormModal({
 
   async function submit() {
     if (!name.trim()) {
-      setError("Support o'qituvchining ism familiyasini kiriting.");
+      setError("Ism va familiyani kiriting.");
       return;
     }
     if (!branchId && branches.length > 0) {
@@ -93,37 +88,25 @@ export function SupportTeacherFormModal({
       return;
     }
     if (!phone.trim()) {
-      setError("Telefon raqamni kiriting.");
+      setError("Telefon raqamini kiriting.");
       return;
     }
     if (!editing && (!password || password.length < 4)) {
-      setError("Tizimga kirish uchun parol (kamida 4 belgi) kiriting.");
-      return;
-    }
-    if (selectedDays.length === 0) {
-      setError("Kamida bitta ish kunini belgilang.");
-      return;
-    }
-    if (!startTime || !endTime) {
-      setError("Ish vaqtini to'liq kiriting.");
+      setError("Parol kamida 4 belgi bo'lishi kerak.");
       return;
     }
 
     setBusy(true);
 
-    const workingHoursStr = `${startTime} - ${endTime}`;
     const payload = {
       ...(editing?.id ? { id: editing.id } : {}),
       branchId: effectiveBranchId || null,
-      assignedTeacherId,
+      assignedTeacherId: assignedTeacherId || null,
       name: name.trim(),
       phone,
       isAssistant: true,
       role: "assistant",
-      type: "assistant",
-      isSupport: true,
       workingDays: selectedDays,
-      workingHours: workingHoursStr,
       startTime,
       endTime,
       salaryType,
@@ -152,11 +135,11 @@ export function SupportTeacherFormModal({
       }
       onClose={onClose}
     >
-      <div className="space-y-4 max-h-[80vh] overflow-y-auto px-0.5">
+      <div className="space-y-3.5 max-h-[80vh] overflow-y-auto px-0.5">
         {/* Filial */}
         {branches.length > 0 && (
           <div>
-            <label className={LABEL_CLS}>Filial *</label>
+            <label className={LABEL_CLS}>Filial</label>
             <select
               value={branchId}
               onChange={(e) => setBranchId(e.target.value)}
@@ -171,66 +154,62 @@ export function SupportTeacherFormModal({
           </div>
         )}
 
-        {/* Ustoz tanlash (Teacher dropdown) */}
+        {/* Ustoz tanlash */}
         <div>
-          <label className={LABEL_CLS}>Biriktirilgan ustoz (O'qituvchi) *</label>
+          <label className={LABEL_CLS}>Biriktirilgan ustoz</label>
           <select
             value={assignedTeacherId}
             onChange={(e) => handleTeacherSelect(e.target.value)}
             className={INPUT_CLS}
           >
-            <option value="">-- Asosiy ustozni tanlang --</option>
+            <option value="">Tanlang</option>
             {teachers.map((t) => (
               <option key={t.id} value={t.id}>
-                {t.name} {t.phone ? `(${t.phone})` : ""}
+                {t.name}
               </option>
             ))}
           </select>
-          <p className="text-slate-400 text-[11px] mt-1">
-            Support o'qituvchi qaysi ustoz bilan birga ishlashini belgilang.
-          </p>
         </div>
 
-        {/* Support ustoz Ism familiyasi */}
+        {/* Ism va familiya */}
         <div>
-          <label className={LABEL_CLS}>Support o'qituvchi ismi familiyasi *</label>
+          <label className={LABEL_CLS}>Ism va familiya</label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Masalan: Jamshid Aliyev"
+            placeholder="Jamshid Aliyev"
             className={INPUT_CLS}
           />
         </div>
 
-        {/* Telefon raqam & Parol */}
+        {/* Telefon raqami & Parol */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className={LABEL_CLS}>Telefon raqam *</label>
+            <label className={LABEL_CLS}>Telefon raqami</label>
             <PhoneInput value={phone} onChange={setPhone} />
           </div>
           <div>
             <label className={LABEL_CLS}>
-              {editing ? "Parol (ixtiyoriy)" : "Parol (kirish uchun) *"}
+              {editing ? "Yangi parol" : "Parol"}
             </label>
             <input
               type="text"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder={editing ? "O'zgartirmaslik uchun bo'sh" : "Kamida 4 belgi"}
+              placeholder={editing ? "Bo'sh qoldirilsa o'zgarmaydi" : "Kamida 4 belgi"}
               className={INPUT_CLS}
             />
           </div>
         </div>
 
-        {/* Hafta kunlari (Week days selection) */}
+        {/* Hafta kunlari */}
         <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
           <div className="flex items-center justify-between">
             <label className={`${LABEL_CLS} !mb-0 flex items-center gap-1.5`}>
               <Calendar size={14} className="text-indigo-500" />
-              Hafta kunlari (Ish kunlari) *
+              Hafta kunlari
             </label>
-            {/* Presets */}
             <div className="flex items-center gap-1 text-[11px]">
               <button
                 type="button"
@@ -278,16 +257,16 @@ export function SupportTeacherFormModal({
           </div>
         </div>
 
-        {/* Ish vaqti (Which day time to time works input) */}
+        {/* Ish vaqti */}
         <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
           <label className={`${LABEL_CLS} flex items-center gap-1.5`}>
             <Clock size={14} className="text-purple-500" />
-            Ish vaqti oralig'i (Time to Time) *
+            Ish vaqti
           </label>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <span className="text-[11px] font-semibold text-slate-500 block mb-1">
-                Boshlanish vaqti
+                Boshlanish
               </span>
               <input
                 type="time"
@@ -298,7 +277,7 @@ export function SupportTeacherFormModal({
             </div>
             <div>
               <span className="text-[11px] font-semibold text-slate-500 block mb-1">
-                Tugash vaqti
+                Tugash
               </span>
               <input
                 type="time"
@@ -308,18 +287,13 @@ export function SupportTeacherFormModal({
               />
             </div>
           </div>
-          <div className="flex items-center gap-2 p-2 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200/80 dark:border-purple-900/50 text-purple-700 dark:text-purple-300 text-xs font-semibold">
-            <Clock size={14} className="shrink-0" />
-            <span>
-              Kunlik ish vaqti: <b>{startTime}</b> dan <b>{endTime}</b> gacha
-            </span>
-          </div>
         </div>
 
-        {/* Oylik maosh (Fixed) */}
+        {/* Oylik maosh */}
         <div>
-          <label className={LABEL_CLS}>Oylik ish haqi (so'm, ixtiyoriy)</label>
+          <label className={LABEL_CLS}>Oylik maosh</label>
           <MoneyInput
+            min={0}
             value={fixedSalary}
             onChange={(val) => setFixedSalary(val)}
             placeholder="1 500 000"
@@ -329,11 +303,11 @@ export function SupportTeacherFormModal({
 
         {/* Izoh */}
         <div>
-          <label className={LABEL_CLS}>Izoh / Vazifalar</label>
+          <label className={LABEL_CLS}>Izoh</label>
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Support o'qituvchining vazifalari va qo'shimcha eslatmalar..."
+            placeholder="Qo'shimcha eslatmalar"
             className={`${INPUT_CLS} min-h-[60px] resize-y`}
             rows={2}
           />

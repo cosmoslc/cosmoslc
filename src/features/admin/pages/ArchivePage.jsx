@@ -23,6 +23,9 @@ import {
   Layers,
   ArrowUpRight,
   X,
+  UserCheck,
+  CreditCard,
+  Wallet,
 } from "lucide-react";
 import {
   fetchArchives,

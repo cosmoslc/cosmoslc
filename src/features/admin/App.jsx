@@ -28,6 +28,8 @@ import {
 } from "./components/primitives";
 import { AppShell } from "./layout/Layout";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { resolveUserPermissionsAndPages, canUserAccessPage } from "./utils/permissionHelpers";
+import { ShieldCheck } from "lucide-react";
 
 // Auth
 import { AdminAuth } from "./pages/AdminAuth";
@@ -245,11 +247,15 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
         }
         if (!cancelled && raw) {
           const parsed = JSON.parse(raw);
-          setSession(parsed);
-          if (parsed.role === "manager" && parsed.allowedPages?.length > 0) {
-            if (!parsed.allowedPages.includes(view)) {
-              setView(parsed.allowedPages[0] || "workbench");
+          if (parsed.role === "manager") {
+            const { permissions, allowedPages } = resolveUserPermissionsAndPages(parsed);
+            const resolvedUser = { ...parsed, permissions, allowedPages };
+            setSession(resolvedUser);
+            if (!canUserAccessPage(view, resolvedUser)) {
+              setView(allowedPages.includes("workbench") ? "workbench" : (allowedPages[0] || "workbench"));
             }
+          } else {
+            setSession(parsed);
           }
         }
       } catch (e) {
@@ -324,19 +330,23 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
   };
 
   const handleManagerLogin = (managerUser) => {
-    const allowed = managerUser.allowedPages || DEFAULT_MANAGER_PAGES;
+    const { permissions, allowedPages } = resolveUserPermissionsAndPages(managerUser);
     const userSession = {
       ...managerUser,
       role: "manager",
-      allowedPages: allowed,
+      permissions,
+      allowedPages,
     };
     setSession(userSession);
     try {
       sessionStorage.setItem(MANAGER_SESSION_KEY, JSON.stringify(userSession));
       localStorage.setItem(MANAGER_SESSION_KEY, JSON.stringify(userSession));
     } catch (e) {}
-    setView(allowed.includes("workbench") ? "workbench" : allowed[0] || "home");
-    addToast(`Xush kelibsiz, ${userSession.name || "Menejer"}!`);
+    const targetView = allowedPages.includes("workbench")
+      ? "workbench"
+      : allowedPages[0] || "workbench";
+    setView(targetView);
+    addToast(`Xush kelibsiz, ${userSession.name || "Xodim"}!`);
   };
 
   const handleLogout = () => {
@@ -356,7 +366,11 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
   const canEdit = isDirector || session?.canEdit !== false;
   const allowedPages = useMemo(() => {
     if (isDirector) return ALL_PAGE_IDS;
-    return session?.allowedPages || DEFAULT_MANAGER_PAGES;
+    if (session) {
+      const { allowedPages } = resolveUserPermissionsAndPages(session);
+      return allowedPages;
+    }
+    return DEFAULT_MANAGER_PAGES;
   }, [isDirector, session]);
 
   // Scoped Branches
@@ -1117,7 +1131,28 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
           directorData={directorData}
           opData={opData}
         >
-          <ErrorBoundary goToHome={() => setView("workbench")}>
+          <ErrorBoundary goToHome={() => setView(allowedPages.includes("workbench") ? "workbench" : (allowedPages[0] || "workbench"))}>
+            {!isDirector && !canUserAccessPage(view, session) ? (
+              <div className="flex flex-col items-center justify-center min-h-[420px] text-center p-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm max-w-lg mx-auto my-12">
+                <div className="w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 flex items-center justify-center mb-4">
+                  <ShieldCheck size={32} />
+                </div>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+                  Ruxsat cheklangan
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
+                  Sizning lavozimingiz yoki hisobingizga ushbu sahifaga kirish huquqi berilmagan.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setView(allowedPages.includes("workbench") ? "workbench" : (allowedPages[0] || "workbench"))}
+                  className="px-5 py-2.5 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all shadow-md shadow-indigo-600/20 cursor-pointer"
+                >
+                  Ruxsat berilgan sahifaga o'tish
+                </button>
+              </div>
+            ) : (
+              <>
             {/* 1. ASOSIY BO'LIM */}
             {view === "workbench" && (
               <TodayWorkbench
@@ -1219,7 +1254,7 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
             />
           )}
 
-          {view === "managers" && (
+          {(view === "managers" || view === "staff" || view === "xodimlar") && (
             <ManagersPage
               directorData={directorData}
               opData={opData}
@@ -1698,6 +1733,8 @@ export default function UnifiedAdminApp({ defaultRole = "director" }) {
           {view === "reportLeads" && <LeadsReportPage />}
           {view === "reportGroupRemoved" && <GroupRemovedReportPage />}
           {view === "reportAttendance" && <AttendanceReportPage />}
+              </>
+            )}
         </ErrorBoundary>
       </AppShell>
 

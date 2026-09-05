@@ -836,12 +836,10 @@ export function RecordPaymentModal({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
                 <label className={LABEL_CLS}>Chegirma summasi</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1000"
+                <MoneyInput
+                  min={0}
                   value={discountAmount}
-                  onChange={(e) => setDiscountAmount(e.target.value)}
+                  onChange={(val) => setDiscountAmount(val)}
                   placeholder="0"
                   className={`${INPUT_CLS} text-xs`}
                 />

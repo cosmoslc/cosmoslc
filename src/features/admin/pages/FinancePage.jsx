@@ -28,7 +28,8 @@ import {
 } from "lucide-react";
 import { INPUT_CLS, LABEL_CLS, PrimaryButton } from "../theme/tokens";
 import { EXPENSE_CATEGORIES } from "../utils/constants";
-import { money, formatDate, todayISO } from "../utils/helpers";
+import { money, formatDate, todayISO, parseMoneyInput, formatMoneyInput } from "../utils/helpers";
+import { MoneyInput, Modal } from "../components/primitives";
 
 const MONTHS_UZ = [
   "Yanvar",
@@ -101,6 +102,26 @@ export function FinancePage({
     setTimeout(() => setRefreshing(false), 600);
   }
 
+  // Initial capital / opening balance
+  const [initialCapital, setInitialCapital] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("cosmos_initial_capital");
+      if (saved !== null) return Number(saved);
+    }
+    return directorData?.centerSettings?.initialCapital || 0;
+  });
+  const [showCapitalModal, setShowCapitalModal] = useState(false);
+  const [capitalInput, setCapitalInput] = useState(String(initialCapital || 0));
+
+  const handleSaveCapital = () => {
+    const parsed = parseMoneyInput(capitalInput);
+    setInitialCapital(parsed);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("cosmos_initial_capital", String(parsed));
+    }
+    setShowCapitalModal(false);
+  };
+
   // 1. DATA EXTRACTION & BRANCH SCOPING
   const allFinance = directorData?.finance || [];
   const allPayments = directorData?.payments || [];
@@ -108,6 +129,28 @@ export function FinancePage({
   const allManagerPayments = directorData?.managerPayments || [];
   const allStudents = opData?.students || [];
   const allGroups = opData?.groups || [];
+
+  const scopedTeacherPayments = useMemo(() => {
+    const raw = directorData?.teacherPayments || [];
+    if (!scopeBranchIds || scopeBranchIds.length === 0) return raw;
+    const branchTeacherIds = new Set(
+      (directorData?.teachers || [])
+        .filter((t) => (t.branchIds || [t.branchId]).some((bId) => scopeBranchIds.includes(bId)))
+        .map((t) => t.id)
+    );
+    return raw.filter((p) => (p.branchId && scopeBranchIds.includes(p.branchId)) || branchTeacherIds.has(p.teacherId));
+  }, [directorData?.teacherPayments, directorData?.teachers, scopeBranchIds]);
+
+  const scopedManagerPayments = useMemo(() => {
+    const raw = directorData?.managerPayments || [];
+    if (!scopeBranchIds || scopeBranchIds.length === 0) return raw;
+    const branchManagerIds = new Set(
+      (directorData?.managers || [])
+        .filter((m) => (m.branchIds || [m.branchId]).some((bId) => scopeBranchIds.includes(bId)))
+        .map((m) => m.id)
+    );
+    return raw.filter((p) => (p.branchId && scopeBranchIds.includes(p.branchId)) || branchManagerIds.has(p.managerId));
+  }, [directorData?.managerPayments, directorData?.managers, scopeBranchIds]);
 
   const scopedFinance = allFinance.filter(
     (f) => scopeBranchIds.length === 0 || scopeBranchIds.includes(f.branchId)
@@ -180,8 +223,12 @@ export function FinancePage({
       )
       .reduce((s, f) => s + Math.abs(f.amount || 0), 0);
 
-  const allTimeTeacherSalaries = allTeacherPayments.reduce((s, p) => s + (p.amount || 0), 0);
-  const allTimeManagerSalaries = allManagerPayments.reduce((s, p) => s + (p.amount || 0), 0);
+  const allTimeAdditionalIncome = scopedFinance
+    .filter((f) => (f.type === "income" || f.type === "additional_income") && f.status === "approved")
+    .reduce((s, f) => s + (f.amount || 0), 0);
+
+  const allTimeTeacherSalaries = scopedTeacherPayments.reduce((s, p) => s + (p.amount || 0), 0);
+  const allTimeManagerSalaries = scopedManagerPayments.reduce((s, p) => s + (p.amount || 0), 0);
   const allTimeApprovedExpenses = scopedFinance
     .filter(
       (f) =>
@@ -195,7 +242,7 @@ export function FinancePage({
   const allTimeTotalOutflow =
     allTimeTeacherSalaries + allTimeManagerSalaries + allTimeApprovedExpenses + allTimeRefunds;
 
-  const markazBalansi = allTimeStudentPayments - allTimeTotalOutflow;
+  const markazBalansi = initialCapital + allTimeStudentPayments + allTimeAdditionalIncome - allTimeTotalOutflow;
 
   // PERIOD SPECIFIC CALCULATIONS
   // A. TUSHUM (Faqat to'lovlardan)
@@ -668,21 +715,56 @@ export function FinancePage({
       {/* ---------------------------------------------------- */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3.5">
         {/* CARD 1: MARKAZ BALANSI (Real Hisob) */}
-        <div className="stat-card border-indigo-200/80 dark:border-indigo-900/40 bg-gradient-to-b from-indigo-50/30 to-white dark:from-indigo-950/20 dark:to-slate-900 p-4 rounded-xl shadow-sm hover:-translate-y-1 transition-all cursor-pointer">
+        <div
+          onClick={() => setShowCapitalModal(true)}
+          className="stat-card border-indigo-200/80 dark:border-indigo-900/40 bg-gradient-to-b from-indigo-50/30 to-white dark:from-indigo-950/20 dark:to-slate-900 p-4 rounded-xl shadow-sm hover:-translate-y-0.5 transition-all cursor-pointer relative group"
+        >
           <div className="flex items-center justify-between mb-2">
             <div className="icon-badge w-[34px] h-[34px] rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center shadow-md">
               <Wallet size={16} className="text-white" />
             </div>
-            <span className="text-[11px] font-bold px-2 py-0.5 rounded-xl bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300">
-              Real Balans
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span
+                className={`text-[11px] font-bold px-2 py-0.5 rounded-xl ${
+                  markazBalansi >= 0
+                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
+                    : "bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300"
+                }`}
+              >
+                {markazBalansi >= 0 ? "Ijobiy" : "Manfiy"}
+              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCapitalInput(String(initialCapital || ""));
+                  setShowCapitalModal(true);
+                }}
+                className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+              >
+                Kapital
+              </button>
+            </div>
           </div>
-          <div className="stat-value text-[19px] font-extrabold tracking-tight text-slate-900 dark:text-white mb-0.5">
-            {money(markazBalansi)}{" "}
+          <div
+            className={`stat-value text-[19px] font-extrabold tracking-tight mb-0.5 ${
+              markazBalansi >= 0
+                ? "text-slate-900 dark:text-white"
+                : "text-rose-600 dark:text-rose-400"
+            }`}
+          >
+            {markazBalansi < 0 ? `-${money(Math.abs(markazBalansi))}` : money(markazBalansi)}{" "}
             <span className="text-xs font-medium text-slate-400">so'm</span>
           </div>
-          <div className="stat-label text-xs font-bold text-slate-500 dark:text-slate-400">
-            Markaz Balansi
+          <div className="flex items-center justify-between">
+            <div className="stat-label text-xs font-bold text-slate-500 dark:text-slate-400">
+              Markaz Balansi
+            </div>
+            {initialCapital > 0 && (
+              <span className="text-[10px] text-slate-400 font-medium">
+                Kapital: {money(initialCapital)}
+              </span>
+            )}
           </div>
         </div>
 
@@ -1179,12 +1261,12 @@ export function FinancePage({
 
               <div>
                 <label className={LABEL_CLS}>Summa (so'm) *</label>
-                <input
-                  type="number"
+                <MoneyInput
                   value={formAmount}
-                  onChange={(e) => setFormAmount(e.target.value)}
-                  placeholder="Masalan: 500000"
+                  onChange={(val) => setFormAmount(val)}
+                  placeholder="0"
                   className={INPUT_CLS}
+                  min={0}
                   autoFocus
                 />
               </div>
@@ -1270,6 +1352,34 @@ export function FinancePage({
             </form>
           </div>
         </div>
+      )}
+      {/* Capital Modal */}
+      {showCapitalModal && (
+        <Modal title="Boshlang'ich kapital kiritish" onClose={() => setShowCapitalModal(false)}>
+          <div className="space-y-4">
+            <div>
+              <label className={LABEL_CLS}>Boshlang'ich kapital miqdori</label>
+              <MoneyInput
+                value={capitalInput}
+                onChange={setCapitalInput}
+                placeholder="0"
+                className={INPUT_CLS}
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowCapitalModal(false)}
+                className="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
+              >
+                Bekor qilish
+              </button>
+              <PrimaryButton onClick={handleSaveCapital}>
+                <Check size={15} /> Saqlash
+              </PrimaryButton>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { INPUT_CLS, LABEL_CLS } from "../theme/tokens";
 import { money } from "../utils/helpers";
+import { MoneyInput } from "../components/primitives";
 
 const DEFAULT_EXPENSE_CATEGORIES = [
   { id: "cat-1", name: "Ofis xarajatlari", allBranches: true, branchIds: [] },
@@ -1679,13 +1680,12 @@ export function ExpensesPage({
                 <div className="space-y-1">
                   <label className={LABEL_CLS}>Narx</label>
                   <div className="relative">
-                    <input
-                      type="number"
-                      min="0"
+                    <MoneyInput
+                      min={0}
                       required
                       value={formData.amount}
-                      onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                      placeholder="Summa (so'm)..."
+                      onChange={(val) => setFormData({ ...formData, amount: val })}
+                      placeholder="0"
                       className={`${INPUT_CLS} pr-14 font-bold`}
                     />
                     <span className="absolute right-3 top-2.5 text-xs text-slate-400 font-medium pointer-events-none">
@@ -1874,13 +1874,12 @@ export function ExpensesPage({
                 <div className="space-y-1">
                   <label className={LABEL_CLS}>Limit summasi</label>
                   <div className="relative">
-                    <input
-                      type="number"
-                      min="0"
+                    <MoneyInput
+                      min={0}
                       required
                       value={planFormData.amount}
-                      onChange={(e) =>
-                        setPlanFormData({ ...planFormData, amount: e.target.value })
+                      onChange={(val) =>
+                        setPlanFormData({ ...planFormData, amount: val })
                       }
                       placeholder="0"
                       className={`${INPUT_CLS} pr-14 font-bold`}

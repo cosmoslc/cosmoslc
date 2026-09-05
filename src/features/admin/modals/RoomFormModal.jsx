@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { DoorOpen, Users, CheckCircle2, Plus } from "lucide-react";
 import { INPUT_CLS, LABEL_CLS, PrimaryButton } from "../theme/tokens";
-import { Modal } from "../components/primitives";
+import { Modal, NumberInput } from "../components/primitives";
 
 const QUICK_CAPACITIES = [12, 15, 20, 25, 30, 40];
 
@@ -85,13 +85,12 @@ export function RoomFormModal({ editing, branches = [], defaultBranchId, onSubmi
               o'quvchi o'rni
             </span>
           </div>
-          <input
-            type="number"
-            min="1"
-            max="200"
+          <NumberInput
+            min={1}
+            max={200}
             value={capacity}
-            onChange={(e) => {
-              setCapacity(e.target.value);
+            onChange={(val) => {
+              setCapacity(val);
               if (error) setError("");
             }}
             className={INPUT_CLS}

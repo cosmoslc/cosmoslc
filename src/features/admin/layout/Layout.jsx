@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, isValidElement } from "react";
 import { MorphDropdown } from "../../../shared/components/MorphDropdown";
 import { useNavIndicator, NavIndicator } from "../../../shared/components/NavIndicator";
+import { canUserAccessPage } from "../utils/permissionHelpers";
 import {
   LogOut,
   Menu,
@@ -374,15 +375,15 @@ export function AppShell({
   // Check if a specific page ID is allowed for the user
   const isAllowed = (pageId) => {
     if (role === "director") return true;
-    return allowedPages.includes(pageId);
+    return canUserAccessPage(pageId, user);
   };
 
   // Group items filtering
   const canShowGroup = (pageIds) => pageIds.some((id) => isAllowed(id));
 
   // Current user info
-  const displayName = user?.name || (role === "director" ? "Bosh Direktor" : "Menejer");
-  const displayRoleLabel = role === "director" ? "Boshqaruvchi" : "Filial menejeri";
+  const displayName = user?.name || (role === "director" ? "Bosh Direktor" : "Xodim");
+  const displayRoleLabel = role === "director" ? "Boshqaruvchi" : (user?.roleName || "Xodim");
   const centerName = user?.centerName || directorData?.centerSettings?.name || "COSMOS LC";
 
   return (
@@ -799,7 +800,7 @@ export function AppShell({
             )}
 
             {/* 2. MOLIYA BO'LIMI (SUBMENU) */}
-            {canShowGroup(["payments", "additionalIncome", "salaries", "expenses", "debtors"]) && (
+            {canShowGroup(["finance", "payments", "additionalIncome", "salaries", "expenses", "debtors", "breakEven"]) && (
               <li className={`nav-parent-wrapper ${pinnedFlyout === "finance" ? "is-flyout-open" : ""}`}>
                 <div
                   id="nav-parent-finance"
@@ -807,7 +808,7 @@ export function AppShell({
                   className={`nav-parent-item ${
                     openMenus.finance || pinnedFlyout === "finance" ? "is-open" : ""
                   } ${
-                    ["payments", "additionalIncome", "salaries", "expenses", "debtors"].includes(view)
+                    ["finance", "payments", "additionalIncome", "salaries", "expenses", "debtors", "breakEven"].includes(view)
                       ? "has-active-child"
                       : ""
                   }`}
@@ -827,6 +828,20 @@ export function AppShell({
                     {collapsed && (
                       <li className="px-2 py-1 mb-1 border-b border-slate-100 dark:border-slate-800 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                         Moliya
+                      </li>
+                    )}
+                    {isAllowed("finance") && (
+                      <li>
+                        <button
+                          id="nav-sub-finance"
+                          onClick={() => handleNavigate("finance")}
+                          className={`nav-sub-item ${
+                            view === "finance" ? "active" : ""
+                          }`}
+                        >
+                          <span className="sub-dot" />
+                          <span>Moliya boshqaruvi</span>
+                        </button>
                       </li>
                     )}
                     {isAllowed("payments") && (
@@ -896,6 +911,20 @@ export function AppShell({
                         >
                           <span className="sub-dot" />
                           <span>Qarzdorlar</span>
+                        </button>
+                      </li>
+                    )}
+                    {isAllowed("breakEven") && (
+                      <li>
+                        <button
+                          id="nav-sub-breakEven"
+                          onClick={() => handleNavigate("breakEven")}
+                          className={`nav-sub-item ${
+                            view === "breakEven" ? "active" : ""
+                          }`}
+                        >
+                          <span className="sub-dot" />
+                          <span>Zararsizlik nuqtasi</span>
                         </button>
                       </li>
                     )}

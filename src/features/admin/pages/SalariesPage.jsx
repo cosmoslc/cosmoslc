@@ -757,7 +757,7 @@ export function SalariesPage({
                                   className="w-8 h-8 rounded-xl object-cover shrink-0 border border-slate-200 dark:border-slate-700"
                                 />
                               ) : (
-                                <Avatar name={rec.employeeName} size="w-8 h-8 text-xs" />
+                                <Avatar name={rec.employeeName} size={32} />
                               )}
                               <div>
                                 <button

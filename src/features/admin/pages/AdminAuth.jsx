@@ -138,16 +138,17 @@ export function AdminAuth({
 
       const matched = managers.find(
         (m) =>
-          m.phone?.replace(/\D/g, "").endsWith(phone) &&
+          String(m.phone || "").replace(/\D/g, "").endsWith(phone) &&
           (m.passwordHash === pwHash ||
             m.password === password ||
+            m.rawPassword === password ||
             password === "manager123" ||
             password === "admin123"),
       );
 
       if (!matched) {
         setError(
-          "Telefon raqam yoki parol noto'g'ri yoki bu raqamga menejer profili biriktirilmagan.",
+          "Telefon raqam yoki parol noto'g'ri yoki bu raqamga xodim profili biriktirilmagan.",
         );
         setLoading(false);
         return;
@@ -230,7 +231,7 @@ export function AdminAuth({
               }`}
             >
               <Users size={15} />
-              Menejer
+              Xodim
             </button>
           </div>
         )}

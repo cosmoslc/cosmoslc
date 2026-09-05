@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Modal } from "../components/primitives";
+import { Modal, MoneyInput, NumberInput } from "../components/primitives";
 import { Tag, Calendar, Users, HelpCircle, Save, X } from "lucide-react";
 
 export function AddDiscountModal({
@@ -111,15 +111,26 @@ export function AddDiscountModal({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={LABEL_CLS}>Chegirma miqdori</label>
-            <input
-              type="number"
-              min="1"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              placeholder={type === "percent" ? "Masalan: 10" : "Masalan: 50000"}
-              className={INPUT_CLS}
-              required
-            />
+            {type === "percent" ? (
+              <NumberInput
+                min={1}
+                max={100}
+                value={value}
+                onChange={setValue}
+                placeholder="10"
+                className={INPUT_CLS}
+                required
+              />
+            ) : (
+              <MoneyInput
+                min={0}
+                value={value}
+                onChange={setValue}
+                placeholder="50 000"
+                className={INPUT_CLS}
+                required
+              />
+            )}
           </div>
           <div>
             <label className={LABEL_CLS}>Qiymat turi</label>

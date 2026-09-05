@@ -1,13 +1,9 @@
 import { useState, useMemo } from "react";
 import {
   Check,
-  Plus,
   Loader2,
   Eye,
   EyeOff,
-  DollarSign,
-  Gift,
-  Award,
   Building2,
   Calendar,
   MapPin,
@@ -15,23 +11,34 @@ import {
   User,
   Lock,
   Briefcase,
-  Sparkles,
+  DollarSign,
+  FileText,
   ChevronDown,
   ChevronUp,
-  FileText,
-  FileSpreadsheet,
 } from "lucide-react";
-import { Modal, PhoneInput, BranchPicker } from "../components/primitives";
+import {
+  Modal,
+  PhoneInput,
+  BranchPicker,
+  MoneyInput,
+} from "../components/primitives";
 import { INPUT_CLS, LABEL_CLS, PrimaryButton } from "../theme/tokens";
-import { hashPassword, formatMoneyInput, parseMoneyInput } from "../utils/helpers";
+import { hashPassword, parseMoneyInput } from "../utils/helpers";
 import { INITIAL_ROLES } from "../pages/PositionsPage";
+import { getPagesFromPermissions } from "../utils/permissionHelpers";
 import {
   getStaffCustomFields,
   getStaffFormCompletionStatus,
 } from "../utils/staffFormFields";
 
-export function ManagerFormModal({ editing, branches = [], defaultBranchId, onSubmit, onClose }) {
-  // Load roles/positions
+export function ManagerFormModal({
+  editing,
+  branches = [],
+  defaultBranchId,
+  onSubmit,
+  onClose,
+}) {
+  // Rollar / Lavozimlar
   const availableRoles = useMemo(() => {
     try {
       const saved = localStorage.getItem("cosmos_custom_roles_v2");
@@ -50,11 +57,11 @@ export function ManagerFormModal({ editing, branches = [], defaultBranchId, onSu
   const [phone, setPhone] = useState(editing?.phone || "");
   const [password, setPassword] = useState(editing?.rawPassword || "");
   const [showPassword, setShowPassword] = useState(false);
-  const [gender, setGender] = useState(editing?.gender || "male"); // 'male' | 'female'
+  const [gender, setGender] = useState(editing?.gender || "male");
   const [birthDate, setBirthDate] = useState(editing?.birthDate || "");
   const [address, setAddress] = useState(editing?.address || "");
 
-  // Role / Position (Multi-selection support)
+  // Lavozim (Ko'p tanlov)
   const initialRoleIds = useMemo(() => {
     if (Array.isArray(editing?.roleIds) && editing.roleIds.length > 0) {
       return editing.roleIds;
@@ -69,7 +76,7 @@ export function ManagerFormModal({ editing, branches = [], defaultBranchId, onSu
   const toggleRole = (roleId) => {
     setSelectedRoleIds((prev) => {
       if (prev.includes(roleId)) {
-        if (prev.length === 1) return prev; // Kamida 1 ta lavozim tanlangan bo'lishi kerak
+        if (prev.length === 1) return prev;
         return prev.filter((id) => id !== roleId);
       }
       return [...prev, roleId];
@@ -85,32 +92,36 @@ export function ManagerFormModal({ editing, branches = [], defaultBranchId, onSu
     return Array.from(new Set(allPerms));
   }, [selectedRoles]);
 
-  // Salary & Salary Type
-  // types: 'fixed' (oylik oklad), 'hourly' (soatbay), 'lesson' (darsbay), 'percent' (foiz), 'kpi' (kpi/bonus)
+  // Ish haqi & Maosh modeli
   const [salaryType, setSalaryType] = useState(editing?.salaryType || "fixed");
   const [salaryAmount, setSalaryAmount] = useState(
     editing?.monthlySalary !== undefined
-      ? formatMoneyInput(editing.monthlySalary)
+      ? editing.monthlySalary
       : editing?.salaryAmount !== undefined
-      ? formatMoneyInput(editing.salaryAmount)
-      : "5 000 000"
+      ? editing.salaryAmount
+      : 5000000
   );
   const [kpiStudentAmount, setKpiStudentAmount] = useState(
-    editing?.kpiStudentAmount !== undefined ? formatMoneyInput(editing.kpiStudentAmount) : "50 000"
+    editing?.kpiStudentAmount !== undefined ? editing.kpiStudentAmount : 50000
   );
   const [kpiContractBonus, setKpiContractBonus] = useState(
-    editing?.kpiContractBonus !== undefined ? formatMoneyInput(editing.kpiContractBonus) : "100 000"
+    editing?.kpiContractBonus !== undefined ? editing.kpiContractBonus : 100000
   );
 
-  // Branches
+  // Filiallar
   const [branchIds, setBranchIds] = useState(
-    editing?.branchIds || (editing?.branchId ? [editing.branchId] : (defaultBranchId && defaultBranchId !== "all" ? [defaultBranchId] : []))
+    editing?.branchIds ||
+      (editing?.branchId
+        ? [editing.branchId]
+        : defaultBranchId && defaultBranchId !== "all"
+        ? [defaultBranchId]
+        : [])
   );
 
-  // Note / Comment
+  // Izoh
   const [notes, setNotes] = useState(editing?.notes || "");
 
-  // Custom Form Fields & Values
+  // Qo'shimcha maydonlar
   const customFields = useMemo(() => getStaffCustomFields(), []);
   const [customFormData, setCustomFormData] = useState(
     editing?.customFormData || {}
@@ -131,7 +142,7 @@ export function ManagerFormModal({ editing, branches = [], defaultBranchId, onSu
 
   async function submit() {
     if (!name.trim()) {
-      setError("Xodim ism-familiyasini kiriting.");
+      setError("Ism va familiyani kiriting.");
       return;
     }
     if (!phone.trim()) {
@@ -139,23 +150,23 @@ export function ManagerFormModal({ editing, branches = [], defaultBranchId, onSu
       return;
     }
     if (selectedRoleIds.length === 0) {
-      setError("Kamida bitta lavozim (rol) tanlang.");
+      setError("Kamida bitta lavozim tanlang.");
       return;
     }
     if (branchIds.length === 0) {
-      setError("Kamida bitta ishlaydigan filialni tanlang.");
+      setError("Kamida bitta filialni tanlang.");
       return;
     }
     if (!editing && (!password || password.length < 4)) {
-      setError("Yangi xodim uchun tizimga kirish paroli (kamida 4 ta belgi) majburiy.");
+      setError("Parol kamida 4 belgi bo'lishi kerak.");
       return;
     }
 
     setBusy(true);
 
-    const parsedSalary = parseMoneyInput(salaryAmount) || 0;
-    const parsedKpiStudent = parseMoneyInput(kpiStudentAmount) || 0;
-    const parsedKpiBonus = parseMoneyInput(kpiContractBonus) || 0;
+    const parsedSalary = Number(salaryAmount) || 0;
+    const parsedKpiStudent = Number(kpiStudentAmount) || 0;
+    const parsedKpiBonus = Number(kpiContractBonus) || 0;
     const completion = getStaffFormCompletionStatus(
       { customFormData },
       customFields
@@ -173,21 +184,20 @@ export function ManagerFormModal({ editing, branches = [], defaultBranchId, onSu
       roleIds: selectedRoleIds,
       roleId: selectedRoleIds[0] || null,
       roleNames: selectedRoles.map((r) => r.name),
-      roleName: selectedRoles.map((r) => r.name).join(" • ") || primaryRole?.name || "Xodim",
+      roleName:
+        selectedRoles.map((r) => r.name).join(" • ") ||
+        primaryRole?.name ||
+        "Xodim",
       roleCodes: selectedRoles.map((r) => r.code),
       roleCode: primaryRole?.code || "rol",
       roleColor: primaryRole?.color || "#6366f1",
       roleColors: selectedRoles.map((r) => r.color),
       permissions: combinedPermissions,
-      allowedPages: combinedPermissions.length > 0 ? combinedPermissions : editing?.allowedPages || [
-        "home",
-        "payments",
-        "teachers",
-        "courses",
-        "groups",
-        "finance",
-        "holidays",
-      ],
+      allowedPages: (() => {
+        const mapped = getPagesFromPermissions(combinedPermissions);
+        const resolved = Array.from(new Set([...combinedPermissions, ...mapped]));
+        return resolved.length > 0 ? resolved : editing?.allowedPages || ["home", "payments", "teachers", "groups"];
+      })(),
       salaryType,
       monthlySalary: parsedSalary,
       salaryAmount: parsedSalary,
@@ -214,17 +224,17 @@ export function ManagerFormModal({ editing, branches = [], defaultBranchId, onSu
 
   return (
     <Modal
-      title={editing ? "Xodim ma'lumotlarini tahrirlash" : "Yangi xodim qo'shish"}
+      title={editing ? "Xodimni tahrirlash" : "Yangi xodim qo'shish"}
       onClose={onClose}
       wide
     >
-      <div className="space-y-4 text-slate-800 dark:text-slate-200">
-        {/* Asosiy shaxsiy ma'lumotlar - Flattened 2 ustunli to'r */}
+      <div className="space-y-3.5 text-slate-800 dark:text-slate-200">
+        {/* Ism va Telefon raqami */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={LABEL_CLS}>
               <User size={13} className="inline mr-1 text-indigo-600" />
-              Ism va Familiya *
+              Ism va familiya
             </label>
             <input
               value={name}
@@ -238,7 +248,7 @@ export function ManagerFormModal({ editing, branches = [], defaultBranchId, onSu
           <div>
             <label className={LABEL_CLS}>
               <Phone size={13} className="inline mr-1 text-indigo-600" />
-              Telefon raqami *
+              Telefon raqami
             </label>
             <PhoneInput value={phone} onChange={setPhone} />
           </div>
@@ -249,20 +259,24 @@ export function ManagerFormModal({ editing, branches = [], defaultBranchId, onSu
           <div>
             <label className={LABEL_CLS}>
               <Lock size={13} className="inline mr-1 text-indigo-600" />
-              Tizimga kirish paroli {!editing && "*"}
+              {editing ? "Yangi parol" : "Parol"}
             </label>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder={editing ? "O'zgartirmaslik uchun bo'sh qoldiring" : "Kamida 4 ta belgi..."}
+                placeholder={
+                  editing
+                    ? "Bo'sh qoldirilsa o'zgarmaydi"
+                    : "Kamida 4 belgi"
+                }
                 className={`${INPUT_CLS} pr-10`}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
               >
                 {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
@@ -281,7 +295,7 @@ export function ManagerFormModal({ editing, branches = [], defaultBranchId, onSu
                     : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50"
                 }`}
               >
-                <span>👨</span> Erkak
+                Erkak
               </button>
               <button
                 type="button"
@@ -292,7 +306,7 @@ export function ManagerFormModal({ editing, branches = [], defaultBranchId, onSu
                     : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50"
                 }`}
               >
-                <span>👩</span> Ayol
+                Ayol
               </button>
             </div>
           </div>
@@ -316,23 +330,23 @@ export function ManagerFormModal({ editing, branches = [], defaultBranchId, onSu
           <div>
             <label className={LABEL_CLS}>
               <MapPin size={13} className="inline mr-1 text-slate-500" />
-              Yashash joyi (Manzil)
+              Manzil
             </label>
             <input
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              placeholder="Shahar, tuman, ko'cha..."
+              placeholder="Shahar, tuman, ko'cha"
               className={INPUT_CLS}
             />
           </div>
         </div>
 
-        {/* Lavozim tanlash (Ko'p tanlov / Multi-selection) */}
+        {/* Lavozim */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className={LABEL_CLS}>
               <Briefcase size={13} className="inline mr-1 text-indigo-600" />
-              Lavozimi / Roli * <span className="text-[11px] font-normal text-slate-500">(bir nechta tanlash mumkin)</span>
+              Lavozim
             </label>
             <span className="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold">
               {selectedRoleIds.length} ta tanlandi
@@ -384,7 +398,6 @@ export function ManagerFormModal({ editing, branches = [], defaultBranchId, onSu
           {selectedRoles.length > 0 && (
             <div className="flex flex-wrap items-center justify-between gap-2 pt-2 text-xs text-slate-500 dark:text-slate-400">
               <div className="flex flex-wrap gap-1 items-center">
-                <span className="text-[11px]">Biriktirilgan:</span>
                 {selectedRoles.map((r) => (
                   <span
                     key={r.id}
@@ -406,17 +419,13 @@ export function ManagerFormModal({ editing, branches = [], defaultBranchId, onSu
           )}
         </div>
 
-        {/* Ish haqi va Maosh turi (Fixed yoki KPI+Bonus) */}
-        <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-          <label className={LABEL_CLS}>
-            <DollarSign size={13} className="inline mr-1 text-emerald-600" />
-            Ish haqi va Maosh hisoblash modeli
-          </label>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1.5">
+        {/* Ish haqi */}
+        <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-[11px] font-semibold text-slate-500 mb-1 block">
-                Maosh hisoblash turi *
+              <label className={LABEL_CLS}>
+                <DollarSign size={13} className="inline mr-1 text-emerald-600" />
+                Maosh turi
               </label>
               <select
                 value={salaryType}
@@ -424,99 +433,69 @@ export function ManagerFormModal({ editing, branches = [], defaultBranchId, onSu
                   const nextType = e.target.value;
                   setSalaryType(nextType);
                   if (nextType === "kpi") {
-                    if (!editing || editing.salaryType !== "kpi" || salaryAmount === "5000000") {
-                      setSalaryAmount("0");
+                    if (!editing || editing.salaryType !== "kpi" || salaryAmount === 5000000) {
+                      setSalaryAmount(0);
                     }
                   } else if (nextType === "fixed") {
-                    if (salaryAmount === "0" || !salaryAmount) {
-                      setSalaryAmount("5000000");
+                    if (salaryAmount === 0 || !salaryAmount) {
+                      setSalaryAmount(5000000);
                     }
                   }
                 }}
                 className={INPUT_CLS}
               >
-                <option value="fixed">Oylik belgilangan oklad (Fixed)</option>
-                <option value="kpi">KPI + Bonus (O'quvchi soni + 1 oy o'qiganligi uchun)</option>
+                <option value="fixed">Oylik oklad</option>
+                <option value="kpi">KPI va bonus</option>
               </select>
             </div>
 
             <div>
-              <label className="text-[11px] font-semibold text-slate-500 mb-1 block">
-                {salaryType === "fixed"
-                  ? "Oylik belgilangan oklad (so'm) *"
-                  : "Asosiy oklad / baza (so'm, 0 dan boshlash mumkin)"}
+              <label className={LABEL_CLS}>
+                {salaryType === "fixed" ? "Oylik oklad" : "Asosiy oklad"}
               </label>
-              <input
-                type="text"
-                inputMode="numeric"
+              <MoneyInput
+                min={0}
                 value={salaryAmount}
-                onChange={(e) => setSalaryAmount(formatMoneyInput(e.target.value))}
+                onChange={setSalaryAmount}
                 placeholder={salaryType === "fixed" ? "5 000 000" : "0"}
                 className={INPUT_CLS}
               />
-              {salaryType === "kpi" && (
-                <p className="text-[10px] text-indigo-600 dark:text-indigo-400 mt-1">
-                  💡 0 so'm qo'yilsa, xodimning maoshi o'quvchilar qo'shilishi bilan 0 dan boshlab o'sib boradi.
-                </p>
-              )}
             </div>
           </div>
 
+          {/* KPI stavkalari (Flattened - ortiqcha nested boxlarsiz) */}
           {salaryType === "kpi" && (
-            <div className="mt-3 p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/60 space-y-2.5">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-900 dark:text-indigo-300">
-                <Sparkles size={14} className="text-indigo-600" />
-                KPI va Bonus stavkalari
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div>
+                <label className={LABEL_CLS}>O'quvchi uchun to'lov</label>
+                <MoneyInput
+                  min={0}
+                  value={kpiStudentAmount}
+                  onChange={setKpiStudentAmount}
+                  placeholder="50 000"
+                  className={INPUT_CLS}
+                />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[11px] font-semibold text-indigo-700 dark:text-indigo-400 mb-1 block">
-                    Har bir olib kelingan / biriktirilgan o'quvchi uchun (so'm) *
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={kpiStudentAmount}
-                    onChange={(e) => setKpiStudentAmount(formatMoneyInput(e.target.value))}
-                    placeholder="50 000"
-                    className={INPUT_CLS}
-                  />
-                  <p className="text-[10px] text-slate-500 mt-1">
-                    Xodim jalb qilgan har 1 ta o'quvchi uchun to'lanadigan summa
-                  </p>
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 mb-1 block">
-                    1 oy o'qiganligi uchun bonus (so'm) *
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={kpiContractBonus}
-                    onChange={(e) => setKpiContractBonus(formatMoneyInput(e.target.value))}
-                    placeholder="100 000"
-                    className={INPUT_CLS}
-                  />
-                  <p className="text-[10px] text-slate-500 mt-1">
-                    O'quvchi markazda 1 oy to'liq o'qiganda xodimga qo'shimcha bonus
-                  </p>
-                </div>
-              </div>
-
-              <div className="text-[11px] text-indigo-700 dark:text-indigo-300 bg-white/80 dark:bg-slate-900/80 p-2.5 rounded-lg border border-indigo-100 dark:border-indigo-900/50">
-                💡 <strong>Hisoblash tartibi:</strong> Jami maosh = Asosiy oklad + (O'quvchilar soni × Har bir o'quvchi summasi) + (1 oy o'qigan o'quvchilar soni × 1 oylik bonus)
+              <div>
+                <label className={LABEL_CLS}>1 oylik bonus</label>
+                <MoneyInput
+                  min={0}
+                  value={kpiContractBonus}
+                  onChange={setKpiContractBonus}
+                  placeholder="100 000"
+                  className={INPUT_CLS}
+                />
               </div>
             </div>
           )}
         </div>
 
-        {/* Kirishga ruxsat etilgan filiallar (Multiple choice) */}
+        {/* Filiallar */}
         <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
           <label className={LABEL_CLS}>
             <Building2 size={13} className="inline mr-1 text-indigo-600" />
-            Kirishga ruxsat etilgan filiallar (Bir nechta tanlash mumkin) *
+            Filiallar
           </label>
           <BranchPicker
             branches={branches}
@@ -529,41 +508,36 @@ export function ManagerFormModal({ editing, branches = [], defaultBranchId, onSu
         <div>
           <label className={LABEL_CLS}>
             <FileText size={13} className="inline mr-1 text-slate-500" />
-            Qo'shimcha izoh / eslatma
+            Izoh
           </label>
           <input
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Xodim bo'yicha qisqa ma'lumot yoki eslatma..."
+            placeholder="Xodim haqida izoh"
             className={INPUT_CLS}
           />
         </div>
 
-        {/* Xodim Formasi (Qo'shimcha ma'lumotlar uchun forma) */}
-        <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-          <div className="flex items-center justify-between">
-            <button
-              type="button"
-              onClick={() => setShowCustomForm(!showCustomForm)}
-              className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1.5 cursor-pointer py-1"
-            >
-              <Sparkles size={14} />
-              <span>Xodim formasi (Qo'shimcha ma'lumotlar)</span>
-              {showCustomForm ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            </button>
-            <span className="text-[11px] text-slate-400">
-              {Object.values(customFormData).filter(Boolean).length} /{" "}
-              {customFields.length} to'ldirilgan
-            </span>
-          </div>
+        {/* Qo'shimcha ma'lumotlar */}
+        {customFields.length > 0 && (
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setShowCustomForm(!showCustomForm)}
+                className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1.5 cursor-pointer py-1"
+              >
+                <span>Qo'shimcha ma'lumotlar</span>
+                {showCustomForm ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
+              <span className="text-[11px] text-slate-400">
+                {Object.values(customFormData).filter(Boolean).length} /{" "}
+                {customFields.length} to'ldirilgan
+              </span>
+            </div>
 
-          {showCustomForm && (
-            <div className="mt-3 pt-3 border-t border-dashed border-slate-200 dark:border-slate-800">
-              {customFields.length === 0 ? (
-                <p className="text-xs text-slate-400 italic">
-                  Qo'shimcha forma maydonlari sozlanmagan.
-                </p>
-              ) : (
+            {showCustomForm && (
+              <div className="mt-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {customFields.map((field) => (
                     <div key={field.id}>
@@ -599,24 +573,24 @@ export function ManagerFormModal({ editing, branches = [], defaultBranchId, onSu
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
-          )}
-        </div>
+              </div>
+            )}
+          </div>
+        )}
 
-        {/* Error message */}
+        {/* Xatolik xabari */}
         {error && (
           <div className="bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 text-xs font-semibold p-2.5 rounded-xl border border-rose-200 dark:border-rose-900">
             {error}
           </div>
         )}
 
-        {/* Action Buttons */}
+        {/* Tugmalar */}
         <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             Bekor qilish
           </button>

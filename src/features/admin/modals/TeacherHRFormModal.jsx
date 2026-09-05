@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { Icon } from "../components/Icon";
 import { INPUT_CLS, LABEL_CLS, PrimaryButton } from "../theme/tokens";
-import { Modal, MoneyInput, PhoneInput, ToggleSwitch } from "../components/primitives";
+import { Modal, MoneyInput, NumberInput, PhoneInput, ToggleSwitch } from "../components/primitives";
 import { hashPassword } from "../utils/helpers";
 import { Camera, Trash2, User, Upload } from "lucide-react";
 
@@ -121,9 +121,9 @@ export function TeacherHRFormModal({ editing, branches = [], defaultBranchId, on
           </div>
         )}
 
-        {/* Ism familiya */}
+        {/* Ism va familiya */}
         <div>
-          <label className={LABEL_CLS}>Ism familiya</label>
+          <label className={LABEL_CLS}>Ism va familiya</label>
           <input
             type="text"
             value={name}
@@ -134,10 +134,10 @@ export function TeacherHRFormModal({ editing, branches = [], defaultBranchId, on
           />
         </div>
 
-        {/* Telefon raqam & Parol */}
+        {/* Telefon raqami & Parol */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className={LABEL_CLS}>Telefon raqam</label>
+            <label className={LABEL_CLS}>Telefon raqami</label>
             <PhoneInput value={phone} onChange={setPhone} />
           </div>
           <div>
@@ -212,13 +212,12 @@ export function TeacherHRFormModal({ editing, branches = [], defaultBranchId, on
 
           {salaryType === "percent" && (
             <div>
-              <label className={LABEL_CLS}>Ulush foizi (%)</label>
-              <input
-                type="number"
-                min="0"
-                max="100"
+              <label className={LABEL_CLS}>Ulush foizi</label>
+              <NumberInput
+                min={0}
+                max={100}
                 value={sharePercent}
-                onChange={(e) => setSharePercent(e.target.value)}
+                onChange={setSharePercent}
                 className={INPUT_CLS}
                 placeholder="40"
               />
@@ -227,7 +226,7 @@ export function TeacherHRFormModal({ editing, branches = [], defaultBranchId, on
 
           {salaryType === "per_student" && (
             <div>
-              <label className={LABEL_CLS}>O'quvchi boshi summa</label>
+              <label className={LABEL_CLS}>O'quvchi uchun to'lov</label>
               <MoneyInput
                 value={perStudentSalary}
                 onChange={(val) => setPerStudentSalary(val)}

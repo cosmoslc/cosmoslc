@@ -15,3 +15,11 @@
   - Inputlar hamda form elementlari ostiga qo'shimcha tushuntirish matnlari, yordamchi `<p>` yoki `<span>` izohlari va eslatmalar yozilmasin.
   - Yordamchi izohlar yoki qavs ichidagi eslatmalar faqat foydalanuvchi ularni aniq so'ragan taqdirdagina qo'shiladi.
   - Qoshimcha inputlar yonidan support inputlar qoshish faqatgina user sorasa qoshiladi
+
+## 3. Summa va Raqam Inputlari Qoidasi (Money & Number Inputs Rule)
+- **Asosiy qoida:** Har doim summa/narx yoziladigan inputlarda raqamlar minglik bo'linish (thousand separator - bo'shliq bilan, masalan: `1 000 000`, `250 000`) formatida ko'rsatilsin va kiritilsin (`MoneyInput` komponenti yoki `formatMoneyInput` ishlatilsin).
+- **Raqam validatsiyasi:**
+  - Barcha raqamli va summa kiritish inputlarida qat'iy validatsiya bo'lishi lozim: faqat raqamlar kiritilishiga ruxsat berilsin, harf yoki noo'rin belgilarga yo'l qo'yilmasin.
+  - Manfiy qiymatlarga (agar maxsus ruxsat berilmagan bo'lsa) yo'l qo'yilmasin (`min="0"` yoki musbat raqam tekshiruvi).
+  - Saqlash va hisob-kitoblarda qiymat toza `Number` formatiga o'girilib (`parseMoneyInput` orqali) ishlatilishi lozim.
+  - Oddiy sonlar/miqdorlar (masalan o'quvchilar soni, foiz, muddat, xona sig'imi) kiritiladigan inputlarda ham faqat raqamlar kiritilishi va min/max chegaralariga rioya qilinishi ta'minlansin (`NumberInput` yoki tegishli validatsiya bilan).

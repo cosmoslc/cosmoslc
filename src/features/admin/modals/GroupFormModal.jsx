@@ -3,7 +3,7 @@ import { GROUP_COLORS, nextGroupColor } from "../utils/constants";
 import { Icon } from "../components/Icon";
 import { INPUT_CLS, LABEL_CLS, PrimaryButton } from "../theme/tokens";
 import { money, todayISO } from "../utils/helpers";
-import { DayPicker, Modal, MoneyInput } from "../components/primitives";
+import { DayPicker, Modal, MoneyInput, NumberInput } from "../components/primitives";
 
 function computeEndTimeStr(startTimeStr, durationMinutes) {
   if (!startTimeStr) return "16:30";
@@ -251,11 +251,10 @@ export function GroupFormModal({
           </div>
           <div>
             <label className={LABEL_CLS}>Guruh davomiyligi</label>
-            <input
-              type="number"
-              min="1"
+            <NumberInput
+              min={1}
               value={duration}
-              onChange={(e) => setDuration(e.target.value)}
+              onChange={setDuration}
               className={INPUT_CLS}
               placeholder="3"
             />
@@ -302,12 +301,11 @@ export function GroupFormModal({
               {salaryType === "percent" ? (
                 <div>
                   <label className={LABEL_CLS}>Guruhdagi ulush</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
+                  <NumberInput
+                    min={0}
+                    max={100}
                     value={salaryPercent}
-                    onChange={(e) => setSalaryPercent(e.target.value)}
+                    onChange={setSalaryPercent}
                     className={INPUT_CLS}
                     placeholder="40"
                   />
