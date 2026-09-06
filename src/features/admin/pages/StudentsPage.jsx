@@ -597,20 +597,30 @@ export function StudentsPage({
                 <div className="flex items-center gap-3 min-w-0">
                   <div
                     onClick={() => setSelectedStudentProfileId(student.id)}
-                    className={`flex h-9 w-9 items-center justify-center rounded-xl text-[11px] font-bold shrink-0 cursor-pointer shadow-xs hover:scale-105 transition-transform ${
-                      status === "active"
-                        ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300"
-                        : status === "paused"
-                          ? "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300"
-                          : status === "left"
-                            ? "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300"
-                            : status === "returned"
-                              ? "bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300"
-                              : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                    className={`flex h-10 w-10 min-w-10 min-h-10 items-center justify-center rounded-xl text-xs font-bold shrink-0 cursor-pointer shadow-xs hover:scale-105 transition-transform overflow-hidden ${
+                      student.avatar || student.photo
+                        ? "border border-slate-200 dark:border-slate-700"
+                        : status === "active"
+                          ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300"
+                          : status === "paused"
+                            ? "bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300"
+                            : status === "left"
+                              ? "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300"
+                              : status === "returned"
+                                ? "bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300"
+                                : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
                     }`}
                     title="Profilni ochish"
                   >
-                    {initials}
+                    {student.avatar || student.photo ? (
+                      <img
+                        src={student.avatar || student.photo}
+                        alt={student.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      initials
+                    )}
                   </div>
                   <div className="min-w-0 cursor-pointer" onClick={() => setSelectedStudentProfileId(student.id)}>
                     <p className="font-display text-slate-900 dark:text-white font-bold text-[15px] truncate hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">

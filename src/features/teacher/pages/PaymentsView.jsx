@@ -1,4 +1,16 @@
 import { useState } from 'react';
+import {
+  Wallet,
+  CreditCard,
+  TrendingUp,
+  ArrowUpRight,
+  ArrowDownRight,
+  Layers,
+  Users,
+  Calendar,
+  Banknote,
+  Receipt,
+} from 'lucide-react';
 import { money } from '../utils/helpers';
 import { MONTHS_UZ } from '../utils/constants';
 
@@ -50,66 +62,95 @@ export function PaymentsView({ teacher, directorData, appData }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">To'lovlar</h1>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+            <Wallet size={20} />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">To'lovlar</h1>
+            <p className="text-slate-500 text-xs mt-0.5">Maosh va o'quvchilar to'lovlari hisobi</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <select value={year} onChange={e => setYear(parseInt(e.target.value))} className="px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+          <select value={year} onChange={e => setYear(parseInt(e.target.value))} className="px-3 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
             {years.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
-          <select value={month} onChange={e => setMonth(parseInt(e.target.value))} className="px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500">
+          <select value={month} onChange={e => setMonth(parseInt(e.target.value))} className="px-3 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
             {MONTHS_UZ.map((m, i) => <option key={i} value={i}>{m}</option>)}
           </select>
         </div>
       </div>
 
       {/* Balance card */}
-      <div className="bg-violet-600 rounded-xl p-6 text-white">
-        <p className="text-sm text-violet-200">Joriy balansim</p>
-        <p className="text-3xl font-bold mt-1">{money(remaining)} so'm</p>
-        <p className="text-sm text-violet-200 mt-2">Har bir to'lovdan {sharePercent}% ulush qo'shiladi</p>
-        <div className="grid grid-cols-2 gap-4 mt-4">
-          <div className="bg-white/10 rounded-xl p-3">
-            <p className="text-xs text-violet-200">Bu oy to'lovlar</p>
-            <p className="text-lg font-semibold">{monthPayments.length} ta</p>
+      <div className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl p-6 text-white shadow-lg shadow-emerald-500/10">
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-emerald-100 flex items-center gap-2">
+            <CreditCard size={16} /> Joriy balansim
+          </p>
+          <span className="text-xs bg-white/20 px-2.5 py-1 rounded-full font-medium">
+            {MONTHS_UZ[month]} {year}
+          </span>
+        </div>
+        <p className="text-3xl font-bold mt-2 tracking-tight">{money(remaining)} so'm</p>
+        <p className="text-xs text-emerald-100/90 mt-2">
+          Har bir to'lovdan {defaultSharePercent}% ulush qo'shiladi
+        </p>
+        <div className="grid grid-cols-2 gap-4 mt-5">
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3.5 border border-white/10">
+            <p className="text-xs text-emerald-100 flex items-center gap-1.5">
+              <Receipt size={14} /> Bu oy to'lovlar
+            </p>
+            <p className="text-xl font-bold mt-1">{monthPayments.length} ta</p>
           </div>
-          <div className="bg-white/10 rounded-xl p-3">
-            <p className="text-xs text-violet-200">Mening ulushim</p>
-            <p className="text-lg font-semibold">{money(myShare)} so'm</p>
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3.5 border border-white/10">
+            <p className="text-xs text-emerald-100 flex items-center gap-1.5">
+              <TrendingUp size={14} /> Mening ulushim
+            </p>
+            <p className="text-xl font-bold mt-1">{money(myShare)} so'm</p>
           </div>
         </div>
       </div>
 
       {/* Monthly breakdown */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="p-4 border-b border-slate-100">
-          <h3 className="font-semibold">Oylik hisob-kitob</h3>
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div className="p-4 border-b border-slate-100 flex items-center gap-2">
+          <Banknote size={18} className="text-slate-500" />
+          <h3 className="font-semibold text-slate-800">Oylik hisob-kitob</h3>
         </div>
         <div className="divide-y divide-slate-100">
           <div className="flex items-center justify-between p-4">
-            <span className="text-sm text-slate-600">Oylik haqi (foizdan)</span>
-            <span className="font-semibold text-green-600">+{money(myShare)} so'm</span>
+            <span className="text-sm text-slate-600 flex items-center gap-2">
+              <ArrowUpRight size={16} className="text-emerald-500" /> Oylik haqi (ulushdan)
+            </span>
+            <span className="font-semibold text-emerald-600">+{money(myShare)} so'm</span>
           </div>
           <div className="flex items-center justify-between p-4">
-            <span className="text-sm text-slate-600">Avans</span>
-            <span className="font-semibold text-red-600">-{money(advances)} so'm</span>
+            <span className="text-sm text-slate-600 flex items-center gap-2">
+              <ArrowDownRight size={16} className="text-amber-500" /> Avans
+            </span>
+            <span className="font-semibold text-amber-600">-{money(advances)} so'm</span>
           </div>
           <div className="flex items-center justify-between p-4">
-            <span className="text-sm text-slate-600">Maosh</span>
+            <span className="text-sm text-slate-600 flex items-center gap-2">
+              <ArrowDownRight size={16} className="text-red-500" /> Berilgan maosh
+            </span>
             <span className="font-semibold text-red-600">-{money(salaries)} so'm</span>
           </div>
           <div className="flex items-center justify-between p-4 bg-slate-50">
-            <span className="text-sm font-semibold text-slate-700">Qolgan haqi</span>
-            <span className={`font-bold ${remaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>{money(remaining)} so'm</span>
+            <span className="text-sm font-semibold text-slate-800">Qolgan haqi</span>
+            <span className={`font-bold text-base ${remaining >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              {money(remaining)} so'm
+            </span>
           </div>
         </div>
       </div>
 
       {/* Group breakdown */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="p-4 border-b border-slate-100">
-          <h3 className="font-semibold">Guruhlar bo'yicha tahlil</h3>
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div className="p-4 border-b border-slate-100 flex items-center gap-2">
+          <Layers size={18} className="text-slate-500" />
+          <h3 className="font-semibold text-slate-800">Guruhlar bo'yicha tahlil</h3>
         </div>
         <div className="divide-y divide-slate-100">
           {myGroups.map(g => {
@@ -128,16 +169,16 @@ export function PaymentsView({ teacher, directorData, appData }) {
               (s.groupIds || []).some(id => String(id) === gIdStr)
             );
             return (
-              <div key={g.id} className="flex items-center justify-between p-4">
+              <div key={g.id} className="flex items-center justify-between p-4 hover:bg-slate-50/50 transition-colors">
                 <div>
-                  <p className="font-medium text-sm">{g.name}</p>
-                  <p className="text-xs text-slate-500">
-                    {groupStudents.length} o'quvchi · {groupPayments.length} to'lov {g.teacherSalaryType !== 'fixed' && `(${groupPercent}%)`}
+                  <p className="font-medium text-sm text-slate-900">{g.name}</p>
+                  <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">
+                    <Users size={12} /> {groupStudents.length} o'quvchi · {groupPayments.length} to'lov {g.teacherSalaryType !== 'fixed' && `(${groupPercent}%)`}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-semibold text-slate-700">{money(groupShare)} so'm</p>
-                  <p className="text-xs text-slate-500">{money(groupRevenue)} tushum</p>
+                  <p className="text-sm font-semibold text-slate-800">{money(groupShare)} so'm</p>
+                  <p className="text-xs text-slate-400">{money(groupRevenue)} tushum</p>
                 </div>
               </div>
             );
@@ -147,18 +188,19 @@ export function PaymentsView({ teacher, directorData, appData }) {
       </div>
 
       {/* Salary history */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="p-4 border-b border-slate-100">
-          <h3 className="font-semibold">Oylik maosh tarixi</h3>
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div className="p-4 border-b border-slate-100 flex items-center gap-2">
+          <Calendar size={18} className="text-slate-500" />
+          <h3 className="font-semibold text-slate-800">Oylik maosh tarixi</h3>
         </div>
         <div className="divide-y divide-slate-100">
           {salaryHistory.map(p => (
             <div key={p.id} className="flex items-center justify-between p-4">
               <div>
-                <p className="font-medium text-sm">{p.type === 'advance' ? 'Avans' : 'Maosh'}</p>
+                <p className="font-medium text-sm text-slate-900">{p.type === 'advance' ? 'Avans' : 'Maosh'}</p>
                 <p className="text-xs text-slate-500">{p.date}</p>
               </div>
-              <span className={`font-semibold ${p.type === 'advance' ? 'text-amber-600' : 'text-green-600'}`}>
+              <span className={`font-semibold ${p.type === 'advance' ? 'text-amber-600' : 'text-emerald-600'}`}>
                 {money(p.amount)} so'm
               </span>
             </div>

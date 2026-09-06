@@ -235,28 +235,57 @@ export function StarRating({
   );
 }
 
-export function Avatar({ name, color = "#8b5cf6", size = 40, photo, onClick, className = "" }) {
-  const numericSize = typeof size === "number" ? size : parseFloat(size);
-  const hasValidNum = !isNaN(numericSize) && numericSize > 0;
-  const isClassSize = typeof size === "string" && !hasValidNum;
-  const style = hasValidNum ? { width: numericSize, height: numericSize, minWidth: numericSize } : {};
-  const fontSize = hasValidNum ? numericSize * 0.38 : undefined;
+export function Avatar({
+  name,
+  color = "#8b5cf6",
+  size = 40,
+  photo,
+  src,
+  avatar,
+  onClick,
+  className = "",
+}) {
+  const imageSrc = photo || src || avatar;
+  let numericSize = 40;
+  if (typeof size === "number") {
+    numericSize = size;
+  } else if (typeof size === "string") {
+    if (size === "xs") numericSize = 24;
+    else if (size === "sm") numericSize = 32;
+    else if (size === "md") numericSize = 40;
+    else if (size === "lg") numericSize = 40;
+    else if (size === "xl") numericSize = 56;
+    else {
+      const parsed = parseFloat(size);
+      if (!isNaN(parsed) && parsed > 0) numericSize = parsed;
+    }
+  }
 
-  if (photo)
+  const style = {
+    width: numericSize,
+    height: numericSize,
+    minWidth: numericSize,
+    maxWidth: numericSize,
+    minHeight: numericSize,
+    maxHeight: numericSize,
+  };
+  const fontSize = numericSize * 0.38;
+
+  if (imageSrc)
     return (
       <img
-        src={photo}
+        src={imageSrc}
         alt={name}
         style={style}
         onClick={onClick}
-        className={`rounded-full object-cover border-2 border-white ${isClassSize ? size : ""} ${onClick ? "cursor-pointer" : ""} ${className}`}
+        className={`rounded-full object-cover border-2 border-white shrink-0 ${onClick ? "cursor-pointer" : ""} ${className}`}
       />
     );
   return (
     <div
       style={{ ...style, background: color, ...(fontSize ? { fontSize } : {}) }}
       onClick={onClick}
-      className={`font-display rounded-full flex items-center justify-center font-bold text-white border-2 border-white shrink-0 ${isClassSize ? size : ""} ${onClick ? "cursor-pointer hover:scale-105 transition-transform" : ""} ${className}`}
+      className={`font-display rounded-full flex items-center justify-center font-bold text-white border-2 border-white shrink-0 select-none ${onClick ? "cursor-pointer hover:scale-105 transition-transform" : ""} ${className}`}
     >
       {initials(name)}
     </div>

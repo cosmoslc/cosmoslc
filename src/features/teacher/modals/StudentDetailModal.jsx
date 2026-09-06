@@ -20,7 +20,9 @@ import {
   displayPhone,
   formatDate,
   formatDateTime,
+  money,
 } from "../utils/helpers";
+import { calculateStudentRealBalance } from "../../../shared/utils/prorata";
 
 export function StudentDetailModal({
   studentId,
@@ -51,6 +53,13 @@ export function StudentDetailModal({
     student.groupIds,
   );
   const myGroups = getStudentGroups(appData, studentId);
+  const realBal = calculateStudentRealBalance({
+    student,
+    groups: appData?.allGroups || appData?.groups || [],
+    payments: appData?.payments || [],
+    attendances: appData?.attendance || [],
+    centerSettings: appData?.centerSettings || {},
+  });
   const history = appData.tasks
     .filter(
       (t) =>
@@ -112,7 +121,7 @@ export function StudentDetailModal({
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 mb-5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5">
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
           <p className="text-slate-900 text-lg font-bold">
             {stats.done}/{stats.total}
@@ -130,6 +139,20 @@ export function StudentDetailModal({
             {student.coins || 0} 🪙
           </p>
           <p className="text-slate-500 text-xs">Coin</p>
+        </div>
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
+          <p
+            className={`text-sm sm:text-base font-extrabold truncate ${
+              realBal < 0
+                ? "text-rose-600"
+                : realBal > 0
+                ? "text-emerald-600"
+                : "text-slate-700"
+            }`}
+          >
+            {money(realBal)} so'm
+          </p>
+          <p className="text-slate-500 text-xs">Balans</p>
         </div>
       </div>
 

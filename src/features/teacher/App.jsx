@@ -16,6 +16,8 @@ import { AppShell } from "./layout/Layout";
 import { TeacherLoginScreen } from "./pages/TeacherLoginScreen";
 import { DashboardView } from "./pages/DashboardView";
 import { RatingView } from "./pages/RatingView";
+import { StudentsView } from "./pages/StudentsView";
+import { GroupsView } from "./pages/GroupsView";
 import { TasksView } from "./pages/TasksView";
 import { ScheduleView } from "./pages/ScheduleView";
 import { ProfileView } from "./pages/ProfileView";
@@ -254,9 +256,66 @@ export default function App() {
     if (isPastLocked && existing?.locked) return;
     const prevEntry = existing?.records?.[studentId];
     const prevReason = typeof prevEntry === "object" ? prevEntry.reason : "";
+    const prevGrade = typeof prevEntry === "object" ? prevEntry.grade : undefined;
     const entry = {
+      ...(typeof prevEntry === "object" ? prevEntry : {}),
       status,
       reason: reason !== undefined ? reason : prevReason || "",
+    };
+    if (prevGrade !== undefined) {
+      entry.grade = prevGrade;
+    }
+
+    if (existing) {
+      const mergedRecords = { ...existing.records, [studentId]: entry };
+      setAppData((prev) => ({
+        ...prev,
+        attendance: prev.attendance.map((a) =>
+          a.id === existing.id ? { ...a, records: mergedRecords } : a,
+        ),
+      }));
+      try {
+        await api.patchAttendanceRecord(existing.id, mergedRecords);
+      } catch (e) {
+        reportError(e, "Saqlab bo'lmadi.");
+      }
+    } else {
+      const tempId = generateId("att-local");
+      const records = { [studentId]: entry };
+      setAppData((prev) => ({
+        ...prev,
+        attendance: [
+          ...prev.attendance,
+          { id: tempId, groupId, date, locked: false, records },
+        ],
+      }));
+      try {
+        const created = await api.addAttendanceRecord({
+          groupId,
+          date,
+          records,
+          locked: false,
+        });
+        setAppData((prev) => ({
+          ...prev,
+          attendance: prev.attendance.map((a) =>
+            a.id === tempId ? created : a,
+          ),
+        }));
+      } catch (e) {
+        reportError(e, "Saqlab bo'lmadi.");
+      }
+    }
+  }
+
+  async function markGrade(groupId, date, studentId, grade) {
+    const existing = appData.attendance.find(
+      (a) => a.groupId === groupId && a.date === date,
+    );
+    const prevEntry = existing?.records?.[studentId];
+    const entry = {
+      ...(typeof prevEntry === "object" ? prevEntry : {}),
+      grade,
     };
 
     if (existing) {
@@ -528,6 +587,9 @@ export default function App() {
     tasks: filteredTasks,
     attendance: filteredAttendance,
     postponed: filteredPostponed,
+    payments: directorData?.payments || [],
+    centerSettings: directorData?.centerSettings || {},
+    allGroups: appData.groups || [],
   };
 
   return (
@@ -551,23 +613,36 @@ export default function App() {
       >
         {view === "dashboard" && (
           <DashboardView
+            teacher={teacher}
+            directorData={directorData}
             appData={filteredAppData}
+            allAppData={appData}
             openModal={openModal}
             setSelectedGroupId={setSelectedGroupId}
             selectedGroupId={selectedGroupId}
             courses={courses}
             canCreateGroups={canCreateGroups}
+            goTo={goTo}
           />
         )}
         {view === "students" && (
-          <RatingView appData={filteredAppData} openModal={openModal} />
+          <StudentsView
+            appData={filteredAppData}
+            directorData={directorData}
+            openModal={openModal}
+          />
         )}
         {view === "groups" && (
-          <TasksView
+          <GroupsView
             appData={filteredAppData}
+            directorData={directorData}
             openModal={openModal}
+            canCreateGroups={canCreateGroups}
+            courses={courses}
+            goTo={goTo}
             markSubmission={markSubmission}
             markAttendance={markAttendance}
+            markGrade={markGrade}
             saveAttendance={saveAttendance}
             selectedTaskId={selectedTaskId}
             setSelectedTaskId={setSelectedTaskId}

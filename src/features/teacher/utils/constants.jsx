@@ -1,4 +1,5 @@
 import {
+  Home,
   Users,
   Trophy,
   ClipboardList,
@@ -6,6 +7,7 @@ import {
   User,
   Wallet,
   BarChart3,
+  GraduationCap,
 } from "lucide-react";
 
 export {
@@ -18,10 +20,13 @@ export { GROUP_COLORS, nextGroupColor } from "../../../shared/constants/colors";
 export const TEACHER_SESSION_KEY = "teacher-session-v1";
 
 export const NAV_ITEMS = [
-  { id: "dashboard", label: "Asosiy" },
-  { id: "groups", label: "Guruhlar" },
-  { id: "analytics", label: "Statistika" },
-  { id: "students", label: "O'quvchilar" },
+  { id: "dashboard", label: "Asosiy", icon: Home },
+  { id: "groups", label: "Guruhlar", icon: Users },
+  { id: "schedule", label: "Dars jadvali", icon: Calendar },
+  { id: "students", label: "O'quvchilar", icon: GraduationCap },
+  { id: "analytics", label: "Statistika", icon: BarChart3 },
+  { id: "payments", label: "To'lovlar", icon: Wallet },
+  { id: "profile", label: "Profil", icon: User },
 ];
 
 export const NAV_ICON_COLORS = {

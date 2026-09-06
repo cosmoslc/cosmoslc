@@ -141,13 +141,21 @@ export function ExcelButton({
   templateLabel,
   title = "Excel amallari",
   onClick,
+  showImport = true,
+  showExport = true,
+  showTemplate = true,
   ...props
 }) {
   const [modalOpen, setModalOpen] = useState(false);
   const buttonRef = useRef(null);
 
+  const effectiveExport = showExport ? onExport : undefined;
+  const effectiveImport = showImport ? onImport : undefined;
+  const effectiveTemplate = showTemplate ? onTemplate : undefined;
+  const hasActions = Boolean(effectiveExport || effectiveImport || effectiveTemplate);
+
   const handleClick = (e) => {
-    if (onExport || onImport || onTemplate) {
+    if (hasActions) {
       setModalOpen((prev) => !prev);
     } else if (onClick) {
       onClick(e);
@@ -171,7 +179,7 @@ export function ExcelButton({
           <>
             <FileSpreadsheet size={16} />
             <span>Excel</span>
-            {(onExport || onImport || onTemplate) && (
+            {hasActions && (
               <ChevronDown
                 size={14}
                 className={`transition-transform duration-200 ${
@@ -183,14 +191,14 @@ export function ExcelButton({
         )}
       </button>
 
-      {(onExport || onImport || onTemplate) && (
+      {hasActions && (
         <ExcelActionsModal
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
           title={title}
-          onExport={onExport}
-          onImport={onImport}
-          onTemplate={onTemplate}
+          onExport={effectiveExport}
+          onImport={effectiveImport}
+          onTemplate={effectiveTemplate}
           exportLabel={exportLabel}
           importLabel={importLabel}
           templateLabel={templateLabel}

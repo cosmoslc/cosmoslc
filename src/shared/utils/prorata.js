@@ -318,3 +318,100 @@ export function calculateRefundAmount({
   };
 }
 
+/**
+ * Hisoblangan real balans (Admin StudentsPage va StudentProfilePage bilan 100% mos)
+ */
+export function calculateStudentRealBalance({
+  student,
+  groups = [],
+  payments = [],
+  attendances = [],
+  monthStr,
+  centerSettings = {},
+}) {
+  if (!student) return 0;
+  const now = new Date();
+  const currentMonth =
+    monthStr ||
+    `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const studentGids = (student.groupIds || []).map(String);
+  const studentGroups = (groups || []).filter((g) =>
+    studentGids.includes(String(g.id))
+  );
+
+  let totalUnpaidFee = 0;
+  let totalOverpaidFee = 0;
+
+  studentGroups.forEach((g) => {
+    let fullPrice = Number(g.price || 0);
+    if (student.discount) {
+      if (
+        student.discountType === "percent" ||
+        student.discountType === "%" ||
+        student.discountType === "foiz"
+      ) {
+        fullPrice = Math.round(
+          fullPrice * (1 - Number(student.discount) / 100)
+        );
+      } else {
+        fullPrice = Math.max(0, fullPrice - Number(student.discount));
+      }
+    }
+
+    if (fullPrice > 0) {
+      const membership =
+        student?.groupMemberships?.[g.id] ||
+        student?.groupMemberships?.[String(g.id)];
+      const groupAttendances = (attendances || []).filter(
+        (a) => String(a.groupId) === String(g.id)
+      );
+
+      const feeInfo = calculateStudentGroupFee({
+        fullMonthlyFee: fullPrice,
+        groupDays: g.days || ["Dush", "Chor", "Juma"],
+        monthStr: currentMonth,
+        membership,
+        student,
+        group: g,
+        attendances: groupAttendances,
+        settings: centerSettings,
+      });
+
+      const expectedFee = feeInfo.calculatedFee;
+      const paidAmount = (payments || [])
+        .filter(
+          (p) =>
+            String(p.studentId) === String(student.id) &&
+            String(p.groupId) === String(g.id) &&
+            (p.month === currentMonth ||
+              (!p.month && p.date && p.date.startsWith(currentMonth)))
+        )
+        .reduce(
+          (sum, p) =>
+            sum + (Number(p.amount) || 0) + (Number(p.discount) || 0),
+          0
+        );
+
+      if (paidAmount < expectedFee) {
+        totalUnpaidFee += expectedFee - paidAmount;
+      } else if (paidAmount > expectedFee) {
+        totalOverpaidFee += paidAmount - expectedFee;
+      }
+    }
+  });
+
+  const isTrial =
+    student.status === "trial" ||
+    (studentGroups.length > 0 &&
+      studentGroups.every((g) => {
+        const m =
+          student?.groupMemberships?.[g.id] ||
+          student?.groupMemberships?.[String(g.id)];
+        return !m?.activationDate || m?.status === "trial";
+      }));
+
+  const rawBal =
+    Number(student.balance || 0) + totalOverpaidFee - totalUnpaidFee;
+  return isTrial && rawBal <= 0 ? 0 : rawBal;
+}
+

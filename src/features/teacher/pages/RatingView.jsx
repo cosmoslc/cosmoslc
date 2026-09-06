@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Trophy } from "lucide-react";
+import { Trophy, Star, Coins } from "lucide-react";
 import {
   GLASS,
   INPUT_CLS,
@@ -58,15 +58,17 @@ export function RatingView({ appData, openModal }) {
       <div className="flex gap-2">
         <button
           onClick={() => setMetric("star")}
-          className={metric === "star" ? BTN_PRIMARY : BTN_GHOST}
+          className={`${metric === "star" ? BTN_PRIMARY : BTN_GHOST} flex items-center gap-1.5`}
         >
-          ⭐ Yulduz reytingi
+          <Star size={16} className={metric === "star" ? "fill-white text-white" : "fill-amber-400 text-amber-500"} />
+          Yulduz reytingi
         </button>
         <button
           onClick={() => setMetric("coin")}
-          className={metric === "coin" ? BTN_PRIMARY : BTN_GHOST}
+          className={`${metric === "coin" ? BTN_PRIMARY : BTN_GHOST} flex items-center gap-1.5`}
         >
-          🪙 Coin reytingi
+          <Coins size={16} className={metric === "coin" ? "text-white" : "text-amber-500"} />
+          Coin reytingi
         </button>
       </div>
 
