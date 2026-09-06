@@ -1683,11 +1683,11 @@ html.dark body {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
-  padding: 8px;
+  padding: 6px;
   border-radius: 99rem;
   display: flex;
   justify-content: center;
-  gap: 8px;
+  gap: 4px;
   z-index: 50;
   margin: 0 auto;
   position: relative;
@@ -1714,7 +1714,7 @@ html.dark body {
   min-width: 0;
   color: rgba(30, 30, 30, 0.9);
   text-decoration: none;
-  padding: 10px 6px;
+  padding: 8px 4px;
   border-radius: 999rem;
   -webkit-tap-highlight-color: transparent;
   background: transparent;
@@ -1733,20 +1733,20 @@ html.dark body {
     inset 2px 2px 5px -2px rgba(255, 255, 255, 0.4),
     inset -2px -1px 5px 0 rgba(255, 255, 255, 0.4),
     inset 0 -2px 0 rgba(255, 255, 255, 0.2);
-  transform: rotate(2deg);
+  transform: scale(1.05); /* rotate olib tashlandi */
   color: rgba(0, 122, 255, 0.7);
 }
 
 .menu button svg {
-  width: 1.4rem;
-  height: 1.4rem;
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 .menu button span {
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   font-weight: 600;
   line-height: 1;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .menu button.active {
