@@ -27,8 +27,11 @@ export async function addNotification(payload) {
     const { data, error } = await supabase.from('notifications').insert({
       director_id: payload.directorId,
       user_type: payload.userType,
-      user_id: payload.userId,
+      user_id: payload.userId || payload.studentId,
       message: payload.message,
+      title: payload.title,
+      type: payload.type,
+      target_phone: payload.targetPhone,
       read: payload.read || false,
     }).select().single();
     if (error) throw error;
@@ -38,6 +41,9 @@ export async function addNotification(payload) {
       userType: data.user_type,
       userId: data.user_id,
       message: data.message,
+      title: data.title,
+      type: data.type,
+      targetPhone: data.target_phone,
       read: data.read,
       createdAt: data.created_at,
     };
@@ -47,8 +53,11 @@ export async function addNotification(payload) {
       id: 'n_' + Date.now(),
       directorId: payload.directorId,
       userType: payload.userType,
-      userId: payload.userId,
+      userId: payload.userId || payload.studentId,
       message: payload.message,
+      title: payload.title,
+      type: payload.type,
+      targetPhone: payload.targetPhone,
       read: payload.read || false,
       createdAt: new Date().toISOString(),
     };

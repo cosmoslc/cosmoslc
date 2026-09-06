@@ -559,10 +559,10 @@ export default function App() {
             canCreateGroups={canCreateGroups}
           />
         )}
-        {view === "rating" && (
+        {view === "students" && (
           <RatingView appData={filteredAppData} openModal={openModal} />
         )}
-        {view === "tasks" && (
+        {view === "groups" && (
           <TasksView
             appData={filteredAppData}
             openModal={openModal}

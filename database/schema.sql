@@ -263,6 +263,7 @@ alter table students add column if not exists neighborhood text;
 alter table students add column if not exists street_address text;
 alter table students add column if not exists status text default 'active';
 alter table students add column if not exists status_note text;
+alter table students add column if not exists debt_note jsonb;
 alter table students add column if not exists group_memberships jsonb not null default '{}';
 alter table students add column if not exists joined_at date default current_date;
 alter table students add column if not exists manager_id text references managers(id) on delete set null;

@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+const fs = require('fs');
+const content = `import { useState, useMemo } from "react";
 import {
   AlertCircle,
   Clock,
@@ -23,7 +24,6 @@ import {
   User as UserIcon,
 } from "lucide-react";
 import { INPUT_CLS, PrimaryButton } from "../theme/tokens";
-import { calculateStudentGroupFee } from "../../../shared/utils/prorata";
 import { money, normalizePhone } from "../utils/helpers";
 import { opGroups } from "../utils/dataHelpers";
 import { Avatar, EmptyState } from "../components/primitives";
@@ -48,11 +48,7 @@ export function DebtorsPage({
   onRefresh,
 }) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
-  const [groupId, setGroupId] = useState("all");
-  const [teacherId, setTeacherId] = useState("all");
-  const [tagFilter, setTagFilter] = useState("all");
+  const [severityFilter, setSeverityFilter] = useState("all");
   const [sortBy, setSortBy] = useState("highestDebt");
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -68,6 +64,7 @@ export function DebtorsPage({
   // SMS Modal
   const [reminderTarget, setReminderTarget] = useState(null);
   const [reminderMessage, setReminderMessage] = useState("");
+  const [reminderRecipient, setReminderRecipient] = useState("parent");
   const [sendingReminder, setSendingReminder] = useState(false);
   const [reminderSuccessToast, setReminderSuccessToast] = useState(false);
 
@@ -83,99 +80,46 @@ export function DebtorsPage({
     return opGroups(opData).filter((g) => courseIds.length === 0 || courseIds.includes(g.courseId));
   }, [opData, courseIds]);
 
-  const teachers = useMemo(() => opData?.teachers || directorData?.teachersHR || [], [opData?.teachers, directorData?.teachersHR]);
-
-      const allStudents = useMemo(() => opData?.students || directorData?.students || [], [opData?.students, directorData?.students]);
-  const allPayments = useMemo(() => directorData?.payments || opData?.payments || [], [directorData?.payments, opData?.payments]);
-  const currentMonth = useMemo(() => new Date().toISOString().slice(0, 7), []);
+  const allStudents = useMemo(() => opData?.students || [], [opData?.students]);
   const currentDay = new Date().getDate();
 
-  // Debtors Logic - computed from explicit student.balance
+  // Debtors Logic - strictly based on student.balance < 0
   const allDebtorRows = useMemo(() => {
-    const rows = [];
-    allStudents.forEach(s => {
-      if (s.status === "left") return;
-
-      let totalDebt = 0;
-      let totalFee = 0;
-      let isPartial = false;
+    const debtors = allStudents.filter(s => Number(s.balance || 0) < 0);
+    return debtors.map(s => {
+      const debtAmount = Math.abs(Number(s.balance));
       const studentGroups = groups.filter(g => (s.groupIds || []).includes(g.id));
       
-      studentGroups.forEach(g => {
-        const membership = s?.groupMemberships?.[g.id] || s?.groupMemberships?.[String(g.id)] || s;
-        const prorataInfo = calculateStudentGroupFee({
-          fullMonthlyFee: g.price || 0,
-          groupDays: g.days || ["Dush", "Chor", "Juma"],
-          monthStr: currentMonth,
-          membership,
-          student: s,
-          group: g,
-          attendances: opData?.attendance || directorData?.attendance || []
-        });
+      const totalMonthlyFee = studentGroups.reduce((acc, g) => acc + Number(g.price || 0), 0);
+      const groupNames = studentGroups.map(g => g.name).join(", ");
+      
+      const isDueToday = currentDay === 10;
+      const isOverdue = debtAmount > totalMonthlyFee || currentDay > 10;
+      const isPartial = debtAmount < totalMonthlyFee && debtAmount > 0;
 
-        const fee = prorataInfo.calculatedFee || 0;
-        if (fee <= 0) return;
+      let severity = "normal";
+      if (isOverdue) severity = "overdue";
+      else if (isPartial) severity = "partial";
+      else severity = "normal";
 
-        const groupPayments = allPayments.filter(p => 
-          String(p.studentId) === String(s.id) && 
-          String(p.groupId) === String(g.id) &&
-          String(p.month) === currentMonth
-        );
-        const paidForGroup = groupPayments.reduce((sum, p) => 
-          sum + Number(p.amount || 0) + Number(p.usedBalance || 0) + Number(p.discount || 0), 0
-        );
-        
-        const debtForGroup = Math.max(0, fee - paidForGroup);
-        if (debtForGroup > 0) {
-          totalDebt += debtForGroup;
-          totalFee += fee;
-          if (paidForGroup > 0) isPartial = true;
-        }
-      });
-
-      if (totalDebt > 0) {
-        // As per user request, don't show those who have positive overall balance enough to cover
-        // the debt, BUT wait, if they have +38 balance they might not show up anyway because we should subtract balance?
-        // Wait! The user says "talabalrda balasni 38+ bor". Does that mean their s.balance is 380,000 and we should subtract it from the debt?
-        // Yes, currentBalance covers the debt!
-        const currentBalance = Number(s.balance || 0);
-        let finalDebt = totalDebt;
-        if (currentBalance > 0) {
-           finalDebt = Math.max(0, totalDebt - currentBalance);
-        }
-        
-        if (finalDebt > 0) {
-          const isDueToday = currentDay === 10;
-          const isOverdue = currentDay > 10;
-          
-          let severity = "normal";
-          if (isOverdue) severity = "overdue";
-          else if (isPartial) severity = "partial";
-
-          rows.push({
-            id: s.id,
-            studentId: s.id,
-            studentName: s.name,
-            studentPhone: s.phone || "",
-            parentName: s.parentName || "Ota-onasi",
-            parentPhone: s.parentPhone || s.phone || "",
-            groupNames: studentGroups.map(g => g.name).join(", ") || "Guruhsiz",
-            groupIds: studentGroups.map(g => g.id),
-            teacherIds: studentGroups.map(g => g.teacherId).filter(Boolean),
-            debtAmount: finalDebt,
-            debtNote: s.debtNote || null,
-            addedDate: s.createdAt || s.added_at || "",
-            severity,
-            isDueToday,
-            isOverdue,
-            isPartial,
-            groupColor: studentGroups[0]?.color || "#6366f1",
-          });
-        }
-      }
+      return {
+        id: s.id,
+        studentId: s.id,
+        studentName: s.name,
+        studentPhone: s.phone || "",
+        parentName: s.parentName || "Ota-onasi",
+        parentPhone: s.parentPhone || s.phone || "",
+        groupNames: groupNames || "Guruhsiz",
+        debtAmount,
+        debtNote: s.debtNote || null,
+        severity,
+        isDueToday,
+        isOverdue,
+        isPartial,
+        groupColor: studentGroups[0]?.color || "#6366f1",
+      };
     });
-    return rows;
-  }, [allStudents, groups, allPayments, currentMonth, currentDay, opData?.attendance, directorData?.attendance]);
+  }, [allStudents, groups, currentDay]);
 
   // Compute 5 KPIs
   const kpis = useMemo(() => {
@@ -206,28 +150,12 @@ export function DebtorsPage({
     };
   }, [allDebtorRows]);
 
-  // Unique tags for filter
-  const uniqueTags = useMemo(() => {
-    const tags = new Set();
-    allDebtorRows.forEach(r => {
-      if (r.debtNote?.tag) tags.add(r.debtNote.tag);
-    });
-    return Array.from(tags).sort();
-  }, [allDebtorRows]);
-
   // Filtered rows
   const filteredDebtors = useMemo(() => {
     return allDebtorRows.filter((row) => {
-      if (groupId !== "all" && !row.groupIds.includes(groupId)) return false;
-      if (teacherId !== "all" && !row.teacherIds.includes(teacherId)) return false;
-      if (tagFilter !== "all" && row.debtNote?.tag !== tagFilter) return false;
-      
-      if (fromDate) {
-        if (!row.addedDate || row.addedDate < fromDate) return false;
-      }
-      if (toDate) {
-        if (!row.addedDate || row.addedDate > toDate + "T23:59:59") return false;
-      }
+      if (severityFilter === "overdue" && !row.isOverdue) return false;
+      if (severityFilter === "dueToday" && !row.isDueToday) return false;
+      if (severityFilter === "partial" && !row.isPartial) return false;
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
@@ -244,7 +172,7 @@ export function DebtorsPage({
 
       return true;
     });
-  }, [allDebtorRows, groupId, teacherId, tagFilter, fromDate, toDate, searchQuery]);
+  }, [allDebtorRows, severityFilter, searchQuery]);
 
   // Sorted rows
   const sortedDebtors = useMemo(() => {
@@ -312,7 +240,8 @@ export function DebtorsPage({
 
   function handleOpenReminder(debtor) {
     setReminderTarget(debtor);
-    const defaultMsg = `Hurmatli ${debtor.parentName || debtor.studentName}! ${debtor.studentName}ning ${money(debtor.debtAmount)} so'm o'quv to'lovi qoldig'i mavjud. Iltimos, to'lovni o'z vaqtida amalga oshirishingizni so'raymiz. COSMOS LC.`;
+    setReminderRecipient("parent");
+    const defaultMsg = \`Hurmatli \${debtor.parentName || debtor.studentName}! \${debtor.studentName}ning \${money(debtor.debtAmount)} so'm o'quv to'lovi qoldig'i mavjud. Iltimos, to'lovni o'z vaqtida amalga oshirishingizni so'raymiz. COSMOS LC.\`;
     setReminderMessage(defaultMsg);
   }
 
@@ -322,11 +251,14 @@ export function DebtorsPage({
     setSendingReminder(true);
     try {
       await api.addNotification({
-        title: `SMS Eslatma: ${reminderTarget.studentName}`,
+        title: \`SMS Eslatma: \${reminderTarget.studentName}\`,
         message: reminderMessage,
         type: "sms_reminder",
         studentId: reminderTarget.studentId,
-        targetPhone: reminderTarget.parentPhone || reminderTarget.studentPhone,
+        targetPhone:
+          reminderRecipient === "parent"
+            ? reminderTarget.parentPhone
+            : reminderTarget.studentPhone,
       });
       setReminderTarget(null);
       setReminderSuccessToast(true);
@@ -340,11 +272,7 @@ export function DebtorsPage({
 
   function handleResetFilters() {
     setSearchQuery("");
-    setFromDate("");
-    setToDate("");
-    setGroupId("all");
-    setTeacherId("all");
-    setTagFilter("all");
+    setSeverityFilter("all");
     setSortBy("highestDebt");
     setCurrentPage(1);
   }
@@ -371,7 +299,7 @@ export function DebtorsPage({
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => window.print()}
-            className="px-4 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-medium border border-slate-200 dark:border-slate-700 flex items-center gap-2 transition-all shadow-xs cursor-pointer"
+            className="px-4 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-medium border border-slate-200 dark:border-slate-700 flex items-center gap-2 transition-all shadow-xs"
           >
             <Printer size={15} /> Chop etish
           </button>
@@ -380,7 +308,7 @@ export function DebtorsPage({
 
       {/* 2. KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3.5">
-        <div className="stat-card border border-slate-200/80 dark:border-slate-800 bg-gradient-to-b from-slate-50/50 to-white dark:from-slate-800/20 dark:to-slate-900 p-4 rounded-xl shadow-sm hover:-translate-y-1 transition-all">
+        <div className="stat-card border-slate-200/80 dark:border-slate-800 bg-gradient-to-b from-slate-50/50 to-white dark:from-slate-800/20 dark:to-slate-900 p-4 rounded-xl shadow-sm hover:-translate-y-1 transition-all">
           <div className="flex items-center justify-between mb-2">
             <div className="w-[34px] h-[34px] rounded-xl bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center shadow-md">
               <Users size={16} className="text-white" />
@@ -394,7 +322,7 @@ export function DebtorsPage({
           </div>
         </div>
 
-        <div className="stat-card border border-rose-200/80 dark:border-rose-900/40 bg-gradient-to-b from-rose-50/30 to-white dark:from-rose-950/20 dark:to-slate-900 p-4 rounded-xl shadow-sm hover:-translate-y-1 transition-all">
+        <div className="stat-card border-rose-200/80 dark:border-rose-900/40 bg-gradient-to-b from-rose-50/30 to-white dark:from-rose-950/20 dark:to-slate-900 p-4 rounded-xl shadow-sm hover:-translate-y-1 transition-all">
           <div className="flex items-center justify-between mb-2">
             <div className="w-[34px] h-[34px] rounded-xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center shadow-md">
               <TrendingDown size={16} className="text-white" />
@@ -408,7 +336,7 @@ export function DebtorsPage({
           </div>
         </div>
 
-        <div className="stat-card border border-indigo-200/80 dark:border-indigo-900/40 bg-gradient-to-b from-indigo-50/30 to-white dark:from-indigo-950/20 dark:to-slate-900 p-4 rounded-xl shadow-sm hover:-translate-y-1 transition-all">
+        <div className="stat-card border-indigo-200/80 dark:border-indigo-900/40 bg-gradient-to-b from-indigo-50/30 to-white dark:from-indigo-950/20 dark:to-slate-900 p-4 rounded-xl shadow-sm hover:-translate-y-1 transition-all">
           <div className="flex items-center justify-between mb-2">
             <div className="w-[34px] h-[34px] rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center shadow-md">
               <PieChart size={16} className="text-white" />
@@ -422,7 +350,7 @@ export function DebtorsPage({
           </div>
         </div>
 
-        <div className="stat-card border border-red-200/80 dark:border-red-900/40 bg-gradient-to-b from-red-50/30 to-white dark:from-red-950/20 dark:to-slate-900 p-4 rounded-xl shadow-sm hover:-translate-y-1 transition-all">
+        <div className="stat-card border-red-200/80 dark:border-red-900/40 bg-gradient-to-b from-red-50/30 to-white dark:from-red-950/20 dark:to-slate-900 p-4 rounded-xl shadow-sm hover:-translate-y-1 transition-all">
           <div className="flex items-center justify-between mb-2">
             <div className="w-[34px] h-[34px] rounded-xl bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center shadow-md">
               <ShieldAlert size={16} className="text-white" />
@@ -436,7 +364,7 @@ export function DebtorsPage({
           </div>
         </div>
 
-        <div className="stat-card border border-amber-200/80 dark:border-amber-900/40 bg-gradient-to-b from-amber-50/30 to-white dark:from-amber-950/20 dark:to-slate-900 p-4 rounded-xl shadow-sm hover:-translate-y-1 transition-all">
+        <div className="stat-card border-amber-200/80 dark:border-amber-900/40 bg-gradient-to-b from-amber-50/30 to-white dark:from-amber-950/20 dark:to-slate-900 p-4 rounded-xl shadow-sm hover:-translate-y-1 transition-all">
           <div className="flex items-center justify-between mb-2">
             <div className="w-[34px] h-[34px] rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-md">
               <Clock size={16} className="text-white" />
@@ -453,62 +381,53 @@ export function DebtorsPage({
 
       {/* 3. FILTER TOOLBAR */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 rounded-xl shadow-sm space-y-3">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-64">
-              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                placeholder="O'quvchi, telefon..."
-                className={`${INPUT_CLS} pl-9 text-xs`}
-              />
-            </div>
+        <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-xs font-bold text-slate-400 mr-1 flex items-center gap-1">
+              <Filter size={13} /> Holat:
+            </span>
+            <button
+              onClick={() => { setSeverityFilter("all"); setCurrentPage(1); }}
+              className={\`px-3 py-1 rounded-xl text-xs font-bold transition-all \${severityFilter === "all" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600"}\`}
+            >
+              Barcha
+            </button>
+            <button
+              onClick={() => { setSeverityFilter("overdue"); setCurrentPage(1); }}
+              className={\`px-3 py-1 rounded-xl text-xs font-bold transition-all \${severityFilter === "overdue" ? "bg-red-600 text-white" : "bg-red-50 text-red-700"}\`}
+            >
+              Muddati o'tgan
+            </button>
+            <button
+              onClick={() => { setSeverityFilter("partial"); setCurrentPage(1); }}
+              className={\`px-3 py-1 rounded-xl text-xs font-bold transition-all \${severityFilter === "partial" ? "bg-indigo-600 text-white" : "bg-indigo-50 text-indigo-700"}\`}
+            >
+              Chala to'lagan
+            </button>
           </div>
-          <div className="flex items-center gap-2 self-end sm:self-auto">
-            <button onClick={handleResetFilters} className="px-3 py-2 rounded-xl text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 bg-slate-100 dark:bg-slate-800 text-xs font-bold cursor-pointer transition-colors flex items-center gap-1.5">
-              <RotateCcw size={14} /> Tozalash
+          <div className="flex items-center gap-2">
+            <button onClick={handleResetFilters} className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 bg-slate-100">
+              <RotateCcw size={14} />
             </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5">
-          <div>
-            <input type="date" value={fromDate} onChange={e => { setFromDate(e.target.value); setCurrentPage(1); }} className={`${INPUT_CLS} text-xs`} title="Sanadan" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div className="relative">
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+              placeholder="O'quvchi, telefon..."
+              className={\`\${INPUT_CLS} pl-9 text-xs\`}
+            />
           </div>
           <div>
-            <input type="date" value={toDate} onChange={e => { setToDate(e.target.value); setCurrentPage(1); }} className={`${INPUT_CLS} text-xs`} title="Sanagacha" />
-          </div>
-          <div>
-            <select value={groupId} onChange={e => { setGroupId(e.target.value); setCurrentPage(1); }} className={`${INPUT_CLS} text-xs cursor-pointer`}>
-              <option value="all">Barcha guruhlar</option>
-              {groups.map(g => (
-                <option key={g.id} value={g.id}>{g.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <select value={teacherId} onChange={e => { setTeacherId(e.target.value); setCurrentPage(1); }} className={`${INPUT_CLS} text-xs cursor-pointer`}>
-              <option value="all">Barcha o'qituvchilar</option>
-              {teachers.map(t => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <select value={tagFilter} onChange={e => { setTagFilter(e.target.value); setCurrentPage(1); }} className={`${INPUT_CLS} text-xs cursor-pointer`}>
-              <option value="all">Barcha teglar</option>
-              {uniqueTags.map(tag => (
-                <option key={tag} value={tag}>{tag}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className={`${INPUT_CLS} text-xs cursor-pointer`}>
-              <option value="highestDebt">Eng ko'p qarzdan ↓</option>
-              <option value="lowestDebt">Eng kam qarzdan ↑</option>
-              <option value="name">Ism bo'yicha (A-Z)</option>
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className={\`\${INPUT_CLS} text-xs\`}>
+              <option value="highestDebt">Eng ko'p qarzdan kamiga ↓</option>
+              <option value="lowestDebt">Eng kam qarzdan ko'piga ↑</option>
+              <option value="name">O'quvchi ismi bo'yicha (A-Z)</option>
             </select>
           </div>
         </div>
@@ -519,9 +438,9 @@ export function DebtorsPage({
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 font-bold">
+              <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 text-slate-500 font-bold">
                 <th className="py-3.5 px-4 w-12 text-center">
-                  <input type="checkbox" className="rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-700 bg-transparent cursor-pointer" />
+                  <input type="checkbox" className="rounded text-indigo-600 focus:ring-indigo-500 border-slate-300" />
                 </th>
                 <th className="py-3.5 px-4">O'quvchi</th>
                 <th className="py-3.5 px-4">Telefon raqam</th>
@@ -540,13 +459,13 @@ export function DebtorsPage({
                 </tr>
               ) : (
                 paginatedDebtors.map((row) => (
-                  <tr key={row.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                  <tr key={row.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
                     <td className="py-3.5 px-4 text-center">
-                      <input type="checkbox" className="rounded text-indigo-600 border-slate-300 dark:border-slate-700 bg-transparent cursor-pointer" />
+                      <input type="checkbox" className="rounded text-indigo-600 border-slate-300" />
                     </td>
                     <td className="py-3.5 px-4">
                       <div 
-                        className="flex items-center gap-3 cursor-pointer group w-fit"
+                        className="flex items-center gap-3 cursor-pointer group"
                         onClick={() => openModal && openModal({ type: 'studentProfile', studentId: row.studentId })}
                       >
                         <Avatar name={row.studentName} color={row.groupColor} size={32} />
@@ -555,11 +474,11 @@ export function DebtorsPage({
                         </span>
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300 font-mono">
+                    <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300">
                       {row.studentPhone || "—"}
                     </td>
                     <td className="py-3.5 px-4">
-                      <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-md">
+                      <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md">
                         {row.groupNames}
                       </span>
                     </td>
@@ -589,21 +508,21 @@ export function DebtorsPage({
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => handleOpenNote(row)}
-                          className="px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[11px] font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                          className="px-2 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-[11px] font-bold transition-colors flex items-center gap-1"
                           title="Izoh qo'shish"
                         >
                           <Tag size={13} />
                         </button>
                         <button
                           onClick={() => handleOpenReminder(row)}
-                          className="px-2 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-400 text-[11px] font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                          className="px-2 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[11px] font-bold transition-colors flex items-center gap-1"
                           title="SMS yuborish"
                         >
                           <MessageSquare size={13} />
                         </button>
                         <button
                           onClick={() => handleOpenPayment(row)}
-                          className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                          className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition-colors flex items-center gap-1"
                           title="Qarz to'lash"
                         >
                           <CreditCard size={13} /> To'lash
@@ -618,23 +537,23 @@ export function DebtorsPage({
         </div>
 
         {/* PAGINATION */}
-        <div className="px-5 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between flex-wrap gap-3 bg-slate-50/50 dark:bg-slate-900/50">
-          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+        <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-between flex-wrap gap-3 bg-slate-50/50">
+          <div className="flex items-center gap-2 text-xs text-slate-500">
             <span>Sahifada:</span>
-            <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-1 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer outline-hidden">
+            <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }} className="bg-white border border-slate-200 rounded-xl px-2 py-1 text-xs font-bold text-slate-700">
               <option value={10}>10</option>
               <option value={20}>20</option>
               <option value={50}>50</option>
             </select>
           </div>
           <div className="flex items-center gap-1.5">
-            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage <= 1} className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 flex items-center gap-1 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage <= 1} className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-700 disabled:opacity-40 flex items-center gap-1">
               <ChevronLeft size={14} /> Oldingi
             </button>
-            <span className="px-3 py-1 text-xs font-bold text-slate-700 dark:text-slate-300">
+            <span className="px-3 py-1 text-xs font-bold text-slate-700">
               {currentPage} / {totalPages}
             </span>
-            <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages} className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 disabled:opacity-40 flex items-center gap-1 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+            <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages} className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-700 disabled:opacity-40 flex items-center gap-1">
               Keyingi <ChevronRight size={14} />
             </button>
           </div>
@@ -643,22 +562,22 @@ export function DebtorsPage({
 
       {/* NOTE MODAL */}
       {noteTarget && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in" onClick={() => setNoteTarget(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in" onClick={() => setNoteTarget(null)}>
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-sm p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-bold text-lg text-slate-900 dark:text-white">Izoh qo'shish</h3>
-              <button onClick={() => setNoteTarget(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"><X size={18} /></button>
+              <button onClick={() => setNoteTarget(null)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
             </div>
             <form onSubmit={handleSaveNote} className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Izoh rangi</label>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Izoh rangi</label>
                 <div className="flex gap-2 flex-wrap">
                   {NOTE_COLORS.map(c => (
                     <button
                       key={c.value}
                       type="button"
                       onClick={() => setNoteColor(c.value)}
-                      className={`w-6 h-6 rounded-full transition-transform cursor-pointer shadow-sm ${noteColor === c.value ? "scale-125 ring-2 ring-offset-2 ring-slate-200 dark:ring-slate-700" : ""}`}
+                      className={\`w-6 h-6 rounded-full transition-transform \${noteColor === c.value ? "scale-125 ring-2 ring-offset-2 ring-slate-400" : ""}\`}
                       style={{ backgroundColor: c.value }}
                       title={c.label}
                     />
@@ -666,15 +585,15 @@ export function DebtorsPage({
                 </div>
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">Teg (qisqa so'z)</label>
-                <input type="text" value={noteTag} onChange={e => setNoteTag(e.target.value)} placeholder="Masalan: Va'da berdi" className={`${INPUT_CLS} text-xs font-bold`} style={{ color: noteColor }} maxLength={20} />
+                <label className="text-xs font-bold text-slate-700 block mb-1">Teg (qisqa so'z)</label>
+                <input type="text" value={noteTag} onChange={e => setNoteTag(e.target.value)} placeholder="Masalan: Va'da berdi" className={\`\${INPUT_CLS} text-xs font-bold\`} style={{ color: noteColor }} maxLength={20} />
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">To'liq izoh</label>
-                <textarea rows={3} value={noteText} onChange={e => setNoteText(e.target.value)} placeholder="Batafsil izoh yozing..." className={`${INPUT_CLS} text-xs`} />
+                <label className="text-xs font-bold text-slate-700 block mb-1">To'liq izoh</label>
+                <textarea rows={3} value={noteText} onChange={e => setNoteText(e.target.value)} placeholder="Batafsil izoh yozing..." className={\`\${INPUT_CLS} text-xs\`} />
               </div>
               <div className="pt-2 flex justify-end gap-2">
-                <button type="button" onClick={() => setNoteTarget(null)} className="px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Bekor qilish</button>
+                <button type="button" onClick={() => setNoteTarget(null)} className="px-4 py-2 bg-slate-100 rounded-xl text-xs font-semibold text-slate-600">Bekor qilish</button>
                 <PrimaryButton type="submit" disabled={savingNote}>{savingNote ? "Saqlanmoqda..." : "Saqlash"}</PrimaryButton>
               </div>
             </form>
@@ -684,16 +603,16 @@ export function DebtorsPage({
 
       {/* SMS MODAL */}
       {reminderTarget && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in" onClick={() => setReminderTarget(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in" onClick={() => setReminderTarget(null)}>
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-sm p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-bold text-lg text-slate-900 dark:text-white">SMS eslatma</h3>
-              <button onClick={() => setReminderTarget(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"><X size={18} /></button>
+              <button onClick={() => setReminderTarget(null)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
             </div>
             <form onSubmit={handleSendReminder} className="space-y-4">
-              <textarea rows={4} required value={reminderMessage} onChange={e => setReminderMessage(e.target.value)} className={`${INPUT_CLS} text-xs`} />
+              <textarea rows={4} required value={reminderMessage} onChange={e => setReminderMessage(e.target.value)} className={\`\${INPUT_CLS} text-xs\`} />
               <div className="pt-2 flex justify-end gap-2">
-                <button type="button" onClick={() => setReminderTarget(null)} className="px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Bekor qilish</button>
+                <button type="button" onClick={() => setReminderTarget(null)} className="px-4 py-2 bg-slate-100 rounded-xl text-xs font-semibold text-slate-600">Bekor qilish</button>
                 <PrimaryButton type="submit" disabled={sendingReminder}>{sendingReminder ? "Yuborilmoqda..." : "Yuborish"}</PrimaryButton>
               </div>
             </form>
@@ -702,10 +621,12 @@ export function DebtorsPage({
       )}
 
       {reminderSuccessToast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 text-xs font-bold animate-in slide-in-from-bottom duration-300">
+        <div className="fixed bottom-6 right-6 z-50 bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 text-xs font-bold">
           <CheckCircle2 size={16} /> Eslatma yuborildi!
         </div>
       )}
     </div>
   );
 }
+`
+fs.writeFileSync('src/features/admin/pages/DebtorsPage.jsx', content);

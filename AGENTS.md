@@ -23,3 +23,18 @@
   - Manfiy qiymatlarga (agar maxsus ruxsat berilmagan bo'lsa) yo'l qo'yilmasin (`min="0"` yoki musbat raqam tekshiruvi).
   - Saqlash va hisob-kitoblarda qiymat toza `Number` formatiga o'girilib (`parseMoneyInput` orqali) ishlatilishi lozim.
   - Oddiy sonlar/miqdorlar (masalan o'quvchilar soni, foiz, muddat, xona sig'imi) kiritiladigan inputlarda ham faqat raqamlar kiritilishi va min/max chegaralariga rioya qilinishi ta'minlansin (`NumberInput` yoki tegishli validatsiya bilan).
+
+## 4. Ma'lumotlar bazasi va Supabase qoidasi
+- **Asosiy qoida:** Har doim ma'lumotlar saqlanishi va o'zgarishi faqat Supabase (yoki asosiy backend) orqali ishlashi kerak. Hech qanday ma'lumot LocalStorage yoki shunchaki lokal state orqali saqlanmasligi lozim (localni ishlamasin hech qanday narsa).
+- **Yangi jadvallar (Tables):** Agar sahifa uchun yangi baza jadvali (table) yoki ustun (column) yaratishga ehtiyoj tug'ilsa, u holda har doim bu haqida foydalanuvchiga xabar berilishi va tegishli SQL so'rovlari yoki Supabase uchun struktura foydalanuvchiga taqdim etilishi (tashlanishi) kerak.
+
+## 5. Ustoz va O'quvchi portallari uchun Liquid Glass (Shishasimon UI) Dizayni
+- **Asosiy qoida:** Ustoz va O'quvchi ilovalari (Student va Teacher pagedagi elementlar) uchun an'anaviy yassi (flat) oq qutilar o'rniga "Liquid Glass" (Glassmorphism) estetikasi qo'llanilishi kerak, chunki bu portallar "kool" va modern ko'rinishi maqsad qilingan.
+- **Qo'llash usuli:**
+  - **Fon:** Odatda gradientli chuqur ko'k, siyohrang yoki qora ranglar ustunlik qiladi (Masalan: `bg-[#0B1021]` yoki `bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 to-indigo-950`).
+  - **Konteynerlar (Card):** Sof oq fondan qochiladi. Uning o'rniga yarim shaffof orqa fon (backdrop) va shisha effekti ishlatiladi: `bg-white/5 backdrop-blur-xl border border-white/10`.
+  - **Soya (Shadow) va Ajralib turish:** Silliq va tarqoq soyalardan foydalaniladi (masalan: `shadow-[0_8px_32px_0_rgba(0,0,0,0.3)]`). Ichki soyalar (`shadow-inner`) elementlarni 3D qilib ko'rsatishga yordam beradi.
+  - **Chegaralar (Border Radius):** Burchaklar ancha yumaloqlangan bo'lishi kerak. Katta cardlar uchun `rounded-3xl`, tugma va icon-boxlar uchun `rounded-2xl` yoki `rounded-full`.
+  - **Iconlar va Accent ranglar:** Neon va yorqin ranglar (cyan, blue, amber, emerald) fon va matnlarda uyg'unlikda ishlatiladi. Masalan, icon orqasida yorqin shaffof fon: `bg-cyan-500/20 text-cyan-300`.
+
+*Iltimos, bu qoidalarni student.html va teacher.html bilan ishlaganda qat'iy inobatga oling.*

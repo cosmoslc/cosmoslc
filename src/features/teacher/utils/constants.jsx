@@ -18,13 +18,10 @@ export { GROUP_COLORS, nextGroupColor } from "../../../shared/constants/colors";
 export const TEACHER_SESSION_KEY = "teacher-session-v1";
 
 export const NAV_ITEMS = [
-  { id: "dashboard", label: "Guruhlarim", icon: Users },
-  { id: "rating", label: "Reyting", icon: Trophy },
-  { id: "tasks", label: "Faoliyat", icon: ClipboardList },
-  { id: "schedule", label: "Dars jadvali", icon: Calendar },
-  { id: "analytics", label: "Analitika", icon: BarChart3 },
-  { id: "payments", label: "To'lovlar", icon: Wallet },
-  { id: "profile", label: "Profil", icon: User },
+  { id: "dashboard", label: "Asosiy" },
+  { id: "groups", label: "Guruhlar" },
+  { id: "analytics", label: "Statistika" },
+  { id: "students", label: "O'quvchilar" },
 ];
 
 export const NAV_ICON_COLORS = {

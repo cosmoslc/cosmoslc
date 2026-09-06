@@ -70,6 +70,7 @@ function fromRow(s) {
     streetAddress: s.street_address || s.streetAddress,
     status: s.status || "active",
     statusNote: s.status_note || s.statusNote || "",
+    debtNote: typeof s.debt_note === "string" ? JSON.parse(s.debt_note) : (s.debt_note || null),
     groupMemberships: s.group_memberships || s.groupMemberships || {},
     joinedAt: s.joined_at || s.joinedAt || s.created_at || s.createdAt || new Date().toISOString().slice(0, 10),
     managerId: s.manager_id || s.managerId || null,
@@ -124,6 +125,7 @@ export async function addStudent(payload) {
     street_address: payload.streetAddress || null,
     status: payload.status || "active",
     status_note: payload.statusNote || null,
+    debt_note: payload.debtNote !== undefined ? payload.debtNote : null,
     group_memberships: payload.groupMemberships || {},
   };
 
@@ -178,6 +180,7 @@ export async function updateStudent(id, payload) {
   if (payload.streetAddress !== undefined) patch.street_address = payload.streetAddress;
   if (payload.status !== undefined) patch.status = payload.status;
   if (payload.statusNote !== undefined) patch.status_note = payload.statusNote;
+  if (payload.debtNote !== undefined) patch.debt_note = payload.debtNote;
   if (payload.groupMemberships !== undefined) patch.group_memberships = payload.groupMemberships;
   if (payload.studiedOneWeek !== undefined) patch.studied_one_week = payload.studiedOneWeek;
   if (payload.hasContract !== undefined) patch.has_contract = payload.hasContract;
