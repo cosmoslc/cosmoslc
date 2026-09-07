@@ -1,0 +1,30 @@
+<svg width="600" height="600" viewBox="0 0 600 600" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Website palette: primary #1B3BFF, deep #0A1454, accent #4F73FF -->
+    <radialGradient id="planetHighlight" cx="32%" cy="28%" r="78%">
+      <stop offset="0%" stop-color="#5C7BFF"/>
+      <stop offset="45%" stop-color="#1B3BFF"/>
+      <stop offset="100%" stop-color="#0A1454"/>
+    </radialGradient>
+    <linearGradient id="planetRingOutline" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0A1454"/>
+      <stop offset="50%" stop-color="#3C5BFF"/>
+      <stop offset="100%" stop-color="#0A1454"/>
+    </linearGradient>
+    <filter id="planetShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#0A1454" flood-opacity="0.35"/>
+    </filter>
+    <filter id="ringGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="5" stdDeviation="8" flood-color="#0A1454" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- Planet sphere -->
+  <circle cx="300" cy="300" r="160" fill="url(#planetHighlight)" filter="url(#planetShadow)"/>
+
+  <!-- Tilted ring passing in front of the sphere -->
+  <g transform="rotate(-33 300 300)" filter="url(#ringGlow)">
+    <ellipse cx="300" cy="300" rx="285" ry="70" fill="none" stroke="url(#planetRingOutline)" stroke-width="12"/>
+    <ellipse cx="300" cy="300" rx="285" ry="70" fill="#FFFFFF" fill-opacity="0.9" stroke="url(#planetRingOutline)" stroke-width="6"/>
+  </g>
+</svg>
