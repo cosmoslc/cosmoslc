@@ -1,282 +1,1105 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="uz">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>COSMOS LC</title>
-    <meta name="description" content="Educational center management system with director, manager, teacher, and student portals." />
-    <meta property="og:title" content="COSMOS LC" />
-    <meta property="og:description" content="Educational center management system with director, manager, teacher, and student portals." />
-    <link rel="icon" type="image/svg+xml" href="/assets/cosmo_symbol.svg" />
-    <link rel="shortcut icon" href="/assets/cosmo_symbol.svg" />
-    <link rel="apple-touch-icon" href="/assets/cosmo_symbol.svg" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <style>
-      * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-      }
-      body {
-        font-family: 'Quicksand', system-ui, -apple-system, sans-serif;
-        background: #030712;
-        color: #f8fafc;
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 24px;
-        position: relative;
-        overflow-x: hidden;
-      }
-      .bg-blur-1 {
-        position: absolute;
-        top: 0;
-        left: 20%;
-        width: 500px;
-        height: 500px;
-        background: radial-gradient(circle, rgba(59, 130, 246, 0.18) 0%, rgba(0,0,0,0) 70%);
-        pointer-events: none;
-      }
-      .bg-blur-2 {
-        position: absolute;
-        bottom: 0;
-        right: 20%;
-        width: 500px;
-        height: 500px;
-        background: radial-gradient(circle, rgba(99, 102, 241, 0.18) 0%, rgba(0,0,0,0) 70%);
-        pointer-events: none;
-      }
-      .container {
-        width: 100%;
-        max-w: 1100px;
-        max-width: 1100px;
-        position: relative;
-        z-index: 10;
-      }
-      .header {
-        text-align: center;
-        margin-bottom: 40px;
-      }
-      .brand-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        background: rgba(59, 130, 246, 0.12);
-        border: 1px solid rgba(59, 130, 246, 0.3);
-        padding: 6px 16px;
-        border-radius: 9999px;
-        font-size: 12px;
-        font-weight: 700;
-        color: #60a5fa;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-bottom: 16px;
-      }
-      .title {
-        font-size: clamp(28px, 4vw, 42px);
-        font-weight: 900;
-        letter-spacing: -0.03em;
-        line-height: 1.15;
-        background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 12px;
-      }
-      .subtitle {
-        font-size: clamp(14px, 1.8vw, 16px);
-        color: #94a3b8;
-        max-width: 600px;
-        margin: 0 auto;
-        line-height: 1.5;
-      }
-      .cards-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 20px;
-      }
-      .role-card {
-        background: rgba(15, 23, 42, 0.85);
-        border: 1px solid rgba(51, 65, 85, 0.8);
-        border-radius: 28px;
-        padding: 32px 28px;
-        text-decoration: none;
-        color: inherit;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-        position: relative;
-        overflow: hidden;
-      }
-      .role-card:hover {
-        transform: translateY(-4px);
-        border-color: rgba(99, 102, 241, 0.5);
-        box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.5), 0 0 25px rgba(59, 130, 246, 0.15);
-      }
-      .role-card.featured {
-        background: linear-gradient(145deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.9));
-        border-color: rgba(59, 130, 246, 0.4);
-      }
-      .icon-box {
-        width: 56px;
-        height: 56px;
-        border-radius: 18px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 26px;
-        margin-bottom: 20px;
-      }
-      .card-name {
-        font-size: 20px;
-        font-weight: 800;
-        color: #ffffff;
-        margin-bottom: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-      }
-      .card-desc {
-        font-size: 13px;
-        color: #94a3b8;
-        line-height: 1.5;
-        margin-bottom: 24px;
-      }
-      .feature-tags {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        margin-bottom: 24px;
-      }
-      .tag {
-        font-size: 11px;
-        font-weight: 600;
-        padding: 4px 10px;
-        border-radius: 8px;
-        background: rgba(255, 255, 255, 0.05);
-        color: #cbd5e1;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-      }
-      .enter-btn {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px 18px;
-        border-radius: 16px;
-        font-size: 13px;
-        font-weight: 700;
-        transition: all 0.2s ease;
-      }
-      .footer-note {
-        text-align: center;
-        margin-top: 36px;
-        font-size: 12px;
-        color: #64748b;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="bg-blur-1"></div>
-    <div class="bg-blur-2"></div>
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#06071a" />
+<meta name="description" content="COSMOS LC — Fazoni egallovchi avlodlar markazi. Ingliz tili, IELTS/CEFR, xorijiy tillar va asosiy fanlar bo'yicha ta'lim." />
+<title>COSMOS LC — Fazoni Egallovchi Avlodlar Markazi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#06071a;
+    --deep:#0d1130;
+    --panel:#10132f;
+    --violet:#7c5cfc;
+    --violet-2:#a78bff;
+    --ion:#4ea8ff;
+    --gold:#ffc857;
+    --paper:#f3f4fc;
+    --mist:#9aa0c7;
+    --line:rgba(243,244,252,0.12);
+    --glass:rgba(243,244,252,0.05);
+    --radius-lg:28px;
+    --radius-md:20px;
+    --container:1180px;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;scroll-snap-type:y mandatory;}
+  body{
+    font-family:'Quicksand',sans-serif;
+    background:var(--void);
+    color:var(--paper);
+    overflow-x:hidden;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  svg{display:block;}
+  a{color:inherit;text-decoration:none;}
+  ul{list-style:none;}
+  button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;}
+  h1,h2,h3,.font-display{font-family:'Quicksand',sans-serif;}
+  .mono{font-family:'Quicksand',sans-serif;}
+  :focus-visible{outline:2px solid var(--ion);outline-offset:3px;border-radius:4px;}
 
-    <div class="container">
-      <div class="header">
-        <div class="brand-badge">
-          <span>⚡ COSMOS CRM 4.0</span>
+  .wrap{max-width:var(--container);margin-inline:auto;padding-inline:24px;width:100%;}
+  #cosmos{position:fixed;top:0;left:0;z-index:-1;display:block;}
+
+  .icon-13{width:13px;height:13px;}
+  .icon-15{width:15px;height:15px;}
+  .icon-18{width:18px;height:18px;}
+  .icon-20{width:20px;height:20px;}
+
+  /* ---------- full-viewport snap sections ---------- */
+  .snap-section{
+    min-height:100vh;
+    min-height:100dvh;
+    scroll-snap-align:start;
+    scroll-snap-stop:always;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    gap:36px;
+    padding-block:64px;
+  }
+  .site-footer{scroll-snap-align:end;}
+
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:10px;
+    font-family:'Quicksand',sans-serif;font-size:0.72rem;letter-spacing:0.18em;
+    text-transform:uppercase;color:var(--ion);margin-bottom:18px;
+  }
+  .eyebrow::before{content:'';width:20px;height:1px;background:var(--ion);flex-shrink:0;}
+
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    padding:15px 28px;border-radius:999px;font-weight:600;font-size:0.95rem;
+    transition:transform .25s ease, box-shadow .25s ease;
+    white-space:nowrap;
+  }
+  .btn-primary{
+    background:linear-gradient(135deg,var(--ion),var(--violet));
+    color:#06071a;
+    box-shadow:0 8px 30px rgba(78,168,255,0.3);
+  }
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:0 14px 34px rgba(124,92,252,0.42);}
+  .btn-circle{
+    width:52px;height:52px;border-radius:50%;
+    display:inline-flex;align-items:center;justify-content:center;
+    border:1px solid var(--line);flex-shrink:0;color:var(--paper);
+    transition:background .25s ease, transform .25s ease;
+  }
+  .btn-circle:hover{background:var(--glass);transform:scale(1.05);}
+  .btn-circle-solid{background:var(--paper);color:var(--void);border-color:var(--paper);}
+  .btn-circle-solid:hover{background:var(--paper);opacity:0.85;}
+
+  /* ---------- header ---------- */
+  .site-header{position:sticky;top:0;z-index:100;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);background:rgba(6,7,26,0.55);border-bottom:1px solid var(--line);}
+  .header-inner{display:flex;align-items:center;justify-content:space-between;padding-block:18px;}
+  .logo{display:flex;align-items:center;gap:10px;}
+  .logo-mark{width:40px;height:40px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .logo-mark img{width:100%;height:100%;object-fit:contain;}
+  .logo-text{font-family:'Quicksand',sans-serif;font-weight:700;font-size:1.15rem;letter-spacing:0.01em;}
+  .logo-text span{font-weight:400;opacity:0.55;font-size:0.8em;margin-left:1px;}
+  .main-nav{display:flex;gap:34px;font-size:0.93rem;color:var(--mist);}
+  .main-nav a{transition:color .2s ease;}
+  .main-nav a:hover{color:var(--paper);}
+  .header-actions{display:flex;align-items:center;gap:16px;}
+  .header-cta{padding:12px 24px;font-size:0.88rem;}
+  .nav-toggle{display:none;flex-direction:column;gap:5px;width:24px;padding:6px 0;}
+  .nav-toggle span{height:2px;background:var(--paper);border-radius:2px;}
+
+  /* ---------- hero ---------- */
+  .hero-inner{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;}
+  .hero-title{font-size:clamp(2.2rem,4.2vw,3.4rem);line-height:1.1;font-weight:700;margin-bottom:22px;letter-spacing:-0.01em;}
+  .hero-title span{background:linear-gradient(120deg,var(--ion),var(--violet-2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;}
+  .hero-sub{color:var(--mist);font-size:1.05rem;max-width:440px;margin-bottom:34px;}
+  .hero-actions{display:flex;align-items:center;gap:16px;}
+
+  .hero-visual-wrap{position:relative;}
+  .hero-visual{position:relative;width:min(380px,84%);aspect-ratio:1;margin-inline:auto;}
+  .hv-glow{position:absolute;inset:8%;border-radius:50%;background:radial-gradient(circle,rgba(41,82,232,.5),transparent 70%);filter:blur(26px);}
+  .planet-sphere{position:absolute;inset:22%;border-radius:50%;z-index:1;
+    background:radial-gradient(circle at 33% 28%,#7fa4ff 0%,#3060f0 45%,#0f24aa 78%,#060f5e 100%);
+    box-shadow:0 0 70px rgba(48,96,240,.55), inset -18px -18px 44px rgba(0,0,0,.4);}
+  .planet-ring{position:absolute;top:50%;left:50%;width:148%;height:25%;
+    background:#ffffff;border:5px solid #1a3fd6;border-radius:50%;z-index:2;
+    box-shadow:0 0 26px rgba(255,255,255,.4);
+    animation:ring-spin 5s linear infinite;}
+  @keyframes ring-spin{
+    from{transform:translate(-50%,-50%) rotate(-32deg);}
+    to{transform:translate(-50%,-50%) rotate(-392deg);}
+  }
+  .star-orbit{position:absolute;inset:0;border-radius:50%;z-index:3;animation:ring-spin-fast 3.2s linear infinite;}
+  @keyframes ring-spin-fast{
+    from{transform:rotate(0deg);}
+    to{transform:rotate(-360deg);}
+  }
+  .mini-star{position:absolute;top:50%;left:50%;width:3px;height:3px;margin:-1.5px 0 0 -1.5px;border-radius:50%;background:#fff;box-shadow:0 0 6px #fff,0 0 10px rgba(255,200,87,.7);}
+  .mini-star:nth-child(odd){width:4px;height:4px;margin:-2px 0 0 -2px;background:var(--gold);box-shadow:0 0 7px var(--gold),0 0 12px rgba(255,200,87,.6);}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .hero-float-card{
+    position:absolute;bottom:-4%;left:-6%;
+    display:flex;align-items:center;gap:14px;
+    background:rgba(16,19,47,0.85);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+    border:1px solid var(--line);border-radius:var(--radius-md);
+    padding:16px 18px;max-width:280px;
+    box-shadow:0 20px 50px rgba(0,0,0,0.4);
+  }
+  .float-icon{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--ion),var(--violet));display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#06071a;}
+  .float-icon svg{width:18px;height:18px;}
+  .float-title{font-weight:600;font-size:0.9rem;margin-bottom:2px;}
+  .float-sub{font-size:0.78rem;color:var(--mist);}
+  .float-arrow{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:auto;transition:background .2s ease;}
+  .float-arrow:hover{background:var(--glass);}
+
+  /* ---------- portals ---------- */
+  .portals-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 20px; }
+  .portal-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 36px 30px; transition: transform .3s ease, border-color .3s ease, box-shadow .3s ease; display: flex; flex-direction: column; align-items: flex-start; text-align: left; }
+  .portal-card:hover { transform: translateY(-8px); border-color: rgba(243,244,252,.25); box-shadow: 0 20px 45px rgba(0,0,0,0.4); }
+  .portal-icon { width: 56px; height: 56px; border-radius: 18px; display: flex; align-items: center; justify-content: center; margin-bottom: 24px; background: rgba(78, 168, 255, 0.1); color: var(--ion); }
+  .portal-icon svg { width: 28px; height: 28px; }
+  .portal-title { font-family: 'Quicksand', sans-serif; font-size: 1.3rem; font-weight: 700; margin-bottom: 10px; }
+  .portal-desc { color: var(--mist); font-size: 0.95rem; margin-bottom: 30px; line-height: 1.5; flex: 1; }
+  .portal-link { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 0.95rem; color: var(--ion); transition: transform .2s ease; }
+  .portal-card:hover .portal-link { transform: translateX(6px); }
+
+  /* ---------- trust + stats ---------- */
+  .trust{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:24px;padding-block:28px;border-block:1px solid var(--line);}
+  .trust-follow{display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+  .trust-label{font-size:0.72rem;letter-spacing:0.1em;color:var(--mist);text-transform:uppercase;}
+  .social-icons{display:flex;gap:12px;}
+  .social-icons a{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--mist);transition:all .2s ease;}
+  .social-icons a:hover{color:var(--paper);background:var(--glass);}
+  .partner-marks{display:flex;gap:38px;flex-wrap:wrap;}
+  .partner-marks span{font-family:'Quicksand',sans-serif;font-size:0.95rem;color:var(--mist);opacity:0.7;}
+
+  .stats{display:flex;align-items:center;justify-content:center;gap:60px;padding-block:44px;flex-wrap:wrap;}
+  .stat-item{text-align:center;}
+  .stat-number{display:block;font-family:'Quicksand',sans-serif;font-weight:700;font-size:clamp(2.2rem,4vw,3rem);
+    background:linear-gradient(120deg,var(--ion),var(--violet-2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;}
+  .stat-label{color:var(--mist);font-size:0.9rem;margin-top:6px;}
+  .stat-divider{width:1px;height:44px;background:var(--line);}
+
+  /* ---------- section heads ---------- */
+  .section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:36px;flex-wrap:wrap;}
+  .section-title{font-size:clamp(1.7rem,2.8vw,2.3rem);font-weight:700;margin-bottom:10px;}
+  .section-sub{color:var(--mist);font-size:0.96rem;}
+  .section-head-center{text-align:center;max-width:640px;margin-inline:auto;position:relative;}
+  .section-head-center .eyebrow::before{display:none;}
+  .grad-text{background:linear-gradient(120deg,var(--gold),var(--ion));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;}
+  .deco-star{position:absolute;color:var(--gold);animation:twinkle-pulse 3s ease-in-out infinite;}
+  @keyframes twinkle-pulse{0%,100%{opacity:.3;transform:scale(.8) rotate(0deg);}50%{opacity:.9;transform:scale(1.15) rotate(18deg);}}
+
+  /* ---------- animation variants ---------- */
+  .reveal{opacity:0;transform:translateY(28px);transition:opacity .8s ease, transform .8s ease;}
+  .reveal.visible{opacity:1;transform:translateY(0);}
+
+  .scale-in{opacity:0;transform:scale(0.88);transition:opacity .7s ease,transform .7s cubic-bezier(.34,1.56,.64,1);}
+  .scale-in.visible{opacity:1;transform:scale(1);}
+
+  .slide-left{opacity:0;transform:translateX(-46px);transition:opacity .8s ease,transform .8s ease;}
+  .slide-left.visible{opacity:1;transform:translateX(0);}
+
+  .slide-right{opacity:0;transform:translateX(46px);transition:opacity .8s ease,transform .8s ease;}
+  .slide-right.visible{opacity:1;transform:translateX(0);}
+
+  .stagger > *{opacity:0;transform:translateY(24px);transition:opacity .7s ease,transform .7s ease;}
+  .stagger.visible > *{opacity:1;transform:translateY(0);}
+  .stagger.visible > *:nth-child(1){transition-delay:0s;}
+  .stagger.visible > *:nth-child(2){transition-delay:.08s;}
+  .stagger.visible > *:nth-child(3){transition-delay:.16s;}
+  .stagger.visible > *:nth-child(4){transition-delay:.24s;}
+  .stagger.visible > *:nth-child(5){transition-delay:.32s;}
+  .stagger.visible > *:nth-child(6){transition-delay:.4s;}
+
+  .stagger-scale > *{opacity:0;transform:scale(0.85);transition:opacity .6s ease,transform .6s cubic-bezier(.34,1.56,.64,1);}
+  .stagger-scale.visible > *{opacity:1;transform:scale(1);}
+  .stagger-scale.visible > *:nth-child(1){transition-delay:0s;}
+  .stagger-scale.visible > *:nth-child(2){transition-delay:.09s;}
+  .stagger-scale.visible > *:nth-child(3){transition-delay:.18s;}
+  .stagger-scale.visible > *:nth-child(4){transition-delay:.27s;}
+  .stagger-scale.visible > *:nth-child(5){transition-delay:.36s;}
+  .stagger-scale.visible > *:nth-child(6){transition-delay:.45s;}
+
+  .stagger-pop > *{opacity:0;transform:scale(0.4);transition:opacity .5s ease,transform .55s cubic-bezier(.34,1.9,.64,1);}
+  .stagger-pop.visible > *{opacity:1;transform:scale(1);}
+  .stagger-pop.visible > *:nth-child(1){transition-delay:0s;}
+  .stagger-pop.visible > *:nth-child(2){transition-delay:.12s;}
+  .stagger-pop.visible > *:nth-child(3){transition-delay:.24s;}
+  .stagger-pop.visible > *:nth-child(4){transition-delay:.36s;}
+
+  .stagger-slow > *{opacity:0;transform:translateY(30px);transition:opacity .7s ease,transform .7s ease;}
+  .stagger-slow.visible > *{opacity:1;transform:translateY(0);}
+  .stagger-slow.visible > *:nth-child(1){transition-delay:0s;}
+  .stagger-slow.visible > *:nth-child(2){transition-delay:.3s;}
+  .stagger-slow.visible > *:nth-child(3){transition-delay:.6s;}
+
+  .text-flip .promo-strike{opacity:0;transition:opacity .6s ease;}
+  .text-flip.visible .promo-strike{opacity:.7;}
+  .text-flip .promo-title-main{opacity:0;transform:translateY(16px);transition:opacity .7s ease .5s,transform .7s ease .5s;}
+  .text-flip.visible .promo-title-main{opacity:1;transform:translateY(0);}
+
+  /* ---------- courses ---------- */
+  .carousel-arrows{display:flex;gap:10px;}
+  .course-grid{display:flex;gap:22px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-ms-overflow-style:none;padding-bottom:6px;}
+  .course-grid::-webkit-scrollbar{display:none;}
+  .course-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-lg);overflow:hidden;transition:transform .3s ease, border-color .3s ease;flex:0 0 calc((100% - 44px)/3);scroll-snap-align:start;min-width:250px;}
+  .course-card:hover{transform:translateY(-6px);border-color:rgba(243,244,252,0.25);}
+  .course-media{aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;color:var(--paper);position:relative;overflow:hidden;}
+  .course-media svg{width:28%;height:28%;position:relative;z-index:1;}
+  .course-media::after{content:'';position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.6) 1px, transparent 1px);background-size:24px 24px;opacity:.14;}
+  .grad-a{background:linear-gradient(135deg,#4ea8ff,#7c5cfc);}
+  .grad-b{background:linear-gradient(135deg,#7c5cfc,#c94ee0);}
+  .grad-c{background:linear-gradient(135deg,#ffc857,#ff8a4c);}
+  .grad-d{background:linear-gradient(135deg,#4ec9b0,#4ea8ff);}
+  .course-body{padding:18px 20px 20px;}
+  .course-body h3{font-family:'Quicksand',sans-serif;font-size:1rem;font-weight:600;margin-bottom:6px;}
+  .course-desc{color:var(--mist);font-size:0.84rem;line-height:1.5;margin-bottom:14px;}
+  .course-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:12px;border-top:1px solid var(--line);}
+  .course-meta{display:flex;align-items:center;gap:6px;color:var(--mist);font-size:0.78rem;}
+  .course-meta svg{flex-shrink:0;}
+  .course-price{font-family:'Quicksand',sans-serif;color:var(--gold);font-size:0.82rem;white-space:nowrap;font-weight:700;}
+
+  /* ---------- results ---------- */
+  .results-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;}
+  .result-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-lg);padding:26px 18px;text-align:center;transition:transform .3s ease,border-color .3s ease;}
+  .result-card:hover{transform:translateY(-6px);border-color:rgba(243,244,252,.25);}
+  .avatar-circle{border-radius:50%;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.9);flex-shrink:0;margin-inline:auto;}
+  .result-avatar{width:54px;height:54px;margin-bottom:14px;}
+  .result-avatar svg{width:24px;height:24px;}
+  .result-badge{display:inline-block;padding:6px 16px;border-radius:999px;background:rgba(255,200,87,.12);color:var(--gold);font-family:'Quicksand',sans-serif;font-weight:700;font-size:0.9rem;animation:badge-pulse 2.6s ease-in-out infinite;}
+  @keyframes badge-pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,200,87,0.3);}50%{box-shadow:0 0 0 7px rgba(255,200,87,0);}}
+  .result-note{color:var(--mist);font-size:0.82rem;margin-top:10px;}
+
+  /* ---------- teachers ---------- */
+  .mentor-spotlight{display:flex;align-items:center;gap:30px;background:linear-gradient(160deg,#1a1650,#0d1130);border:1px solid var(--line);border-radius:var(--radius-lg);padding:30px;box-shadow:0 24px 60px rgba(90,63,224,.25);}
+  .photo-frame{border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.9);position:relative;overflow:hidden;flex-shrink:0;}
+  .photo-frame::after{content:'';position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.5) 1px,transparent 1px);background-size:20px 20px;opacity:.14;}
+  .photo-frame svg{width:32%;height:32%;position:relative;z-index:1;}
+  .mentor-photo{width:230px;aspect-ratio:3/4;}
+  .mentor-tag{color:var(--gold);font-size:0.72rem;letter-spacing:0.14em;margin-bottom:8px;display:block;}
+  .mentor-info h3{font-size:1.3rem;font-weight:700;margin-bottom:6px;}
+  .mentor-role{color:var(--ion);font-size:0.9rem;font-weight:600;margin-bottom:10px;}
+  .cert-badge{display:inline-block;padding:5px 13px;border-radius:999px;background:rgba(78,168,255,.14);color:var(--ion);font-family:'Quicksand',sans-serif;font-size:0.78rem;font-weight:700;margin-bottom:12px;}
+  .mentor-bio{color:var(--mist);font-size:0.9rem;max-width:520px;margin-bottom:14px;}
+  .cred-row{display:flex;gap:18px;color:var(--mist);font-size:0.82rem;flex-wrap:wrap;}
+  .cred-row svg{width:15px;height:15px;flex-shrink:0;}
+  .cred-item{display:flex;align-items:center;gap:6px;}
+
+  .teacher-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;}
+  .teacher-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-lg);padding:18px;text-align:center;transition:transform .3s ease,border-color .3s ease;}
+  .teacher-card:hover{transform:translateY(-6px);border-color:rgba(243,244,252,.25);}
+  .teacher-photo{width:100%;aspect-ratio:3/4;margin-bottom:14px;}
+  .teacher-name{font-weight:600;font-size:0.95rem;margin-bottom:3px;}
+  .teacher-subject{color:var(--mist);font-size:0.78rem;display:block;margin-bottom:10px;}
+  .teacher-stats{display:flex;flex-direction:column;gap:4px;color:var(--mist);font-size:0.74rem;margin-top:8px;}
+
+  /* ---------- process ---------- */
+  .process-grid{display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:24px;align-items:center;}
+  .process-step{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-lg);padding:30px 26px;text-align:center;}
+  .process-step h3{font-family:'Quicksand',sans-serif;font-size:1.02rem;font-weight:600;line-height:1.35;}
+  .step-num{display:block;color:var(--mist);font-size:0.78rem;letter-spacing:0.1em;margin-bottom:16px;}
+  .step-icon{width:50px;height:50px;border-radius:50%;background:var(--glass);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;color:var(--ion);}
+  .step-icon svg{width:22px;height:22px;}
+  .step-icon-light{background:rgba(255,255,255,0.14);border-color:rgba(255,255,255,0.22);color:var(--paper);}
+  .process-step-main{
+    background:linear-gradient(160deg,#5a3fe0,#2f1c86 65%,#1c0f4a);
+    border-color:transparent;padding:36px 30px;
+    box-shadow:0 24px 60px rgba(90,63,224,0.4);
+    transform:scale(1.04);
+  }
+  .process-step-main .step-num{color:rgba(243,244,252,0.6);}
+  .process-step-main p{color:rgba(243,244,252,0.78);font-size:0.9rem;margin:12px 0 16px;}
+  .text-link{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:0.9rem;color:var(--paper);}
+  .text-link svg{transition:transform .2s ease;}
+  .text-link:hover svg{transform:translateX(3px);}
+
+  /* ---------- pricing ---------- */
+  .pricing-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;}
+  .price-group{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-lg);padding:22px 20px;}
+  .price-group-title{display:flex;align-items:center;gap:9px;font-family:'Quicksand',sans-serif;font-size:0.94rem;font-weight:600;margin-bottom:14px;color:var(--ion);}
+  .price-group-title svg{width:18px;height:18px;flex-shrink:0;}
+  .price-list li{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding-block:9px;border-bottom:1px solid var(--line);font-size:0.85rem;}
+  .price-list li:last-child{border-bottom:none;}
+  .price-list li strong{color:var(--gold);font-family:'Quicksand',sans-serif;font-weight:700;font-size:0.8rem;white-space:nowrap;}
+  .pricing-note{text-align:center;color:var(--mist);font-size:0.84rem;}
+
+  /* ---------- promo ---------- */
+  .promo{display:grid;grid-template-columns:0.85fr 1.15fr;gap:50px;align-items:center;}
+  .promo-media{position:relative;aspect-ratio:1/1;border-radius:var(--radius-lg);background:linear-gradient(160deg,#111536,#0a0d26);border:1px solid var(--line);overflow:hidden;display:flex;align-items:center;justify-content:center;}
+  .promo-planet{width:46%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 34% 30%,#ffe3a3,#ffc857 45%,#c97a2b 85%);box-shadow:0 0 60px rgba(255,200,87,.35);}
+  .promo-ring{position:absolute;top:50%;left:50%;width:66%;aspect-ratio:1;border:1px solid rgba(243,244,252,.18);border-radius:50%;transform:translate(-50%,-50%) rotate(-18deg) scaleY(.42);animation:spin 22s linear infinite;}
+  .promo-rocket{position:absolute;top:18%;right:20%;width:15%;color:var(--ion);transform:rotate(35deg);filter:drop-shadow(0 0 14px rgba(78,168,255,.6));}
+  .promo-dot{position:absolute;width:5px;height:5px;border-radius:50%;background:var(--paper);opacity:.6;}
+  .promo-d1{top:20%;left:16%;} .promo-d2{bottom:26%;left:24%;} .promo-d3{top:38%;right:14%;}
+  .promo-strike{font-family:'Quicksand',sans-serif;font-size:0.95rem;color:var(--mist);text-decoration:line-through;text-decoration-color:rgba(255,120,120,.55);margin-bottom:10px;}
+  .promo-title-main{font-size:clamp(1.9rem,3.8vw,2.8rem);font-weight:700;line-height:1.16;margin-bottom:24px;}
+  .promo-title-main span{background:linear-gradient(120deg,var(--gold),var(--ion));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;}
+  .promo-text-row{display:flex;gap:30px;margin-bottom:30px;}
+  .promo-text-row p{color:var(--mist);font-size:0.92rem;flex:1;}
+  .promo-bottom{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;padding-top:24px;border-top:1px solid var(--line);}
+  .offer{display:flex;flex-direction:column;gap:4px;}
+  .offer-percent{font-family:'Quicksand',sans-serif;font-weight:700;font-size:1.4rem;color:var(--gold);}
+  .offer-date{font-size:0.8rem;color:var(--mist);}
+
+  /* ---------- footer ---------- */
+  .site-footer{border-top:1px solid var(--line);padding-top:48px;background:var(--void);}
+  .footer-inner{display:flex;flex-wrap:wrap;justify-content:space-between;gap:32px;padding-bottom:32px;}
+  .footer-brand p{color:var(--mist);font-size:0.86rem;margin-top:10px;max-width:260px;}
+  .footer-links{display:flex;gap:24px;font-size:0.88rem;color:var(--mist);flex-wrap:wrap;}
+  .footer-links a:hover{color:var(--paper);}
+  .footer-bottom{border-top:1px solid var(--line);padding-block:20px;font-size:0.8rem;color:var(--mist);}
+
+  @media (prefers-reduced-motion:reduce){
+    *{animation-duration:0.001ms !important; animation-iteration-count:1 !important; transition-duration:0.001ms !important;}
+    html{scroll-behavior:auto;scroll-snap-type:none;}
+    .snap-section{min-height:auto;}
+  }
+
+  @media (max-width:860px){
+    .main-nav{position:fixed;top:70px;left:0;right:0;flex-direction:column;background:rgba(8,9,28,0.98);padding:28px 24px;gap:22px;border-bottom:1px solid var(--line);transform:translateY(-130%);transition:transform .35s ease;}
+    .main-nav.open{transform:translateY(0);}
+    .nav-toggle{display:flex;}
+    .header-cta{display:none;}
+    .hero-inner{grid-template-columns:1fr;text-align:center;}
+    .hero-sub{margin-inline:auto;}
+    .hero-actions{justify-content:center;}
+    .hero-float-card{position:relative;left:0;bottom:0;margin:24px auto 0;max-width:300px;}
+  }
+  @media (max-width:900px){
+    html{scroll-snap-type:none;}
+    .snap-section{min-height:auto;padding-block:56px;}
+    .portals-grid { grid-template-columns: repeat(2, 1fr); }
+    .course-card{flex:0 0 82%;}
+    .carousel-arrows{display:none;}
+    .results-grid{grid-template-columns:repeat(2,1fr);}
+    .teacher-grid{grid-template-columns:repeat(2,1fr);}
+    .mentor-spotlight{flex-direction:column;text-align:center;padding:28px;}
+    .mentor-photo{width:200px;}
+    .cred-row{justify-content:center;}
+    .process-grid{grid-template-columns:1fr;}
+    .process-step-main{transform:none;order:-1;}
+    .pricing-grid{grid-template-columns:repeat(2,1fr);}
+    .promo{grid-template-columns:1fr;text-align:center;}
+    .promo-text-row{flex-direction:column;gap:14px;}
+    .promo-bottom{justify-content:center;flex-direction:column;}
+    .stats{gap:34px;}
+    .stat-divider{display:none;}
+  }
+  @media (max-width:560px){
+    .portals-grid { grid-template-columns: 1fr; }
+    .results-grid{grid-template-columns:1fr;}
+    .teacher-grid{grid-template-columns:1fr;}
+    .pricing-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<canvas id="cosmos"></canvas>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a href="#" class="logo">
+      <span class="logo-text">COSMOS<span>LC</span></span>
+    </a>
+    <nav class="main-nav" id="mainNav">
+      <a href="#portals">Platforma</a>
+      <a href="#courses">Kurslar</a>
+      <a href="#natijalar">Natijalar</a>
+      <a href="#ustozlar">Ustozlar</a>
+      <a href="#narxlar">Narxlar</a>
+    </nav>
+    <div class="header-actions">
+      <a href="#portals" class="btn btn-primary header-cta">Tizimga kirish</a>
+      <button class="nav-toggle" id="navToggle" aria-label="Menyu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="hero snap-section" id="about">
+    <div class="wrap hero-inner">
+      <div class="hero-content reveal">
+        <p class="eyebrow">Kelajak sizdan boshlanadi</p>
+        <h1 class="hero-title">Fazoni Egallovchi<br><span>Avlodlar</span> Markazi</h1>
+        <p class="hero-sub">Ingliz tili, IELTS/CEFR, xorijiy tillar va asosiy fanlar bo'yicha natijaga yo'naltirilgan zamonaviy ta'lim markazi.</p>
+        <div class="hero-actions">
+          <a href="#courses" class="btn btn-primary">Kursga yozilish
+            <svg class="icon-18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </a>
+          <button class="btn-circle" aria-label="Video ko'rish">
+            <svg class="icon-18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          </button>
         </div>
-        <h1 class="title">O'quv Markazi Boshqaruv Ekotizimi</h1>
-        <p class="subtitle">
-          Boshqaruv, o'qituvchilar va o'quvchilar uchun integratsiyalashgan yagona professional platforma
-        </p>
       </div>
 
-      <div class="cards-grid">
-        <!-- 1. Admin & Director & Manager -->
-        <a href="/admin.html" class="role-card featured">
+      <div class="hero-visual-wrap scale-in">
+        <div class="hero-visual">
+          <div class="hv-glow"></div>
+          <div class="planet-sphere"></div>
+          <div class="planet-ring"></div>
+          <div class="star-orbit">
+          <span class="mini-star" style="transform:rotate(0.0deg) translateX(145px)"></span>
+          <span class="mini-star" style="transform:rotate(22.5deg) translateX(145px)"></span>
+          <span class="mini-star" style="transform:rotate(45.0deg) translateX(145px)"></span>
+          <span class="mini-star" style="transform:rotate(67.5deg) translateX(145px)"></span>
+          <span class="mini-star" style="transform:rotate(90.0deg) translateX(145px)"></span>
+          <span class="mini-star" style="transform:rotate(112.5deg) translateX(145px)"></span>
+          <span class="mini-star" style="transform:rotate(135.0deg) translateX(145px)"></span>
+          <span class="mini-star" style="transform:rotate(157.5deg) translateX(145px)"></span>
+          <span class="mini-star" style="transform:rotate(180.0deg) translateX(145px)"></span>
+          <span class="mini-star" style="transform:rotate(202.5deg) translateX(145px)"></span>
+          <span class="mini-star" style="transform:rotate(225.0deg) translateX(145px)"></span>
+          <span class="mini-star" style="transform:rotate(247.5deg) translateX(145px)"></span>
+          <span class="mini-star" style="transform:rotate(270.0deg) translateX(145px)"></span>
+          <span class="mini-star" style="transform:rotate(292.5deg) translateX(145px)"></span>
+          <span class="mini-star" style="transform:rotate(315.0deg) translateX(145px)"></span>
+          <span class="mini-star" style="transform:rotate(337.5deg) translateX(145px)"></span>
+          </div>
+        </div>
+        <div class="hero-float-card">
+          <div class="float-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c2.5 2 4 5.5 4 9.5 0 2-1 4-4 6-3-2-4-4-4-6C8 7.5 9.5 4 12 2z"/><circle cx="12" cy="10" r="1.4" fill="currentColor" stroke="none"/></svg>
+          </div>
           <div>
-            <div class="icon-box" style="background: linear-gradient(135deg, #2563eb, #4f46e5); box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);">
-              👑
-            </div>
-            <div class="card-name">
-              Boshqaruv Paneli
-              <span style="font-size: 11px; background: rgba(59, 130, 246, 0.2); color: #60a5fa; padding: 2px 8px; border-radius: 6px;">Asosiy</span>
-            </div>
-            <div class="card-desc">
-              Bosh direktor va filial menejerlari uchun yagona markaziy CRM, moliya, filiallar va lidlar boshqaruvi.
-            </div>
-            <div class="feature-tags">
-              <span class="tag">🏢 Filiallar nazorati</span>
-              <span class="tag">💰 Kassa & Moliya</span>
-              <span class="tag">🎯 Lidlar voronkasi</span>
-              <span class="tag">🔒 2FA Xavfsizlik</span>
-            </div>
+            <p class="float-title">Yosh Kashfiyotchilar</p>
+            <p class="float-sub">Har bir dars — yangi galaktika!</p>
           </div>
-          <div class="enter-btn" style="background: #2563eb; color: #ffffff;">
-            <span>Admin paneliga kirish</span>
-            <span>→</span>
-          </div>
-        </a>
-
-        <!-- 2. Teacher -->
-        <a href="/teacher.html" class="role-card">
-          <div>
-            <div class="icon-box" style="background: linear-gradient(135deg, #059669, #0d9488); box-shadow: 0 8px 20px rgba(5, 150, 105, 0.35);">
-              📚
-            </div>
-            <div class="card-name">
-              Ustoz Paneli
-            </div>
-            <div class="card-desc">
-              O'qituvchilar uchun dars jadvallari, 1-bosishda davomat olish, uyga vazifalar va tangalar taqsimoti.
-            </div>
-            <div class="feature-tags">
-              <span class="tag">📅 Dars jadvali</span>
-              <span class="tag">✅ Davomat nazorati</span>
-              <span class="tag">🪙 Coin taqdirlash</span>
-              <span class="tag">📊 Oylik reyting</span>
-            </div>
-          </div>
-          <div class="enter-btn" style="background: rgba(5, 150, 105, 0.15); color: #34d399; border: 1px solid rgba(5, 150, 105, 0.3);">
-            <span>Ustoz kabinetiga kirish</span>
-            <span>→</span>
-          </div>
-        </a>
-
-        <!-- 3. Student -->
-        <a href="/student.html" class="role-card">
-          <div>
-            <div class="icon-box" style="background: linear-gradient(135deg, #d97706, #ea580c); box-shadow: 0 8px 20px rgba(217, 119, 6, 0.35);">
-              🎓
-            </div>
-            <div class="card-name">
-              O'quvchi Portali
-            </div>
-            <div class="card-desc">
-              O'quvchilar uchun shaxsiy kabinet, uyga vazifalarni onlayn yuklash, tangalar jamg'armasi va reyting.
-            </div>
-            <div class="feature-tags">
-              <span class="tag">📝 Uyga vazifalar</span>
-              <span class="tag">🏆 Reyting jadvali</span>
-              <span class="tag">🪙 Coin balansi</span>
-              <span class="tag">📱 Mobil moslashuv</span>
-            </div>
-          </div>
-          <div class="enter-btn" style="background: rgba(217, 119, 6, 0.15); color: #fbbf24; border: 1px solid rgba(217, 119, 6, 0.3);">
-            <span>O'quvchi kabinetiga kirish</span>
-            <span>→</span>
-          </div>
-        </a>
-      </div>
-
-      <div class="footer-note">
-        COSMOS LC Cloud Platform &copy; 2026. Barcha ma'lumotlar xavfsiz himoyalangan.
+          <a href="#courses" class="float-arrow" aria-label="Batafsil">
+            <svg class="icon-18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </a>
+        </div>
       </div>
     </div>
-  </body>
+  </section>
+
+  <!-- PORTALS SECTION (Added as requested) -->
+  <section class="portals snap-section wrap" id="portals">
+    <div class="section-head-center reveal">
+      <p class="eyebrow">COSMOS Platformasi</p>
+      <h2 class="section-title">Tizimga Kirish</h2>
+      <p class="section-sub">O'zingizga tegishli bo'lgan shaxsiy kabinetni tanlang va tizimga kiring.</p>
+    </div>
+
+    <div class="portals-grid stagger-pop">
+      <!-- Admin Portal -->
+      <a href="/admin.html" class="portal-card" style="--portal-color: var(--ion);">
+        <div class="portal-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h3 class="portal-title">Boshqaruv Paneli</h3>
+        <p class="portal-desc">Admin, menejer va direktorlar uchun markaziy boshqaruv tizimi.</p>
+        <span class="portal-link">Kirish <svg class="icon-15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+      </a>
+
+      <!-- Teacher Portal -->
+      <a href="/teacher.html" class="portal-card" style="--portal-color: #4ec9b0;">
+        <div class="portal-icon" style="color: #4ec9b0; background: rgba(78, 201, 176, 0.1);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5v-15A2.5 2.5 0 016.5 2H20v20H6.5a2.5 2.5 0 010-5H20"/></svg>
+        </div>
+        <h3 class="portal-title">Ustoz Paneli</h3>
+        <p class="portal-desc">O'qituvchilar uchun dars jadvallari, davomat va vazifalar nazorati.</p>
+        <span class="portal-link" style="color: #4ec9b0;">Kirish <svg class="icon-15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+      </a>
+
+      <!-- Student Portal -->
+      <a href="/student.html" class="portal-card" style="--portal-color: var(--gold);">
+        <div class="portal-icon" style="color: var(--gold); background: rgba(255, 200, 87, 0.1);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+        </div>
+        <h3 class="portal-title">O'quvchi Portali</h3>
+        <p class="portal-desc">O'quvchilar reytingi, vazifalarni yuklash va tangalar jamg'armasi.</p>
+        <span class="portal-link" style="color: var(--gold);">Kirish <svg class="icon-15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+      </a>
+    </div>
+  </section>
+
+  <section class="trust-stats snap-section">
+    <div class="wrap trust">
+      <div class="trust-follow slide-left">
+        <span class="mono trust-label">Bizni kuzating</span>
+        <div class="social-icons">
+          <a href="#" aria-label="Telegram"><svg class="icon-18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4L3 11l6 2m12-9l-4 17-8-6m12-11L9 13"/></svg></a>
+          <a href="#" aria-label="Instagram"><svg class="icon-18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="1" fill="currentColor" stroke="none"/></svg></a>
+          <a href="#" aria-label="YouTube"><svg class="icon-18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="4"/><path d="M10 9l6 3-6 3V9z" fill="currentColor" stroke="none"/></svg></a>
+          <a href="#" aria-label="Facebook"><svg class="icon-18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M13.2 20v-6.4h2.1l.3-2.5h-2.4V9.5c0-.7.2-1.2 1.2-1.2h1.3V6.1c-.2 0-1-.1-1.9-.1-1.9 0-3.2 1.1-3.2 3.3v1.8H8.5v2.5h2.1V20" fill="currentColor" stroke="none"/></svg></a>
+        </div>
+      </div>
+      <div class="partner-marks slide-right">
+        <span>EduOrbit</span>
+        <span>LinguaPrime</span>
+        <span>MindLaunch</span>
+        <span>GlobalPrep</span>
+      </div>
+    </div>
+
+    <div class="wrap stats reveal">
+      <div class="stat-item">
+        <span class="stat-number mono" data-target="4" data-suffix="+">0</span>
+        <p class="stat-label">Yillik faoliyat</p>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <span class="stat-number mono" data-target="15" data-suffix="+">0</span>
+        <p class="stat-label">Professional o'qituvchilar</p>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <span class="stat-number mono" data-target="500" data-suffix="+">0</span>
+        <p class="stat-label">O'quvchilar</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="courses snap-section wrap" id="courses">
+    <div class="section-head reveal">
+      <div>
+        <p class="eyebrow">Yo'nalishlarimiz</p>
+        <h2 class="section-title">Mashhur Kurslarimiz</h2>
+        <p class="section-sub">Yulduzlar sari birinchi qadamingizni shu yerdan boshlang</p>
+      </div>
+      <div class="carousel-arrows">
+        <button class="btn-circle" id="coursesPrev" aria-label="Oldingi"><svg class="icon-18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+        <button class="btn-circle btn-circle-solid" id="coursesNext" aria-label="Keyingi"><svg class="icon-18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+      </div>
+    </div>
+
+    <div class="course-grid stagger-scale" id="courseGrid">
+      <article class="course-card">
+        <div class="course-media grad-a">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5C4 4.7 4.7 4 5.5 4H12v16H5.5A1.5 1.5 0 014 18.5v-13z"/><path d="M20 5.5c0-.8-.7-1.5-1.5-1.5H12v16h6.5a1.5 1.5 0 001.5-1.5v-13z"/></svg>
+        </div>
+        <div class="course-body">
+          <h3>Ingliz Tili</h3>
+          <p class="course-desc">Beginner'dan IELTS/CEFR darajasigacha bosqichma-bosqich o'qitamiz.</p>
+          <div class="course-foot">
+            <span class="course-meta"><svg class="icon-15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>Haftada 3 kun</span>
+            <strong class="course-price">310 000 so'mdan</strong>
+          </div>
+        </div>
+      </article>
+
+      <article class="course-card">
+        <div class="course-media grad-c">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="14" r="6"/><path d="M9.5 8.5L7 3M14.5 8.5L17 3"/><path d="M12 11.5l1 2.2 2.4.2-1.8 1.6.6 2.3-2.2-1.3-2.2 1.3.6-2.3-1.8-1.6 2.4-.2z" fill="currentColor" stroke="none"/></svg>
+        </div>
+        <div class="course-body">
+          <h3>IELTS / CEFR Tayyorlov</h3>
+          <p class="course-desc">Xalqaro sertifikat uchun maxsus intensiv dastur.</p>
+          <div class="course-foot">
+            <span class="course-meta"><svg class="icon-15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>Haftada 3 kun</span>
+            <strong class="course-price">420 000 so'm</strong>
+          </div>
+        </div>
+      </article>
+
+      <article class="course-card">
+        <div class="course-media grad-b">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h6v6H4z"/><circle cx="17" cy="7" r="3"/><path d="M4 16l6 4M10 16l-6 4"/><path d="M15 19h6"/></svg>
+        </div>
+        <div class="course-body">
+          <h3>Matematika</h3>
+          <p class="course-desc">Maktab dasturi va mantiqiy fikrlashni mustahkamlovchi kurs.</p>
+          <div class="course-foot">
+            <span class="course-meta"><svg class="icon-15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>Haftada 3 kun</span>
+            <strong class="course-price">310 000 so'm</strong>
+          </div>
+        </div>
+      </article>
+
+      <article class="course-card">
+        <div class="course-media grad-d">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12c0-4.4 3.6-8 8-8s8 3.6 8 8-3.6 8-8 8c-1.2 0-2.3-.2-3.3-.7L4 20l1.1-4.2C4.4 14.7 4 13.4 4 12z"/></svg>
+        </div>
+        <div class="course-body">
+          <h3>Koreys Tili</h3>
+          <p class="course-desc">Nol darajadan erkin muloqot darajasigacha.</p>
+          <div class="course-foot">
+            <span class="course-meta"><svg class="icon-15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>Haftada 3 kun</span>
+            <strong class="course-price">350 000 so'm</strong>
+          </div>
+        </div>
+      </article>
+
+      <article class="course-card">
+        <div class="course-media grad-a">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></svg>
+        </div>
+        <div class="course-body">
+          <h3>Rus Tili</h3>
+          <p class="course-desc">Grammatika va erkin muloqot amaliyoti.</p>
+          <div class="course-foot">
+            <span class="course-meta"><svg class="icon-15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>Haftada 3 kun</span>
+            <strong class="course-price">350 000 so'm</strong>
+          </div>
+        </div>
+      </article>
+
+      <article class="course-card">
+        <div class="course-media grad-c">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/><path d="M12 4l2.5 5h-5z"/></svg>
+        </div>
+        <div class="course-body">
+          <h3>Bolalar Guruhlari</h3>
+          <p class="course-desc">7-12 yosh: Ingliz tili, Matematika va Rus tili KIDS formatida.</p>
+          <div class="course-foot">
+            <span class="course-meta"><svg class="icon-15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>Haftada 3 kun</span>
+            <strong class="course-price">310 000 so'mdan</strong>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="results snap-section wrap" id="natijalar">
+    <div class="section-head-center reveal">
+      <p class="eyebrow">Natijalar</p>
+      <h2 class="section-title">Urinish Emas — <span class="grad-text">Natija Muhim!</span></h2>
+      <p class="section-sub">O'quvchilarimiz nafaqat qatnashadi — ular haqiqiy natijaga erishadi.</p>
+    </div>
+
+    <div class="results-grid stagger-pop">
+      <article class="result-card">
+        <div class="avatar-circle result-avatar grad-a">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 100-10 5 5 0 000 10z"/><path d="M4 22c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        </div>
+        <span class="result-badge">A2 → B1</span>
+        <p class="result-note">4 oyda daraja oshirdi</p>
+      </article>
+      <article class="result-card">
+        <div class="avatar-circle result-avatar grad-b">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 100-10 5 5 0 000 10z"/><path d="M4 22c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        </div>
+        <span class="result-badge">B1 → B2</span>
+        <p class="result-note">6 oyda daraja oshirdi</p>
+      </article>
+      <article class="result-card">
+        <div class="avatar-circle result-avatar grad-c">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 100-10 5 5 0 000 10z"/><path d="M4 22c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        </div>
+        <span class="result-badge">B2 → C1</span>
+        <p class="result-note">8 oyda daraja oshirdi</p>
+      </article>
+      <article class="result-card">
+        <div class="avatar-circle result-avatar grad-d">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 100-10 5 5 0 000 10z"/><path d="M4 22c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        </div>
+        <span class="result-badge">IELTS 7.0</span>
+        <p class="result-note">Birinchi urinishda erishdi</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="teachers snap-section wrap" id="ustozlar">
+    <div class="section-head-center reveal">
+      <p class="eyebrow">Ustozlarimiz</p>
+      <h2 class="section-title">Tajribali Mentorlar Jamoasi</h2>
+      <p class="section-sub">Har bir yo'nalishda maqsadga erishishga yordam beradigan professional o'qituvchilar.</p>
+    </div>
+
+    <div class="mentor-spotlight slide-left">
+      <div class="photo-frame mentor-photo grad-a">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 100-10 5 5 0 000 10z"/><path d="M4 22c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+      </div>
+      <div class="mentor-info">
+        <span class="mentor-tag mono">TOP-TIER MENTOR</span>
+        <h3>Ism Familiya</h3>
+        <p class="mentor-role">Bosh metodist</p>
+        <span class="cert-badge">CEFR C2 · IELTS 8.5</span>
+        <p class="mentor-bio">IELTS va CEFR tayyorlov yo'nalishida ko'plab o'quvchini xalqaro sertifikatga olib chiqqan.</p>
+        <div class="cred-row">
+          <span class="cred-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 12a5 5 0 100-10 5 5 0 000 10z"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>300+ o'quvchiga natija berdi</span>
+          <span class="cred-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>8 yillik tajriba</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="teacher-grid stagger">
+      <article class="teacher-card">
+        <div class="photo-frame teacher-photo grad-b">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 100-10 5 5 0 000 10z"/><path d="M4 22c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        </div>
+        <p class="teacher-name">Ism Familiya</p>
+        <span class="teacher-subject">Ingliz tili o'qituvchisi</span>
+        <span class="cert-badge">CEFR C1</span>
+        <div class="teacher-stats">
+          <span>120+ o'quvchi</span>
+          <span>5 yil tajriba</span>
+        </div>
+      </article>
+      <article class="teacher-card">
+        <div class="photo-frame teacher-photo grad-d">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 100-10 5 5 0 000 10z"/><path d="M4 22c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        </div>
+        <p class="teacher-name">Ism Familiya</p>
+        <span class="teacher-subject">Koreys tili o'qituvchisi</span>
+        <span class="cert-badge">CEFR C1</span>
+        <div class="teacher-stats">
+          <span>80+ o'quvchi</span>
+          <span>4 yil tajriba</span>
+        </div>
+      </article>
+      <article class="teacher-card">
+        <div class="photo-frame teacher-photo grad-c">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 100-10 5 5 0 000 10z"/><path d="M4 22c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        </div>
+        <p class="teacher-name">Ism Familiya</p>
+        <span class="teacher-subject">Rus tili o'qituvchisi</span>
+        <span class="cert-badge">CEFR C1</span>
+        <div class="teacher-stats">
+          <span>100+ o'quvchi</span>
+          <span>6 yil tajriba</span>
+        </div>
+      </article>
+      <article class="teacher-card">
+        <div class="photo-frame teacher-photo grad-a">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 12a5 5 0 100-10 5 5 0 000 10z"/><path d="M4 22c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        </div>
+        <p class="teacher-name">Ism Familiya</p>
+        <span class="teacher-subject">IELTS/CEFR instruktori</span>
+        <span class="cert-badge">IELTS 8.0</span>
+        <div class="teacher-stats">
+          <span>150+ o'quvchi</span>
+          <span>7 yil tajriba</span>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="process snap-section wrap" id="process">
+    <div class="section-head-center reveal">
+      <p class="eyebrow">Qanday ishlaydi</p>
+      <h2 class="section-title">Ta'lim Jarayoni Juda Oddiy!</h2>
+      <p class="section-sub">Bilim olish — yangi olamni kashf etishning eng qiziqarli yo'li.</p>
+    </div>
+
+    <div class="process-grid stagger-slow">
+      <div class="process-step">
+        <span class="step-num mono">01</span>
+        <div class="step-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polygon points="14.5 9.5 12.8 12.8 9.5 14.5 11.2 11.2" fill="currentColor" stroke="none"/></svg></div>
+        <h3>Yo'nalishingizni tanlang</h3>
+      </div>
+
+      <div class="process-step process-step-main">
+        <span class="step-num mono">02</span>
+        <div class="step-icon step-icon-light"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9a2 2 0 002-2V6a1 1 0 011-1h12a1 1 0 011 1v1a2 2 0 002 2v1a2 2 0 00-2 2v1a1 1 0 01-1 1H6a1 1 0 01-1-1v-1a2 2 0 00-2-2V9z"/><line x1="14" y1="5" x2="14" y2="19" stroke-dasharray="2.2 2.2"/></svg></div>
+        <h3>Kursga yoziling</h3>
+        <p>Bilim olish — yangi dunyoni kashf etishning ajoyib yo'li. Yangi ko'nikmalar sizni kutmoqda.</p>
+        <a href="#contact" class="text-link">Batafsil <svg class="icon-15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a>
+      </div>
+
+      <div class="process-step">
+        <span class="step-num mono">03</span>
+        <div class="step-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9l10-4 10 4-10 4-10-4z"/><path d="M6 11v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/><path d="M22 9v6"/></svg></div>
+        <h3>O'qing, o'sing, yutuqqa erishing</h3>
+      </div>
+    </div>
+  </section>
+
+  <section class="pricing snap-section wrap" id="narxlar">
+    <div class="section-head-center reveal">
+      <p class="eyebrow">Narxlar</p>
+      <h2 class="section-title">Kurslar va Narxlar</h2>
+      <p class="section-sub">Barcha kurslar: haftada 3 kun, 2 soatdan</p>
+    </div>
+
+    <div class="pricing-grid stagger">
+      <div class="price-group">
+        <h3 class="price-group-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5C4 4.7 4.7 4 5.5 4H12v16H5.5A1.5 1.5 0 014 18.5v-13z"/><path d="M20 5.5c0-.8-.7-1.5-1.5-1.5H12v16h6.5a1.5 1.5 0 001.5-1.5v-13z"/></svg>
+          Ingliz Tili
+        </h3>
+        <ul class="price-list">
+          <li><span>Beginner</span><strong>310 000 so'm</strong></li>
+          <li><span>Elementary</span><strong>340 000 so'm</strong></li>
+          <li><span>Intermediate</span><strong>340 000 so'm</strong></li>
+          <li><span>Pre-IELTS/CEFR</span><strong>390 000 so'm</strong></li>
+          <li><span>IELTS/CEFR</span><strong>420 000 so'm</strong></li>
+        </ul>
+      </div>
+
+      <div class="price-group">
+        <h3 class="price-group-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></svg>
+          Xorijiy Tillar
+        </h3>
+        <ul class="price-list">
+          <li><span>Koreys tili</span><strong>350 000 so'm</strong></li>
+          <li><span>Rus tili</span><strong>350 000 so'm</strong></li>
+        </ul>
+      </div>
+
+      <div class="price-group">
+        <h3 class="price-group-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9l10-4 10 4-10 4-10-4z"/><path d="M6 11v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/><path d="M22 9v6"/></svg>
+          Asosiy Fanlar
+        </h3>
+        <ul class="price-list">
+          <li><span>Matematika</span><strong>310 000 so'm</strong></li>
+          <li><span>Tarix</span><strong>310 000 so'm</strong></li>
+          <li><span>Ona tili</span><strong>350 000 so'm</strong></li>
+        </ul>
+      </div>
+
+      <div class="price-group">
+        <h3 class="price-group-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/><path d="M12 4l2.5 5h-5z"/></svg>
+          Bolalar Guruhlari
+        </h3>
+        <ul class="price-list">
+          <li><span>English KIDS</span><strong>310 000 so'm</strong></li>
+          <li><span>Matematika KIDS</span><strong>310 000 so'm</strong></li>
+          <li><span>Rus tili KIDS</span><strong>310 000 so'm</strong></li>
+        </ul>
+      </div>
+    </div>
+    <p class="pricing-note">* Narxlar oylik to'lov asosida. Batafsil ma'lumot uchun biz bilan bog'laning.</p>
+  </section>
+
+  <section class="promo snap-section wrap" id="contact">
+    <div class="promo-media scale-in">
+      <div class="promo-ring"></div>
+      <div class="promo-planet"></div>
+      <svg class="promo-rocket" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.2c2.6 2.1 4.2 5.8 4.2 9.9 0 2.1-1.1 4.2-4.2 6.3-3.1-2.1-4.2-4.2-4.2-6.3 0-4.1 1.6-7.8 4.2-9.9z"/><circle cx="12" cy="10.4" r="1.6" fill="currentColor" stroke="none"/><path d="M8.6 15.6l-2.8 2.8.9 2.8 2.8-2.8"/><path d="M15.4 15.6l2.8 2.8-.9 2.8-2.8-2.8"/></svg>
+      <span class="promo-dot promo-d1"></span><span class="promo-dot promo-d2"></span><span class="promo-dot promo-d3"></span>
+    </div>
+
+    <div class="promo-content">
+      <div class="text-flip">
+        <p class="promo-strike">Asosiy gap — natija emas...</p>
+        <h2 class="promo-title-main">O'sha gap — <span>Natija muhim</span> bo'ladi!</h2>
+      </div>
+      <div class="promo-text-row reveal">
+        <p>Farzandingiz nafaqat nazariy bilim, balki amaliy ko'nikma va o'ziga ishonch bilan tarbiyalanadi.</p>
+        <p>Har bir kurs aniq maqsad va o'lchanadigan natija bilan yakunlanadi — bu bizning va'damiz.</p>
+      </div>
+      <div class="promo-bottom reveal">
+        <div class="offer">
+          <span class="offer-percent">20% chegirma</span>
+          <span class="offer-date">31-avgustgacha amal qiladi</span>
+        </div>
+        <a href="#" class="btn btn-primary">Hoziroq ro'yxatdan o'ting
+          <svg class="icon-18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <div class="footer-brand">
+      <span class="logo-text">COSMOS<span>LC</span></span>
+      <p>Fazoni egallovchi avlodlarni bugun tarbiyalaymiz.</p>
+    </div>
+    <nav class="footer-links">
+      <a href="#portals">Platforma</a>
+      <a href="#courses">Kurslar</a>
+      <a href="#natijalar">Natijalar</a>
+      <a href="#ustozlar">Ustozlar</a>
+      <a href="#narxlar">Narxlar</a>
+      <a href="#contact">Aloqa</a>
+    </nav>
+    <div class="social-icons">
+      <a href="#" aria-label="Telegram"><svg class="icon-18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4L3 11l6 2m12-9l-4 17-8-6m12-11L9 13"/></svg></a>
+      <a href="#" aria-label="Instagram"><svg class="icon-18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="1" fill="currentColor" stroke="none"/></svg></a>
+      <a href="#" aria-label="YouTube"><svg class="icon-18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="4"/><path d="M10 9l6 3-6 3V9z" fill="currentColor" stroke="none"/></svg></a>
+    </div>
+  </div>
+  <div class="wrap footer-bottom">
+    <p>© 2026 COSMOS LC. Barcha huquqlar himoyalangan.</p>
+  </div>
+</footer>
+
+<script>
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Mobile nav toggle
+  const navToggle = document.getElementById('navToggle');
+  const mainNav = document.getElementById('mainNav');
+  navToggle.addEventListener('click', () => {
+    const isOpen = mainNav.classList.toggle('open');
+    navToggle.setAttribute('aria-expanded', String(isOpen));
+  });
+  mainNav.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
+    mainNav.classList.remove('open');
+    navToggle.setAttribute('aria-expanded', 'false');
+  }));
+
+  // Scroll reveal - every animation variant used across the page
+  const revealSelector = '.reveal, .stagger, .stagger-scale, .stagger-pop, .stagger-slow, .slide-left, .slide-right, .scale-in, .text-flip';
+  const revealEls = document.querySelectorAll(revealSelector);
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15 });
+  revealEls.forEach(el => io.observe(el));
+
+  // Stat count-up
+  const statNumbers = document.querySelectorAll('.stat-number');
+  const statIO = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const el = entry.target;
+      const target = parseInt(el.getAttribute('data-target'), 10);
+      const suffix = el.getAttribute('data-suffix') || '';
+      if (prefersReducedMotion) {
+        el.textContent = target + suffix;
+      } else {
+        const duration = 1400;
+        const start = performance.now();
+        function tick(now) {
+          const progress = Math.min((now - start) / duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          el.textContent = Math.round(eased * target) + suffix;
+          if (progress < 1) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+      }
+      statIO.unobserve(el);
+    });
+  }, { threshold: 0.5 });
+  statNumbers.forEach(el => statIO.observe(el));
+
+  // Course carousel arrows
+  const grid = document.getElementById('courseGrid');
+  const prevBtn = document.getElementById('coursesPrev');
+  const nextBtn = document.getElementById('coursesNext');
+  if (prevBtn && nextBtn && grid) {
+    nextBtn.addEventListener('click', () => grid.scrollBy({ left: 280, behavior: 'smooth' }));
+    prevBtn.addEventListener('click', () => grid.scrollBy({ left: -280, behavior: 'smooth' }));
+  }
+
+  // Cosmos canvas: starfield + comets
+  (function () {
+    const canvas = document.getElementById('cosmos');
+    const ctx = canvas.getContext('2d');
+    let w, h, dpr, stars, nebulae, comets, cometTimer, rafId;
+
+    function build() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      w = window.innerWidth;
+      h = window.innerHeight;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const count = Math.round((w * h) / 9000);
+      stars = Array.from({ length: Math.min(Math.max(count, 90), 240) }, () => ({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        r: Math.random() * 1.4 + 0.4,
+        base: Math.random() * 0.5 + 0.3,
+        speed: Math.random() * 0.02 + 0.006,
+        phase: Math.random() * Math.PI * 2,
+        dx: (Math.random() - 0.5) * 0.04,
+        dy: (Math.random() - 0.5) * 0.04
+      }));
+
+      nebulae = [
+        { x: 0.14, y: 0.18, r: Math.max(w, h) * 0.32, c: 'rgba(124,92,252,0.14)' },
+        { x: 0.88, y: 0.12, r: Math.max(w, h) * 0.28, c: 'rgba(78,168,255,0.11)' },
+        { x: 0.55, y: 0.92, r: Math.max(w, h) * 0.34, c: 'rgba(201,78,224,0.08)' }
+      ];
+      comets = [];
+    }
+
+    function spawnComet() {
+      const x = Math.random() * w * 0.7 + w * 0.15;
+      const dir = Math.random() < 0.5 ? 1 : -1;
+      comets.push({
+        x, y: -30,
+        vx: dir * (Math.random() * 1.5 + 1.5),
+        vy: Math.random() * 2.5 + 3,
+        len: Math.random() * 70 + 60,
+        life: 0,
+        maxLife: 90
+      });
+    }
+
+    function drawFrame(t) {
+      ctx.clearRect(0, 0, w, h);
+
+      const bg = ctx.createLinearGradient(0, 0, w, h);
+      bg.addColorStop(0, '#06071a');
+      bg.addColorStop(1, '#0d1130');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, w, h);
+
+      nebulae.forEach(n => {
+        const g = ctx.createRadialGradient(n.x * w, n.y * h, 0, n.x * w, n.y * h, n.r);
+        g.addColorStop(0, n.c);
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, w, h);
+      });
+
+      stars.forEach(s => {
+        if (!prefersReducedMotion) {
+          s.x += s.dx; s.y += s.dy;
+          if (s.x < 0) s.x = w; if (s.x > w) s.x = 0;
+          if (s.y < 0) s.y = h; if (s.y > h) s.y = 0;
+        }
+        const a = prefersReducedMotion ? s.base : s.base + Math.sin(t * s.speed + s.phase) * 0.28;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(243,244,252,' + Math.max(0, Math.min(1, a)) + ')';
+        ctx.fill();
+      });
+
+      if (!prefersReducedMotion) {
+        comets.forEach(c => {
+          c.x += c.vx; c.y += c.vy; c.life++;
+          const a = 1 - c.life / c.maxLife;
+          const tx = c.x - c.vx * c.len / 4;
+          const ty = c.y - c.vy * c.len / 4;
+          const g = ctx.createLinearGradient(c.x, c.y, tx, ty);
+          g.addColorStop(0, 'rgba(255,255,255,' + a + ')');
+          g.addColorStop(1, 'rgba(255,255,255,0)');
+          ctx.strokeStyle = g;
+          ctx.lineWidth = 1.6;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(c.x, c.y);
+          ctx.lineTo(tx, ty);
+          ctx.stroke();
+        });
+        comets = comets.filter(c => c.life < c.maxLife && c.y < h + 60);
+      }
+    }
+
+    function loop(t) {
+      drawFrame(t);
+      rafId = requestAnimationFrame(loop);
+    }
+
+    build();
+    if (prefersReducedMotion) {
+      drawFrame(0);
+    } else {
+      rafId = requestAnimationFrame(loop);
+      cometTimer = setInterval(() => { if (Math.random() < 0.65) spawnComet(); }, 4200);
+    }
+
+    window.addEventListener('resize', () => {
+      build();
+      if (prefersReducedMotion) drawFrame(0);
+    });
+  })();
+</script>
+
+</body>
 </html>
