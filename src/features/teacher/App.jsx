@@ -24,7 +24,6 @@ import { ProfileView } from "./pages/ProfileView";
 import { AnalyticsView } from "./pages/AnalyticsView";
 import { PaymentsView } from "./pages/PaymentsView";
 
-import { AddGroupModal } from "./modals/AddGroupModal";
 import { AddStudentModal } from "./modals/AddStudentModal";
 import { CreateTaskModal } from "./modals/CreateTaskModal";
 import { StudentDetailModal } from "./modals/StudentDetailModal";
@@ -124,16 +123,6 @@ export default function App() {
     setSelectedGroupId(null);
     setSelectedTaskId(null);
     setModal(null);
-  }
-
-  async function addGroup(payload) {
-    try {
-      const created = await api.addGroup({ ...payload, teacherHrId: session?.teacherHrId });
-      setAppData((prev) => ({ ...prev, groups: [...prev.groups, created] }));
-      addNotification(`"${payload.name}" guruhi yaratildi.`);
-    } catch (e) {
-      reportError(e, "Guruh yaratib bo'lmadi.");
-    }
   }
 
   async function addStudent(payload) {
@@ -507,6 +496,61 @@ export default function App() {
     }
   }
 
+  async function addExam(payload) {
+    try {
+      const created = await api.addExam(payload);
+      setAppData((prev) => ({
+        ...prev,
+        exams: [created, ...(prev.exams || [])],
+      }));
+      addNotification(`"${payload.title || payload.name}" imtihoni qo'shildi.`);
+      return created;
+    } catch (e) {
+      reportError(e, "Imtihon qo'shib bo'lmadi.");
+    }
+  }
+
+  async function updateExam(id, payload) {
+    try {
+      const updated = await api.updateExam(id, payload);
+      setAppData((prev) => ({
+        ...prev,
+        exams: (prev.exams || []).map((x) => (x.id === id ? { ...x, ...updated } : x)),
+      }));
+      addNotification("Imtihon ma'lumotlari yangilandi.");
+      return updated;
+    } catch (e) {
+      reportError(e, "Imtihonni yangilab bo'lmadi.");
+    }
+  }
+
+  async function deleteExam(id) {
+    setAppData((prev) => ({
+      ...prev,
+      exams: (prev.exams || []).filter((x) => x.id !== id),
+    }));
+    addNotification("Imtihon o'chirildi.");
+    try {
+      await api.deleteExam(id);
+    } catch (e) {
+      reportError(e, "O'chirib bo'lmadi.");
+    }
+  }
+
+  async function saveExamResults(examId, results) {
+    try {
+      const updated = await api.saveExamResults(examId, results);
+      setAppData((prev) => ({
+        ...prev,
+        exams: (prev.exams || []).map((x) => (x.id === examId ? { ...x, results } : x)),
+      }));
+      addNotification("Imtihon natijalari saqlandi.");
+      return updated;
+    } catch (e) {
+      reportError(e, "Natijalarni saqlab bo'lmadi.");
+    }
+  }
+
   async function deleteTask(taskId) {
     setAppData((prev) => ({
       ...prev,
@@ -564,7 +608,6 @@ export default function App() {
 
   const now = new Date();
   const courses = directorData.courses || [];
-  const canCreateGroups = teacher.canCreateGroups !== false;
 
   // Filter appData so each teacher only manages and sees their assigned groups
   const filteredGroups = (appData.groups || []).filter((g) => g.teacherHrId === teacher.id);
@@ -580,6 +623,8 @@ export default function App() {
 
   const filteredPostponed = (appData.postponed || []).filter((p) => filteredGroupIds.has(p.groupId));
 
+  const filteredExams = (appData.exams || []).filter((e) => filteredGroupIds.has(e.groupId));
+
   const filteredAppData = {
     ...appData,
     groups: filteredGroups,
@@ -587,6 +632,7 @@ export default function App() {
     tasks: filteredTasks,
     attendance: filteredAttendance,
     postponed: filteredPostponed,
+    exams: filteredExams,
     payments: directorData?.payments || [],
     centerSettings: directorData?.centerSettings || {},
     allGroups: appData.groups || [],
@@ -621,7 +667,6 @@ export default function App() {
             setSelectedGroupId={setSelectedGroupId}
             selectedGroupId={selectedGroupId}
             courses={courses}
-            canCreateGroups={canCreateGroups}
             goTo={goTo}
           />
         )}
@@ -637,13 +682,16 @@ export default function App() {
             appData={filteredAppData}
             directorData={directorData}
             openModal={openModal}
-            canCreateGroups={canCreateGroups}
             courses={courses}
             goTo={goTo}
             markSubmission={markSubmission}
             markAttendance={markAttendance}
             markGrade={markGrade}
             saveAttendance={saveAttendance}
+            addExam={addExam}
+            updateExam={updateExam}
+            deleteExam={deleteExam}
+            saveExamResults={saveExamResults}
             selectedTaskId={selectedTaskId}
             setSelectedTaskId={setSelectedTaskId}
           />
@@ -661,6 +709,7 @@ export default function App() {
             teacher={teacher}
             directorData={directorData}
             appData={filteredAppData}
+            openModal={openModal}
           />
         )}
         {view === "payments" && (
@@ -686,14 +735,6 @@ export default function App() {
         }
       />
 
-      {modal?.type === "addGroup" && (
-        <AddGroupModal
-          groups={filteredAppData.groups}
-          courses={courses}
-          onAdd={addGroup}
-          onClose={closeModal}
-        />
-      )}
       {modal?.type === "addStudent" && (
         <AddStudentModal
           groupId={modal.groupId}

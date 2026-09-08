@@ -42,7 +42,9 @@ export function TeacherLoginScreen({ teachersHR = [], onLoginTeacher }) {
     const match = teachersHR.find(
       (t) =>
         normalizePhone(t.phone) === normalized &&
-        (t.passwordHash === hash ||
+        (t.passwordHash === password ||
+          t.password === password ||
+          t.passwordHash === hash ||
           password === "teacher123" ||
           password === "admin123" ||
           !t.passwordHash)

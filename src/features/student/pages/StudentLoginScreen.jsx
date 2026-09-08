@@ -37,7 +37,12 @@ export function StudentLoginScreen({ appData, onLoginStudent }) {
       (s) =>
         s.phone &&
         normalizePhone(s.phone) === normalized &&
-        (s.passwordHash === hash || studentPw === "student123" || studentPw === "123456" || studentPw === "admin123"),
+        (s.passwordHash === studentPw ||
+          s.password === studentPw ||
+          s.passwordHash === hash ||
+          studentPw === "student123" ||
+          studentPw === "123456" ||
+          studentPw === "admin123"),
     );
     setBusy(false);
     if (found) {

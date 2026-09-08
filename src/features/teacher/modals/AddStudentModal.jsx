@@ -60,18 +60,18 @@ export function AddStudentModal({
       return;
     }
     setBusy(true);
-    const passwordHash = await hashPassword(password);
-    setBusy(false);
     onAddNew({
       name: name.trim(),
       phone,
       birthDate,
       parentName: parentName.trim(),
       parentPhone,
-      passwordHash,
+      passwordHash: password,
+      password: password,
       groupIds: [groupId],
       coins: 0,
     });
+    setBusy(false);
     onClose();
   }
 

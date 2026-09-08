@@ -25,6 +25,8 @@ import {
   Award,
   Phone,
   Wallet,
+  FileText,
+  MessageSquare,
 } from "lucide-react";
 import {
   BTN_GHOST,
@@ -38,6 +40,8 @@ import {
   StarRating,
 } from "../../../shared/components/primitives";
 import { AttendanceSection } from "../components/AttendanceSection";
+import { GroupExamsSection } from "../components/GroupExamsSection";
+import { GroupChatSection } from "../components/GroupChatSection";
 import {
   getGroupStudents,
   rankStudents,
@@ -183,13 +187,16 @@ export function GroupsView({
   appData,
   directorData,
   openModal,
-  canCreateGroups,
   courses = [],
   goTo,
   markSubmission,
   markAttendance,
   markGrade,
   saveAttendance,
+  addExam,
+  updateExam,
+  deleteExam,
+  saveExamResults,
   selectedTaskId,
   setSelectedTaskId,
 }) {
@@ -218,6 +225,10 @@ export function GroupsView({
         markGrade={markGrade}
         saveAttendance={saveAttendance}
         markSubmission={markSubmission}
+        addExam={addExam}
+        updateExam={updateExam}
+        deleteExam={deleteExam}
+        saveExamResults={saveExamResults}
         onBack={() => setSelectedGroupId(null)}
       />
     );
@@ -276,7 +287,7 @@ export function GroupsView({
               title="Ro'yxat ko'rinishi"
               className={`p-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 viewMode === "list"
-                  ? "bg-white dark:bg-white/20 text-slate-900 dark:text-white shadow-sm"
+                  ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/25"
                   : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
@@ -289,7 +300,7 @@ export function GroupsView({
               title="Katak ko'rinishi"
               className={`p-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 viewMode === "grid"
-                  ? "bg-white dark:bg-white/20 text-slate-900 dark:text-white shadow-sm"
+                  ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/25"
                   : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
@@ -297,17 +308,6 @@ export function GroupsView({
               <span className="hidden sm:inline">Katak</span>
             </button>
           </div>
-
-          {canCreateGroups && (
-            <button
-              type="button"
-              onClick={() => openModal({ type: "addGroup" })}
-              className={BTN_PRIMARY}
-            >
-              <Plus size={16} />
-              <span>Yangi guruh</span>
-            </button>
-          )}
         </div>
       </div>
 
@@ -332,18 +332,7 @@ export function GroupsView({
           <EmptyState
             icon={Users}
             title="Hali guruh yo'q"
-            subtitle="Birinchi guruhingizni yarating yoki administrator biriktirishini kuting."
-            action={
-              canCreateGroups ? (
-                <button
-                  type="button"
-                  onClick={() => openModal({ type: "addGroup" })}
-                  className={BTN_PRIMARY}
-                >
-                  <Plus size={16} /> Guruh yaratish
-                </button>
-              ) : null
-            }
+            subtitle="Guruhlar administrator yoki direktor tomonidan biriktiriladi."
           />
         </div>
       ) : filteredGroups.length === 0 ? (
@@ -351,125 +340,8 @@ export function GroupsView({
           Qidiruv bo'yicha guruh topilmadi
         </div>
       ) : viewMode === "list" ? (
-        /* MODE 1: RO'YXAT (Table View with ALL days visible without truncation) */
-        <div className="relative overflow-hidden rounded-3xl bg-white/40 dark:bg-white/5 backdrop-blur-2xl border border-white/60 dark:border-white/10 p-5 sm:p-7 shadow-[0_8px_32px_0_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.3)]">
-          {/* Ambient glows */}
-          <div className="absolute -right-20 -top-20 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -left-16 -bottom-16 w-60 h-60 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-
-          <div className="relative z-10">
-            {/* Desktop Table Header */}
-            <div className="hidden lg:grid grid-cols-12 gap-4 pb-3.5 border-b border-slate-200/60 dark:border-white/10 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              <div className="col-span-3">Guruh nomi</div>
-              <div className="col-span-2">Vaqti</div>
-              <div className="col-span-2">Xona</div>
-              <div className="col-span-3">Dars kunlari</div>
-              <div className="col-span-2 text-right">O'quvchilar</div>
-            </div>
-
-            {/* List Rows */}
-            <div className="divide-y divide-slate-200/50 dark:divide-white/10">
-              {filteredGroups.map((g) => {
-                const name = g.name || "Guruh";
-                const timeStr = g.time || g.lessonTime || "Belgilanmagan";
-                const room = rooms.find((r) => String(r.id) === String(g.roomId));
-                const roomName =
-                  room?.name ||
-                  g.roomName ||
-                  (typeof g.room === "string" ? g.room : g.room?.name) ||
-                  "Belgilanmagan";
-
-                const daysList = formatDaysList(g.days);
-
-                const studentCount = (appData?.students || []).filter((s) => {
-                  if (Array.isArray(s.groupIds)) {
-                    return s.groupIds.some((id) => String(id) === String(g.id));
-                  }
-                  return String(s.groupId) === String(g.id);
-                }).length;
-
-                const course = courses.find(
-                  (c) => String(c.id) === String(g.courseId)
-                );
-
-                return (
-                  <div
-                    key={g.id}
-                    onClick={() => setSelectedGroupId(g.id)}
-                    className="py-4 px-2 -mx-2 rounded-2xl hover:bg-white/50 dark:hover:bg-white/5 transition-all cursor-pointer group flex flex-col lg:grid lg:grid-cols-12 lg:gap-4 lg:items-center gap-3"
-                  >
-                    {/* 1. Guruh nomi */}
-                    <div className="col-span-3 flex items-center gap-3 min-w-0">
-                      <div
-                        className="w-3.5 h-3.5 rounded-full shrink-0 shadow-sm transition-transform group-hover:scale-110"
-                        style={{ backgroundColor: g.color || "#006aff" }}
-                      />
-                      <div className="min-w-0">
-                        <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
-                          {name}
-                        </h3>
-                        {course && (
-                          <p className="text-[11px] text-slate-400 truncate mt-0.5">
-                            {course.name}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* 2. Vaqti */}
-                    <div className="col-span-2 flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300">
-                      <Clock size={14} className="text-blue-500 shrink-0" />
-                      <span className="font-semibold">{timeStr}</span>
-                    </div>
-
-                    {/* 3. Xona */}
-                    <div className="col-span-2 flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300">
-                      <DoorOpen size={14} className="text-emerald-500 shrink-0" />
-                      <span className="font-medium">{roomName}</span>
-                    </div>
-
-                    {/* 4. Dars kunlari (FULL DAYS VISIBLE, NO TRUNCATE) */}
-                    <div className="col-span-3 flex items-center gap-1.5 flex-wrap text-xs">
-                      <Calendar
-                        size={14}
-                        className="text-amber-500 shrink-0 mr-0.5"
-                      />
-                      {daysList.length === 0 ? (
-                        <span className="text-slate-400 italic">
-                          Belgilanmagan
-                        </span>
-                      ) : (
-                        daysList.map((day, idx) => (
-                          <span
-                            key={idx}
-                            className="inline-block px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 text-[11px] font-medium"
-                          >
-                            {day}
-                          </span>
-                        ))
-                      )}
-                    </div>
-
-                    {/* 5. O'quvchi soni */}
-                    <div className="col-span-2 flex items-center justify-between lg:justify-end gap-3 text-right">
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-xs font-bold">
-                        <Users size={13} />
-                        <span>{studentCount} o'quvchi</span>
-                      </div>
-                      <ChevronRight
-                        size={16}
-                        className="text-slate-400 group-hover:text-slate-700 dark:group-hover:text-white group-hover:translate-x-0.5 transition-all"
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      ) : (
-        /* MODE 2: KATAK (Box / Card Grid with ALL days fully visible) */
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        /* MODE 1: RO'YXAT (Each group as a distinct, elevated, separated card) */
+        <div className="space-y-3">
           {filteredGroups.map((g) => {
             const name = g.name || "Guruh";
             const timeStr = g.time || g.lessonTime || "Belgilanmagan";
@@ -493,67 +365,203 @@ export function GroupsView({
               (c) => String(c.id) === String(g.courseId)
             );
 
+            const groupColor = g.color || "#3b82f6";
+
             return (
               <div
                 key={g.id}
                 onClick={() => setSelectedGroupId(g.id)}
-                className="group relative overflow-hidden rounded-3xl bg-white/40 dark:bg-white/5 backdrop-blur-2xl border border-white/60 dark:border-white/10 p-5 sm:p-6 shadow-[0_8px_32px_0_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_0_rgba(0,0,0,0.3)] hover:border-blue-500/40 hover:shadow-lg transition-all cursor-pointer flex flex-col justify-between gap-4"
+                className="group relative overflow-hidden rounded-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-2 border-slate-200/90 dark:border-white/15 hover:border-blue-500/80 dark:hover:border-blue-400/80 p-4 sm:p-5 shadow-[0_4px_20px_rgba(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col lg:grid lg:grid-cols-12 lg:gap-4 lg:items-center gap-3.5"
               >
-                {/* Glow */}
+                {/* Left accent color bar */}
                 <div
-                  className="absolute -right-12 -top-12 w-32 h-32 rounded-full blur-2xl pointer-events-none opacity-30 group-hover:opacity-60 transition-opacity"
-                  style={{ backgroundColor: g.color || "#006aff" }}
+                  className="absolute left-0 top-0 bottom-0 w-1.5 transition-all group-hover:w-2.5"
+                  style={{ backgroundColor: groupColor }}
                 />
 
-                {/* Top: Color indicator + Name + Course */}
-                <div>
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div
-                        className="w-4 h-4 rounded-full shrink-0 shadow-sm"
-                        style={{ backgroundColor: g.color || "#006aff" }}
-                      />
-                      <h3 className="text-base font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
-                        {name}
-                      </h3>
-                    </div>
+                {/* Ambient glow */}
+                <div
+                  className="absolute -right-8 -top-8 w-28 h-28 rounded-full blur-2xl pointer-events-none opacity-20 group-hover:opacity-40 transition-opacity"
+                  style={{ backgroundColor: groupColor }}
+                />
 
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-xs font-bold shrink-0">
-                      <Users size={12} />
-                      {studentCount}
-                    </span>
+                {/* 1. Guruh nomi & Icon */}
+                <div className="col-span-3 flex items-center gap-3 min-w-0 pl-1.5">
+                  <div
+                    className="w-10 h-10 rounded-xl shrink-0 flex items-center justify-center text-white font-bold shadow-md transition-transform group-hover:scale-105"
+                    style={{
+                      backgroundColor: groupColor,
+                      boxShadow: `0 4px 12px ${groupColor}40`,
+                    }}
+                  >
+                    <BookOpen size={18} />
                   </div>
+                  <div className="min-w-0">
+                    <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
+                      {name}
+                    </h3>
+                    {course && (
+                      <p className="text-xs text-slate-400 truncate mt-0.5 font-medium">
+                        {course.name}
+                      </p>
+                    )}
+                  </div>
+                </div>
 
-                  {course && (
-                    <p className="text-xs text-slate-400 font-medium truncate mb-3">
-                      {course.name}
-                    </p>
+                {/* 2. Vaqti */}
+                <div className="col-span-2 flex items-center gap-2 text-xs text-slate-700 dark:text-slate-200">
+                  <Clock size={14} className="text-blue-500 shrink-0" />
+                  <span className="font-bold px-2.5 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400">
+                    {timeStr}
+                  </span>
+                </div>
+
+                {/* 3. Xona */}
+                <div className="col-span-2 flex items-center gap-2 text-xs text-slate-700 dark:text-slate-200">
+                  <DoorOpen size={14} className="text-emerald-500 shrink-0" />
+                  <span className="font-bold px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                    {roomName}
+                  </span>
+                </div>
+
+                {/* 4. Dars kunlari */}
+                <div className="col-span-3 flex items-center gap-1.5 flex-wrap text-xs">
+                  <Calendar size={14} className="text-amber-500 shrink-0 mr-0.5" />
+                  {daysList.length === 0 ? (
+                    <span className="text-slate-400 italic text-xs">Belgilanmagan</span>
+                  ) : (
+                    daysList.map((day, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2 py-0.5 rounded-lg bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/25 text-[11px] font-bold shadow-xs"
+                      >
+                        {day}
+                      </span>
+                    ))
                   )}
                 </div>
 
-                {/* Meta properties */}
-                <div className="space-y-2.5 pt-3 border-t border-slate-200/60 dark:border-white/10 text-xs">
+                {/* 5. O'quvchi soni & O'tish tugmasi */}
+                <div className="col-span-2 flex items-center justify-between lg:justify-end gap-3 text-right">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/25 text-xs font-black shrink-0 shadow-xs">
+                    <Users size={13} />
+                    <span>{studentCount} o'quvchi</span>
+                  </div>
+                  <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-white/10 group-hover:bg-blue-600 group-hover:text-white flex items-center justify-center text-slate-400 transition-all">
+                    <ChevronRight size={16} />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* MODE 2: KATAK (Box / Card Grid with high-contrast distinct borders & glow) */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+          {filteredGroups.map((g) => {
+            const name = g.name || "Guruh";
+            const timeStr = g.time || g.lessonTime || "Belgilanmagan";
+            const room = rooms.find((r) => String(r.id) === String(g.roomId));
+            const roomName =
+              room?.name ||
+              g.roomName ||
+              (typeof g.room === "string" ? g.room : g.room?.name) ||
+              "Belgilanmagan";
+
+            const daysList = formatDaysList(g.days);
+
+            const studentCount = (appData?.students || []).filter((s) => {
+              if (Array.isArray(s.groupIds)) {
+                return s.groupIds.some((id) => String(id) === String(g.id));
+              }
+              return String(s.groupId) === String(g.id);
+            }).length;
+
+            const course = courses.find(
+              (c) => String(c.id) === String(g.courseId)
+            );
+
+            const groupColor = g.color || "#3b82f6";
+
+            return (
+              <div
+                key={g.id}
+                onClick={() => setSelectedGroupId(g.id)}
+                className="group relative overflow-hidden rounded-3xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border-2 border-slate-200 dark:border-white/15 hover:border-blue-500 dark:hover:border-blue-400 p-5 sm:p-6 shadow-[0_10px_35px_rgba(0,0,0,0.06)] dark:shadow-[0_14px_45px_rgba(0,0,0,0.5)] hover:shadow-[0_20px_50px_rgba(59,130,246,0.22)] transition-all duration-300 transform hover:-translate-y-1.5 cursor-pointer flex flex-col justify-between gap-5"
+              >
+                {/* Top Accent Gradient Bar */}
+                <div
+                  className="absolute top-0 left-0 right-0 h-2 opacity-95 transition-all group-hover:h-2.5"
+                  style={{
+                    background: `linear-gradient(90deg, ${groupColor}, #6366f1, #3b82f6)`,
+                  }}
+                />
+
+                {/* Ambient Glow Aura */}
+                <div
+                  className="absolute -right-12 -top-12 w-40 h-40 rounded-full blur-3xl pointer-events-none opacity-25 group-hover:opacity-55 transition-opacity"
+                  style={{ backgroundColor: groupColor }}
+                />
+
+                {/* Top: Icon + Name + Course + Student badge */}
+                <div>
+                  <div className="flex items-start justify-between gap-3 mb-2 pt-1">
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      {/* Glowing Icon Badge */}
+                      <div
+                        className="w-12 h-12 rounded-2xl shrink-0 flex items-center justify-center text-white font-bold text-base shadow-lg transition-transform group-hover:scale-110"
+                        style={{
+                          backgroundColor: groupColor,
+                          boxShadow: `0 6px 18px ${groupColor}50`,
+                        }}
+                      >
+                        <BookOpen size={20} />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
+                          {name}
+                        </h3>
+                        {course && (
+                          <p className="text-xs text-slate-400 font-medium truncate mt-0.5">
+                            {course.name}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 text-xs font-black shrink-0 shadow-xs">
+                      <Users size={13} />
+                      {studentCount}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Meta properties with clean high-contrast rounded panels */}
+                <div className="space-y-2.5 pt-3 border-t border-slate-200/80 dark:border-white/10 text-xs">
                   {/* Vaqti */}
-                  <div className="flex items-center justify-between gap-2 text-slate-600 dark:text-slate-300">
-                    <span className="text-slate-400 flex items-center gap-1.5">
+                  <div className="flex items-center justify-between gap-2 text-slate-700 dark:text-slate-200">
+                    <span className="text-slate-400 flex items-center gap-1.5 font-medium">
                       <Clock size={14} className="text-blue-500" /> Vaqti:
                     </span>
-                    <span className="font-semibold">{timeStr}</span>
+                    <span className="font-bold px-2.5 py-1 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400">
+                      {timeStr}
+                    </span>
                   </div>
 
                   {/* Xona */}
-                  <div className="flex items-center justify-between gap-2 text-slate-600 dark:text-slate-300">
-                    <span className="text-slate-400 flex items-center gap-1.5">
+                  <div className="flex items-center justify-between gap-2 text-slate-700 dark:text-slate-200">
+                    <span className="text-slate-400 flex items-center gap-1.5 font-medium">
                       <DoorOpen size={14} className="text-emerald-500" /> Xona:
                     </span>
-                    <span className="font-semibold">{roomName}</span>
+                    <span className="font-bold px-2.5 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                      {roomName}
+                    </span>
                   </div>
 
-                  {/* Dars kunlari (FULL DAYS DISPLAYED) */}
-                  <div className="space-y-1 pt-1">
-                    <span className="text-slate-400 flex items-center gap-1.5 text-[11px]">
-                      <Calendar size={13} className="text-amber-500" /> Dars
-                      kunlari:
+                  {/* Dars kunlari */}
+                  <div className="space-y-1.5 pt-1">
+                    <span className="text-slate-400 flex items-center gap-1.5 text-[11px] font-medium">
+                      <Calendar size={13} className="text-amber-500" /> Dars kunlari:
                     </span>
                     <div className="flex flex-wrap gap-1.5">
                       {daysList.length === 0 ? (
@@ -564,7 +572,7 @@ export function GroupsView({
                         daysList.map((day, idx) => (
                           <span
                             key={idx}
-                            className="px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 text-[11px] font-semibold"
+                            className="px-2.5 py-1 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/25 text-[11px] font-bold shadow-xs"
                           >
                             {day}
                           </span>
@@ -574,10 +582,18 @@ export function GroupsView({
                   </div>
                 </div>
 
-                {/* Bottom button */}
-                <div className="pt-3 border-t border-slate-200/60 dark:border-white/10 flex items-center justify-between text-xs text-blue-600 dark:text-blue-400 font-semibold group-hover:translate-x-1 transition-transform">
-                  <span>Davomat va guruh tafsilotlari</span>
-                  <ChevronRight size={15} />
+                {/* Bottom Action Footer */}
+                <div className="pt-3 border-t border-slate-200/80 dark:border-white/10 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1.5 text-slate-400 text-[11px]">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-white/10 border border-slate-200/80 dark:border-white/10 text-slate-700 dark:text-slate-300 font-semibold">
+                      <MessageSquare size={12} className="text-blue-500" /> Chat mavjud
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-bold group-hover:translate-x-1 transition-transform">
+                    <span>Guruhga kirish</span>
+                    <ChevronRight size={16} />
+                  </div>
                 </div>
               </div>
             );
@@ -599,10 +615,14 @@ function GroupDetailPage({
   markGrade,
   saveAttendance,
   markSubmission,
+  addExam,
+  updateExam,
+  deleteExam,
+  saveExamResults,
   onBack,
 }) {
   // First tab is DAVOMAT as specifically requested!
-  const [subTab, setSubTab] = useState("attendance"); // "attendance" | "grades" | "students" | "tasks" | "info"
+  const [subTab, setSubTab] = useState("attendance"); // "attendance" | "grades" | "tasks" | "exams" | "chat"
   const [studentViewMode, setStudentViewMode] = useState("list"); // "list" | "grid"
 
   const students = getGroupStudents(appData, group.id);
@@ -769,7 +789,7 @@ function GroupDetailPage({
             </div>
           </div>
 
-          {/* Sub Menus: 1st is DAVOMAT, 2nd is BALLAR */}
+          {/* Sub Menus: 1st Davomat, 2nd Ballar, 3rd Vazifalar, 4th Imtihonlar */}
           <div className="flex items-center gap-1.5 mt-3.5 pt-3 border-t border-slate-200/40 dark:border-white/5 overflow-x-auto">
             <button
               type="button"
@@ -799,19 +819,6 @@ function GroupDetailPage({
 
             <button
               type="button"
-              onClick={() => setSubTab("students")}
-              className={`text-xs font-bold px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${
-                subTab === "students"
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-500/30"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10"
-              }`}
-            >
-              <Users size={14} />
-              <span>O'quvchilar ({students.length})</span>
-            </button>
-
-            <button
-              type="button"
               onClick={() => setSubTab("tasks")}
               className={`text-xs font-bold px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${
                 subTab === "tasks"
@@ -825,15 +832,28 @@ function GroupDetailPage({
 
             <button
               type="button"
-              onClick={() => setSubTab("info")}
+              onClick={() => setSubTab("exams")}
               className={`text-xs font-bold px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${
-                subTab === "info"
+                subTab === "exams"
                   ? "bg-blue-600 text-white shadow-md shadow-blue-500/30"
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10"
               }`}
             >
-              <BookOpen size={14} />
-              <span>Ma'lumot</span>
+              <FileText size={14} />
+              <span>Imtihonlar</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSubTab("chat")}
+              className={`text-xs font-bold px-3.5 py-1.5 rounded-xl transition-all flex items-center gap-2 whitespace-nowrap ${
+                subTab === "chat"
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-500/30"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10"
+              }`}
+            >
+              <MessageSquare size={14} />
+              <span>Chat</span>
             </button>
           </div>
         </div>
@@ -859,257 +879,6 @@ function GroupDetailPage({
               appData={appData}
               markGrade={markGrade}
             />
-          )}
-
-          {/* SUB-TAB 3: O'QUVCHILAR */}
-          {subTab === "students" && (
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Guruh o'quvchilari ({students.length})
-                </h3>
-
-                <div className="flex items-center gap-2">
-                  {/* List / Grid Toggle */}
-                  <div className="flex items-center p-1 rounded-2xl bg-white/70 dark:bg-white/10 backdrop-blur-xl border border-slate-200/80 dark:border-white/15 shadow-xs">
-                    <button
-                      type="button"
-                      onClick={() => setStudentViewMode("list")}
-                      title="Ro'yxat ko'rinishi"
-                      className={`p-1.5 sm:px-2.5 sm:py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                        studentViewMode === "list"
-                          ? "bg-blue-600 text-white shadow-sm"
-                          : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10"
-                      }`}
-                    >
-                      <LayoutList size={14} />
-                      <span className="hidden sm:inline">Ro'yxat</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setStudentViewMode("grid")}
-                      title="Katak ko'rinishi"
-                      className={`p-1.5 sm:px-2.5 sm:py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                        studentViewMode === "grid"
-                          ? "bg-blue-600 text-white shadow-sm"
-                          : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10"
-                      }`}
-                    >
-                      <LayoutGrid size={14} />
-                      <span className="hidden sm:inline">Katak</span>
-                    </button>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => openModal({ type: "addStudent", groupId: group.id })}
-                    className={BTN_PRIMARY}
-                  >
-                    <UserPlus size={14} />
-                    <span>O'quvchi qo'shish</span>
-                  </button>
-                </div>
-              </div>
-
-              {ranked.length === 0 ? (
-                <p className="text-xs text-slate-400 py-6 text-center">
-                  Bu guruhda hali o'quvchi yo'q.
-                </p>
-              ) : studentViewMode === "list" ? (
-                /* RO'YXAT (LIST) KO'RINISHI */
-                <div className="relative overflow-x-auto rounded-2xl border border-slate-200/60 dark:border-white/10 bg-white/40 dark:bg-white/[0.02]">
-                  <table className="w-full text-left border-collapse select-none">
-                    <thead>
-                      <tr className="border-b border-slate-200/60 dark:border-white/10 bg-slate-50/70 dark:bg-slate-900/60 text-xs font-bold uppercase tracking-wider text-slate-400">
-                        <th className="py-3 px-4 w-12 text-center">#</th>
-                        <th className="py-3 px-4">Ism</th>
-                        <th className="py-3 px-4">Nomer</th>
-                        <th className="py-3 px-4">Guruhi</th>
-                        <th className="py-3 px-4 text-right">Balansi</th>
-                        <th className="py-3 px-4 text-center">So'nggi faollik</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200/60 dark:divide-white/5 text-sm">
-                      {ranked.map((s, i) => {
-                        const lastAct = studentActivityMap[s.id];
-                        const balanceNum =
-                          realBalanceMap[s.id] !== undefined
-                            ? realBalanceMap[s.id]
-                            : Number(s.balance || 0);
-
-                        return (
-                          <tr
-                            key={s.id}
-                            onClick={() =>
-                              openModal({
-                                type: "studentDetail",
-                                studentId: s.id,
-                                groupId: group.id,
-                              })
-                            }
-                            className="hover:bg-blue-500/[0.04] dark:hover:bg-white/[0.03] transition-colors cursor-pointer group"
-                          >
-                            <td className="py-3.5 px-4 text-center text-xs text-slate-400 font-medium">
-                              {i + 1}
-                            </td>
-                            {/* 1. Ism */}
-                            <td className="py-3.5 px-4 font-semibold text-slate-900 dark:text-white whitespace-nowrap">
-                              <div className="flex items-center gap-3">
-                                <Avatar
-                                  name={s.name}
-                                  photo={s.avatar || s.photo}
-                                  src={s.avatar}
-                                  color={group.color}
-                                  size={40}
-                                />
-                                <div className="min-w-0">
-                                  <p className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                                    {s.name}
-                                  </p>
-                                  <p className="text-[11px] text-slate-400 truncate">
-                                    {s.stats.done}/{s.stats.total} vazifa bajarilgan
-                                  </p>
-                                </div>
-                              </div>
-                            </td>
-                            {/* 2. Nomer */}
-                            <td className="py-3.5 px-4 whitespace-nowrap text-xs text-slate-600 dark:text-slate-300 font-medium">
-                              <div className="flex items-center gap-1.5">
-                                <Phone size={12} className="text-slate-400 shrink-0" />
-                                <span>{displayPhone(s.phone) || "Kiritilmagan"}</span>
-                              </div>
-                            </td>
-                            {/* 3. Guruhi */}
-                            <td className="py-3.5 px-4">
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-white/80 dark:bg-white/10 border border-slate-200/80 dark:border-white/15 text-slate-800 dark:text-slate-200 shadow-2xs">
-                                <span
-                                  className="w-2 h-2 rounded-full shrink-0"
-                                  style={{ backgroundColor: group.color || "#3b82f6" }}
-                                />
-                                <span className="truncate max-w-[120px]">{group.name}</span>
-                              </span>
-                            </td>
-                            {/* 4. Balansi */}
-                            <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                              <span
-                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-extrabold ${
-                                  balanceNum < 0
-                                    ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30"
-                                    : balanceNum > 0
-                                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
-                                    : "bg-slate-500/10 text-slate-600 dark:text-slate-400 border border-slate-500/20"
-                                }`}
-                              >
-                                <Wallet size={12} />
-                                {money(balanceNum)} so'm
-                              </span>
-                            </td>
-                            {/* 5. So'nggi faollik */}
-                            <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                              <div className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                                <Clock size={12} className="text-slate-400" />
-                                <span>{formatLastActivity(lastAct)}</span>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                /* KATAK (GRID) KO'RINISHI */
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
-                  {ranked.map((s) => {
-                    const lastAct = studentActivityMap[s.id];
-                    const balanceNum =
-                      realBalanceMap[s.id] !== undefined
-                        ? realBalanceMap[s.id]
-                        : Number(s.balance || 0);
-
-                    return (
-                      <div
-                        key={s.id}
-                        onClick={() =>
-                          openModal({
-                            type: "studentDetail",
-                            studentId: s.id,
-                            groupId: group.id,
-                          })
-                        }
-                        className="group relative p-3.5 rounded-2xl bg-white/60 dark:bg-white/[0.04] backdrop-blur-xl border border-slate-200/60 dark:border-white/10 hover:border-blue-400/50 dark:hover:border-blue-500/40 shadow-xs hover:shadow-lg transition-all duration-200 cursor-pointer flex flex-col justify-between"
-                      >
-                        <div>
-                          {/* Ism va Avatar */}
-                          <div className="flex items-start gap-2.5">
-                            <Avatar
-                              name={s.name}
-                              photo={s.avatar || s.photo}
-                              src={s.avatar}
-                              color={group.color}
-                              size={40}
-                            />
-                            <div className="min-w-0 flex-1">
-                              <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                                {s.name}
-                              </h4>
-                              <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5">
-                                <Phone size={11} className="text-slate-400 shrink-0" />
-                                <span className="truncate">
-                                  {displayPhone(s.phone) || "Telefon yo'q"}
-                                </span>
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Guruhi va Balansi */}
-                          <div className="mt-3 pt-2.5 border-t border-slate-200/50 dark:border-white/5 space-y-2">
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-slate-400">Guruhi:</span>
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-white/80 dark:bg-white/10 border border-slate-200/80 dark:border-white/15 text-slate-800 dark:text-slate-200">
-                                <span
-                                  className="w-1.5 h-1.5 rounded-full shrink-0"
-                                  style={{ backgroundColor: group.color || "#3b82f6" }}
-                                />
-                                <span className="truncate max-w-[100px]">{group.name}</span>
-                              </span>
-                            </div>
-
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-slate-400">Balansi:</span>
-                              <span
-                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold ${
-                                  balanceNum < 0
-                                    ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30"
-                                    : balanceNum > 0
-                                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
-                                    : "bg-slate-500/10 text-slate-600 dark:text-slate-400 border border-slate-500/20"
-                                }`}
-                              >
-                                <Wallet size={11} />
-                                {money(balanceNum)} so'm
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* So'nggi faollik */}
-                        <div className="mt-3 pt-2 border-t border-slate-200/40 dark:border-white/5 flex items-center justify-between text-[11px] text-slate-400">
-                          <span className="flex items-center gap-1">
-                            <Clock size={11} className="text-slate-400" />
-                            So'nggi faollik:
-                          </span>
-                          <span className="font-semibold text-slate-600 dark:text-slate-300">
-                            {formatLastActivity(lastAct)}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
           )}
 
           {/* SUB-TAB 3: VAZIFALAR */}
@@ -1164,39 +933,28 @@ function GroupDetailPage({
             </div>
           )}
 
-          {/* SUB-TAB 4: MA'LUMOT */}
-          {subTab === "info" && (
-            <div className="space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                Guruh tafsilotlari
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-                <div className="p-4 rounded-2xl bg-white/50 dark:bg-white/5 border border-white/60 dark:border-white/10">
-                  <span className="text-slate-400 block mb-1">Kurs</span>
-                  <span className="text-sm font-bold text-slate-900 dark:text-white">
-                    {course?.name || "Belgilanmagan"}
-                  </span>
-                </div>
-                <div className="p-4 rounded-2xl bg-white/50 dark:bg-white/5 border border-white/60 dark:border-white/10">
-                  <span className="text-slate-400 block mb-1">Dars vaqti</span>
-                  <span className="text-sm font-bold text-slate-900 dark:text-white">
-                    {timeStr}
-                  </span>
-                </div>
-                <div className="p-4 rounded-2xl bg-white/50 dark:bg-white/5 border border-white/60 dark:border-white/10">
-                  <span className="text-slate-400 block mb-1">Xona</span>
-                  <span className="text-sm font-bold text-slate-900 dark:text-white">
-                    {roomName}
-                  </span>
-                </div>
-                <div className="p-4 rounded-2xl bg-white/50 dark:bg-white/5 border border-white/60 dark:border-white/10">
-                  <span className="text-slate-400 block mb-1">O'quvchilar soni</span>
-                  <span className="text-sm font-bold text-slate-900 dark:text-white">
-                    {students.length} nafar
-                  </span>
-                </div>
-              </div>
-            </div>
+          {/* SUB-TAB 4: IMTIHONLAR */}
+          {subTab === "exams" && (
+            <GroupExamsSection
+              group={group}
+              students={students}
+              appData={appData}
+              addExam={addExam}
+              updateExam={updateExam}
+              deleteExam={deleteExam}
+              saveExamResults={saveExamResults}
+              openModal={openModal}
+            />
+          )}
+
+          {/* SUB-TAB 5: CHAT */}
+          {subTab === "chat" && (
+            <GroupChatSection
+              group={group}
+              students={students}
+              appData={appData}
+              directorData={directorData}
+            />
           )}
         </div>
       </div>

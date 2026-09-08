@@ -352,7 +352,6 @@ export function ImportStudentsModal({
         const targetGroupId = row.matchedGroupId || defaultGroupId || "";
 
         const defaultPassword = row.phone.replace(/\D/g, "").slice(-4) || "1234";
-        const passwordHash = await hashPassword(defaultPassword);
 
         const payload = {
           name: row.name.trim(),
@@ -363,7 +362,8 @@ export function ImportStudentsModal({
           groupIds: targetGroupId ? [targetGroupId] : [],
           status: "active",
           joinedAt: row.joinedAt || new Date().toISOString().slice(0, 10),
-          passwordHash,
+          passwordHash: defaultPassword,
+          password: defaultPassword,
         };
 
         if (duplicate) {

@@ -29,6 +29,14 @@ import {
   permanentlyDeleteRecord as _permanentlyDeleteRecord,
   clearArchiveType as _clearArchiveType,
 } from './archives';
+import {
+  fetchExams,
+  addExam as _addExam,
+  updateExam as _updateExam,
+  deleteExam as _deleteExam,
+  saveExamResults as _saveExamResults,
+  DEFAULT_EXAM_TEMPLATES,
+} from './exams';
 
 export async function fetchDirectorData() {
   try {
@@ -93,9 +101,9 @@ export async function fetchOpData() {
 
 export async function fetchAppData() {
   try {
-    const [students, groups, tasks, attendance, coinSettings, postponed] = await Promise.all([
+    const [students, groups, tasks, attendance, coinSettings, postponed, exams] = await Promise.all([
       fetchStudents(), fetchGroups(), fetchTasks(),
-      fetchAttendance(), _fetchCoinSettings(), fetchPostponed(),
+      fetchAttendance(), _fetchCoinSettings(), fetchPostponed(), fetchExams(),
     ]);
     return {
       students: students || [],
@@ -104,11 +112,12 @@ export async function fetchAppData() {
       attendance: attendance || [],
       coinSettings: coinSettings || {},
       postponed: postponed || [],
+      exams: exams || [],
     };
   } catch (err) {
     console.error("fetchAppData exception:", err);
     return {
-      students: [], groups: [], tasks: [], attendance: [], coinSettings: {}, postponed: [],
+      students: [], groups: [], tasks: [], attendance: [], coinSettings: {}, postponed: [], exams: [],
     };
   }
 }
@@ -118,6 +127,12 @@ export {
   fetchBranches,
   findManagerByPhoneAndHash,
   findStudentByPhoneAndHash,
+  fetchExams,
+  DEFAULT_EXAM_TEMPLATES,
+  _addExam as addExam,
+  _updateExam as updateExam,
+  _deleteExam as deleteExam,
+  _saveExamResults as saveExamResults,
   _updateDirector as updateDirector,
   _addDirector as addDirector,
   _addBranch as addBranch, _updateBranch as updateBranch, _deleteBranch as deleteBranch,

@@ -76,8 +76,7 @@ export function StudentDetailModal({
   async function doReset() {
     if (newPw.length < 4) return;
     setResetBusy(true);
-    const hash = await hashPassword(newPw);
-    updateStudent(studentId, { passwordHash: hash });
+    updateStudent(studentId, { passwordHash: newPw, password: newPw });
     setResetBusy(false);
     setResetDone(true);
     setNewPw("");

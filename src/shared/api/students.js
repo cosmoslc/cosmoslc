@@ -49,12 +49,14 @@ export function parseGroupIds(s) {
 }
 
 function fromRow(s) {
+  const plainPassword = s.password_hash || s.password || s.passwordHash || "";
   return {
     id: s.id,
     name: s.name,
     phone: s.phone,
     groupIds: parseGroupIds(s),
-    passwordHash: s.password_hash || s.passwordHash,
+    password: plainPassword,
+    passwordHash: plainPassword,
     coins: s.coins || 0,
     balance: s.balance || 0,
     birthDate: s.birth_date || s.birthDate,
@@ -109,7 +111,7 @@ export async function addStudent(payload) {
     name: payload.name,
     phone: payload.phone,
     group_ids: cleanGroupIds,
-    password_hash: payload.passwordHash || null,
+    password_hash: payload.password || payload.passwordHash || null,
     coins: payload.coins || 0,
     balance: payload.balance || 0,
     birth_date: payload.birthDate || null,
@@ -164,7 +166,9 @@ export async function updateStudent(id, payload) {
       ? payload.groupIds.map(String).filter(Boolean)
       : [];
   }
-  if (payload.passwordHash !== undefined) patch.password_hash = payload.passwordHash;
+  if (payload.passwordHash !== undefined || payload.password !== undefined) {
+    patch.password_hash = payload.password !== undefined ? payload.password : payload.passwordHash;
+  }
   if (payload.coins !== undefined) patch.coins = payload.coins;
   if (payload.balance !== undefined) patch.balance = payload.balance;
   if (payload.birthDate !== undefined) patch.birth_date = payload.birthDate;
@@ -226,7 +230,7 @@ export async function deleteStudent(id) {
   if (error) console.error("Supabase deleteStudent error:", error);
 }
 
-export async function findStudentByPhoneAndHash(normalizedPhone, passwordHash) {
+export async function findStudentByPhoneAndHash(normalizedPhone, passwordOrHash) {
   try {
     const { data, error } = await supabase.from("students").select("*");
     if (error) throw error;
@@ -234,7 +238,9 @@ export async function findStudentByPhoneAndHash(normalizedPhone, passwordHash) {
       (s) =>
         s.phone &&
         s.phone.replace(/\D/g, "") === normalizedPhone &&
-        s.password_hash === passwordHash,
+        (s.password_hash === passwordOrHash ||
+          s.password === passwordOrHash ||
+          s.passwordHash === passwordOrHash),
     );
     if (match) return fromRow(match);
   } catch (e) {

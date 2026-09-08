@@ -42,7 +42,6 @@ export function DashboardView({
   setSelectedGroupId,
   selectedGroupId,
   courses,
-  canCreateGroups,
   goTo,
 }) {
   const groups = appData?.groups || [];

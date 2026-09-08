@@ -167,31 +167,30 @@ export function StudentsView({ appData, openModal }) {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* List / Grid Toggle */}
-          <div className="flex items-center p-1 rounded-2xl bg-white/70 dark:bg-white/10 backdrop-blur-xl border border-slate-200/80 dark:border-white/15 shadow-xs">
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* View Mode Switcher: Ro'yxat vs Katak */}
+          <div className="flex items-center p-1 rounded-2xl bg-white/60 dark:bg-white/10 backdrop-blur-xl border border-white/60 dark:border-white/15 shadow-sm">
             <button
               type="button"
               onClick={() => setViewMode("list")}
               title="Ro'yxat ko'rinishi"
-              className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              className={`p-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 viewMode === "list"
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10"
+                  ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/25"
+                  : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
               <LayoutList size={16} />
               <span className="hidden sm:inline">Ro'yxat</span>
             </button>
-
             <button
               type="button"
               onClick={() => setViewMode("grid")}
               title="Katak ko'rinishi"
-              className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+              className={`p-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 viewMode === "grid"
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/10"
+                  ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/25"
+                  : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
               <LayoutGrid size={16} />

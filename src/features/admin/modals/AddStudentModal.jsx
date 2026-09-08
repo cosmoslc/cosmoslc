@@ -123,9 +123,11 @@ export function AddStudentModal({
     };
 
     if (targetEditing && password) {
-      payload.passwordHash = await hashPassword(password);
+      payload.passwordHash = password;
+      payload.password = password;
     } else if (!targetEditing) {
-      payload.passwordHash = await hashPassword(finalPassword);
+      payload.passwordHash = finalPassword;
+      payload.password = finalPassword;
     }
 
     setBusy(false);
