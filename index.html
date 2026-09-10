@@ -104,7 +104,7 @@
     --glass:rgba(243,244,252,0.05);
     --radius-lg:28px;
     --radius-md:20px;
-    --container:1180px;
+    --container:min(1600px, 94vw);
   }
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
   html{scroll-behavior:smooth;scroll-snap-type:y mandatory;}
@@ -124,7 +124,13 @@
   .mono{font-family:'Quicksand',sans-serif;}
   :focus-visible{outline:2px solid var(--ion);outline-offset:3px;border-radius:4px;}
 
-  .wrap{max-width:var(--container);margin-inline:auto;padding-inline:24px;width:100%;}
+  .wrap{max-width:var(--container);margin-inline:auto;padding-inline:20px;width:100%;}
+  @media (min-width:768px){
+    .wrap{padding-inline:28px;}
+  }
+  @media (min-width:1440px){
+    .wrap{padding-inline:36px;}
+  }
   #cosmos{position:fixed;top:0;left:0;z-index:-1;display:block;}
 
   .icon-13{width:13px;height:13px;}
@@ -175,33 +181,159 @@
   .btn-circle-solid{background:var(--paper);color:var(--void);border-color:var(--paper);}
   .btn-circle-solid:hover{background:var(--paper);opacity:0.85;}
 
-  /* ---------- header ---------- */
-  .site-header{position:sticky;top:0;z-index:100;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);background:rgba(6,7,26,0.55);border-bottom:1px solid var(--line);}
-  .header-inner{display:flex;align-items:center;justify-content:space-between;padding-block:18px;}
-  .logo{display:flex;align-items:center;gap:10px;}
-  .logo-mark{width:40px;height:40px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-  .logo-mark img{width:100%;height:100%;object-fit:contain;}
-  .logo-text{font-family:'Quicksand',sans-serif;font-weight:700;font-size:1.15rem;letter-spacing:0.01em;}
-  .logo-text span{font-weight:400;opacity:0.55;font-size:0.8em;margin-left:1px;}
-  .main-nav{display:flex;gap:34px;font-size:0.93rem;color:var(--mist);}
-  .main-nav a{transition:color .2s ease;}
-  .main-nav a:hover{color:var(--paper);}
-  .header-actions{display:flex;align-items:center;gap:16px;}
-  .header-cta{padding:12px 24px;font-size:0.88rem;}
+  /* ---------- header with individual boxes ---------- */
+  .site-header{position:sticky;top:0;z-index:100;padding-block:14px;background:transparent;width:100%;}
+  .site-header .wrap{max-width:min(1680px, 96vw);padding-inline:clamp(16px, 2.5vw, 36px);}
+  .header-inner{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;}
+  
+  /* Alohida shishasimon (capsule/box) elementlar */
+  .header-box{
+    background:rgba(12, 16, 44, 0.78);
+    border:1px solid var(--line);
+    backdrop-filter:blur(18px);
+    -webkit-backdrop-filter:blur(18px);
+    border-radius:999px;
+    box-shadow:0 8px 28px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    transition:border-color .25s ease, box-shadow .25s ease;
+  }
+  .header-box:hover{
+    border-color:rgba(78, 168, 255, 0.4);
+    box-shadow:0 10px 32px rgba(0, 0, 0, 0.45), 0 0 16px rgba(78, 168, 255, 0.18);
+  }
+  
+  /* 1. COSMOS LC uchun alohida box */
+  .header-logo-box{
+    padding:8px 18px;
+    display:inline-flex;
+    align-items:center;
+  }
+  .logo{display:inline-flex;align-items:center;gap:9px;text-decoration:none;}
+  .logo-orb{
+    width:24px;height:24px;display:flex;align-items:center;justify-content:center;
+    color:var(--ion);
+    filter:drop-shadow(0 0 8px rgba(78, 168, 255, 0.75));
+    animation:logo-orb-spin 12s linear infinite;
+  }
+  @keyframes logo-orb-spin{
+    0%{transform:rotate(0deg);}
+    100%{transform:rotate(360deg);}
+  }
+  .logo-text{
+    font-family:'Quicksand',sans-serif;
+    font-weight:700;
+    font-size:1.16rem;
+    letter-spacing:0.02em;
+    display:inline-flex;
+    align-items:center;
+    color:#f3f4fc;
+  }
+  /* COSMOS va LC orasidagi margin ozgina va LC qorayib turmasdan moviy sayyora rangi bilan porlaydi */
+  .logo-text .logo-lc{
+    margin-left:5px;
+    font-weight:800;
+    font-size:0.95em;
+    letter-spacing:0.04em;
+    background:linear-gradient(135deg, #60b2ff 0%, #38bdf8 50%, #818cf8 100%);
+    -webkit-background-clip:text;
+    background-clip:text;
+    -webkit-text-fill-color:transparent;
+    color:#4ea8ff;
+    opacity:1;
+    text-shadow:0 0 16px rgba(78, 168, 255, 0.7);
+    display:inline-block;
+  }
+  
+  /* 2. Navlar uchun alohida box */
+  .header-nav-box{
+    padding:10px 28px;
+    display:flex;
+    align-items:center;
+    gap:28px;
+    font-size:0.92rem;
+    color:var(--mist);
+  }
+  .header-nav-box a{
+    transition:color .2s ease, text-shadow .2s ease;
+    font-weight:500;
+    color:var(--mist);
+    text-decoration:none;
+  }
+  .header-nav-box a:hover{
+    color:#ffffff;
+    text-shadow:0 0 12px rgba(78, 168, 255, 0.65);
+  }
+  
+  /* 3. Tizimga kirish uchun box KERAK EMAS (sof mustaqil tugma) */
+  .header-actions{
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  .header-cta{
+    padding:11px 24px;
+    font-size:0.88rem;
+    border-radius:999px;
+  }
   .nav-toggle{display:none;flex-direction:column;gap:5px;width:24px;padding:6px 0;}
   .nav-toggle span{height:2px;background:var(--paper);border-radius:2px;}
 
+  /* ---------- contact hub & address section ---------- */
+  .contact-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:32px;}
+  .contact-card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius-lg);
+    padding:32px 26px;
+    display:flex;flex-direction:column;
+    transition:transform .3s ease, border-color .3s ease, box-shadow .3s ease;
+    position:relative;
+    overflow:hidden;
+  }
+  .contact-card::before{
+    content:'';position:absolute;top:0;left:0;right:0;height:2px;
+    background:linear-gradient(90deg, transparent, rgba(78,168,255,0.4), transparent);
+    opacity:0;transition:opacity .3s ease;
+  }
+  .contact-card:hover{
+    transform:translateY(-6px);
+    border-color:rgba(78,168,255,0.38);
+    box-shadow:0 20px 45px rgba(0,0,0,0.45), 0 0 20px rgba(78,168,255,0.1);
+  }
+  .contact-card:hover::before{opacity:1;}
+  .contact-icon{
+    width:52px;height:52px;border-radius:16px;
+    display:flex;align-items:center;justify-content:center;
+    margin-bottom:20px;color:var(--ion);
+    background:rgba(78,168,255,0.12);
+  }
+  .contact-icon svg{width:26px;height:26px;}
+  .contact-card-label{font-size:0.75rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--mist);margin-bottom:8px;font-weight:600;}
+  .contact-card-title{font-size:1.25rem;font-weight:700;color:var(--paper);margin-bottom:8px;line-height:1.3;}
+  .contact-card-title a{color:var(--paper);transition:color .2s ease;text-decoration:none;}
+  .contact-card-title a:hover{color:var(--ion);}
+  .contact-card-desc{color:var(--mist);font-size:0.88rem;margin-bottom:24px;flex:1;}
+  .contact-card-foot{padding-top:18px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .contact-phone-btn{padding:10px 20px;font-size:0.86rem;border-radius:999px;}
+  .contact-badge{display:inline-flex;align-items:center;gap:8px;font-size:0.82rem;color:var(--mist);}
+  .contact-social-pill{
+    display:inline-flex;align-items:center;gap:7px;
+    padding:8px 16px;border-radius:999px;
+    border:1px solid var(--line);font-size:0.85rem;font-weight:600;
+    color:var(--paper);transition:all .2s ease;text-decoration:none;
+  }
+  .contact-social-pill:hover{background:var(--glass);border-color:var(--ion);color:var(--ion);}
+
   /* ---------- hero ---------- */
-  .hero-inner{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center;}
-  .hero-title{font-size:clamp(2.2rem,4.2vw,3.4rem);line-height:1.1;font-weight:700;margin-bottom:22px;letter-spacing:-0.01em;}
+  .hero-inner{display:grid;grid-template-columns:1.15fr 0.85fr;gap:clamp(36px, 5vw, 76px);align-items:center;width:100%;}
+  .hero-title{font-size:clamp(2.4rem,4.4vw,4.2rem);line-height:1.1;font-weight:700;margin-bottom:22px;letter-spacing:-0.01em;}
   .hero-title span{background:linear-gradient(120deg,var(--ion),var(--violet-2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;}
-  .hero-sub{color:var(--mist);font-size:1.05rem;max-width:440px;margin-bottom:34px;}
+  .hero-sub{color:var(--mist);font-size:1.1rem;max-width:540px;margin-bottom:34px;line-height:1.6;}
   .hero-actions{display:flex;align-items:center;gap:16px;}
 
-  .hero-visual-wrap{position:relative;}
+  .hero-visual-wrap{position:relative;width:100%;display:flex;justify-content:center;}
   .hero-visual {
     position: relative;
-    width: min(380px, 84%);
+    width: min(440px, 90%);
     aspect-ratio: 1;
     margin-inline: auto;
     perspective: 1200px;
@@ -478,6 +610,9 @@
   .course-grid{display:flex;gap:22px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-ms-overflow-style:none;padding-bottom:6px;}
   .course-grid::-webkit-scrollbar{display:none;}
   .course-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-lg);overflow:hidden;transition:transform .3s ease, border-color .3s ease;flex:0 0 calc((100% - 44px)/3);scroll-snap-align:start;min-width:250px;}
+  @media (min-width:1400px){
+    .course-card{flex:0 0 calc((100% - 66px)/4);}
+  }
   .course-card:hover{transform:translateY(-6px);border-color:rgba(243,244,252,0.25);}
   .course-media{aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;color:var(--paper);position:relative;overflow:hidden;}
   .course-media svg{width:28%;height:28%;position:relative;z-index:1;}
@@ -591,8 +726,21 @@
   }
 
   @media (max-width:860px){
-    .main-nav{position:fixed;top:70px;left:0;right:0;flex-direction:column;background:rgba(8,9,28,0.98);padding:28px 24px;gap:22px;border-bottom:1px solid var(--line);transform:translateY(-130%);transition:transform .35s ease;}
-    .main-nav.open{transform:translateY(0);}
+    .header-nav-box{
+      position:fixed;
+      top:72px;
+      left:16px;
+      right:16px;
+      flex-direction:column;
+      background:rgba(10,13,38,0.96);
+      padding:24px 20px;
+      gap:18px;
+      border-radius:var(--radius-lg);
+      transform:translateY(-150%);
+      transition:transform .35s ease;
+      z-index:99;
+    }
+    .header-nav-box.open{transform:translateY(0);}
     .nav-toggle{display:flex;}
     .header-cta{display:none;}
     .hero-inner{grid-template-columns:1fr;text-align:center;}
@@ -614,6 +762,7 @@
     .process-grid{grid-template-columns:1fr;}
     .process-step-main{transform:none;order:-1;}
     .pricing-grid{grid-template-columns:repeat(2,1fr);}
+    .contact-grid{grid-template-columns:1fr;}
     .promo{grid-template-columns:1fr;text-align:center;}
     .promo-text-row{flex-direction:column;gap:14px;}
     .promo-bottom{justify-content:center;flex-direction:column;}
@@ -634,16 +783,36 @@
 
 <header class="site-header">
   <div class="wrap header-inner">
-    <a href="#" class="logo">
-      <span class="logo-text">COSMOS<span>LC</span></span>
-    </a>
-    <nav class="main-nav" id="mainNav">
+    <!-- 1. COSMOS LC uchun alohida box -->
+    <div class="header-box header-logo-box">
+      <a href="#" class="logo">
+        <span class="logo-orb">
+          <svg viewBox="0 0 24 24" fill="none" class="icon-18" stroke="currentColor" stroke-width="1.8">
+            <circle cx="12" cy="12" r="6.5" stroke="url(#planetHeaderGlow)" stroke-width="2"/>
+            <ellipse cx="12" cy="12" rx="9.5" ry="3.2" transform="rotate(-22 12 12)" stroke="#4ea8ff" stroke-width="1.5"/>
+            <defs>
+              <linearGradient id="planetHeaderGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#4ea8ff"/>
+                <stop offset="100%" stop-color="#7c5cfc"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </span>
+        <span class="logo-text">COSMOS<span class="logo-lc">LC</span></span>
+      </a>
+    </div>
+
+    <!-- 2. Navlar uchun alohida box -->
+    <nav class="header-box header-nav-box main-nav" id="mainNav">
       <a href="#portals">Platforma</a>
       <a href="#courses">Kurslar</a>
       <a href="#natijalar">Natijalar</a>
       <a href="#ustozlar">Ustozlar</a>
       <a href="#narxlar">Narxlar</a>
+      <a href="#aloqa">Aloqa</a>
     </nav>
+
+    <!-- 3. Tizimga kirish uchun box kerak emas (sof mustaqil tugma) -->
     <div class="header-actions">
       <a href="#portals" class="btn btn-primary header-cta">Tizimga kirish</a>
       <button class="nav-toggle" id="navToggle" aria-label="Menyu" aria-expanded="false">
@@ -1070,7 +1239,7 @@
       <p class="section-sub">Barcha kurslar: haftada 3 kun, 2 soatdan</p>
     </div>
 
-    <div class="pricing-grid stagger">
+    <div class="pricing-grid stagger" id="pricingGrid">
       <div class="price-group">
         <h3 class="price-group-title">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5C4 4.7 4.7 4 5.5 4H12v16H5.5A1.5 1.5 0 014 18.5v-13z"/><path d="M20 5.5c0-.8-.7-1.5-1.5-1.5H12v16h6.5a1.5 1.5 0 001.5-1.5v-13z"/></svg>
@@ -1120,7 +1289,7 @@
         </ul>
       </div>
     </div>
-    <p class="pricing-note">* Narxlar oylik to'lov asosida. Batafsil ma'lumot uchun biz bilan bog'laning.</p>
+    <p class="pricing-note">* Narxlar oylik to'lov asosida. Barcha narxlar markaz bazasiga moslashtirilgan.</p>
   </section>
 
   <section class="promo snap-section wrap" id="contact">
@@ -1145,9 +1314,78 @@
           <span class="offer-percent">20% chegirma</span>
           <span class="offer-date">31-avgustgacha amal qiladi</span>
         </div>
-        <a href="#" class="btn btn-primary">Hoziroq ro'yxatdan o'ting
+        <a href="#aloqa" class="btn btn-primary">Hoziroq ro'yxatdan o'ting
           <svg class="icon-18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
         </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ADDRESS & CONTACT SECTION (ADMIN SETTINGS REAL DATA) -->
+  <section class="contact-hub snap-section wrap" id="aloqa">
+    <div class="section-head-center reveal">
+      <p class="eyebrow">Bog'lanish</p>
+      <h2 class="section-title">Markaz Manzili va Telefonlar</h2>
+      <p class="section-sub">Savollaringiz bormi? Bizga qo'ng'iroq qiling yoki bevosita markazimizga tashrif buyuring</p>
+    </div>
+
+    <div class="contact-grid stagger">
+      <!-- Telefon Card -->
+      <div class="contact-card">
+        <div class="contact-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
+        </div>
+        <span class="contact-card-label">Telefon Raqam</span>
+        <h3 class="contact-card-title">
+          <a href="tel:+998901234567" class="dynamic-center-phone dynamic-call-link">+998 (90) 123-45-67</a>
+        </h3>
+        <div id="secondaryPhoneContainer" style="display:none;margin-bottom:8px;">
+          <span style="font-size:0.8rem;color:var(--mist);margin-right:6px;">Qo'shimcha:</span>
+          <a href="tel:" id="secondaryPhone" class="contact-secondary-phone" style="font-size:0.95rem;color:var(--ion);font-weight:600;text-decoration:none;"></a>
+        </div>
+        <p class="contact-card-desc">Admin sozlamalarida kiritilgan markazning rasmiy aloqa raqami</p>
+        <div class="contact-card-foot">
+          <a href="tel:+998901234567" class="btn btn-primary contact-phone-btn dynamic-call-btn">
+            <svg class="icon-15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
+            Qo'ng'iroq Qilish
+          </a>
+        </div>
+      </div>
+
+      <!-- Manzil Card -->
+      <div class="contact-card">
+        <div class="contact-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        </div>
+        <span class="contact-card-label">Markaz Manzili</span>
+        <h3 class="contact-card-title dynamic-center-address">Toshkent sh., Chilonzor tumani</h3>
+        <p class="contact-card-desc">O'quv markazimiz barcha qulayliklarga ega zamonaviy ta'lim binosida joylashgan</p>
+        <div class="contact-card-foot">
+          <span class="contact-badge">
+            <svg class="icon-13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
+            <span class="dynamic-work-hours">Dushanba — Shanba · 09:00 — 21:00</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- Ijtimoiy Tarmoqlar Card -->
+      <div class="contact-card">
+        <div class="contact-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 4L3 11l6 2m12-9l-4 17-8-6m12-11L9 13"/></svg>
+        </div>
+        <span class="contact-card-label">Ijtimoiy Tarmoqlar</span>
+        <h3 class="contact-card-title">Telegram & Instagram</h3>
+        <p class="contact-card-desc">Kurslarga yozilish, savol-javoblar va eng so'nggi yangiliklar bizning kanallarda</p>
+        <div class="contact-card-foot">
+          <a href="https://t.me/cosmos_edu" target="_blank" class="contact-social-pill dynamic-telegram-link">
+            <svg class="icon-15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 4L3 11l6 2m12-9l-4 17-8-6m12-11L9 13"/></svg>
+            Telegram
+          </a>
+          <a href="https://instagram.com/cosmos_edu" target="_blank" class="contact-social-pill dynamic-instagram-link">
+            <svg class="icon-15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="1" fill="currentColor"/></svg>
+            Instagram
+          </a>
+        </div>
       </div>
     </div>
   </section>
@@ -1156,8 +1394,16 @@
 <footer class="site-footer">
   <div class="wrap footer-inner">
     <div class="footer-brand">
-      <span class="logo-text">COSMOS<span>LC</span></span>
+      <span class="logo-text">COSMOS<span class="logo-lc">LC</span></span>
       <p>Fazoni egallovchi avlodlarni bugun tarbiyalaymiz.</p>
+      <div style="margin-top:10px;display:flex;flex-direction:column;gap:4px;">
+        <span style="font-size:0.86rem;color:var(--paper);font-weight:600;">
+          Tel: <a href="tel:+998901234567" class="dynamic-center-phone" style="color:var(--ion);text-decoration:none;">+998 (90) 123-45-67</a>
+        </span>
+        <span style="font-size:0.82rem;color:var(--mist);" class="dynamic-center-address">
+          Toshkent sh., Chilonzor tumani
+        </span>
+      </div>
     </div>
     <nav class="footer-links">
       <a href="#portals">Platforma</a>
@@ -1165,12 +1411,11 @@
       <a href="#natijalar">Natijalar</a>
       <a href="#ustozlar">Ustozlar</a>
       <a href="#narxlar">Narxlar</a>
-      <a href="#contact">Aloqa</a>
+      <a href="#aloqa">Aloqa</a>
     </nav>
     <div class="social-icons">
-      <a href="#" aria-label="Telegram"><svg class="icon-18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4L3 11l6 2m12-9l-4 17-8-6m12-11L9 13"/></svg></a>
-      <a href="#" aria-label="Instagram"><svg class="icon-18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="1" fill="currentColor" stroke="none"/></svg></a>
-      <a href="#" aria-label="YouTube"><svg class="icon-18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="4"/><path d="M10 9l6 3-6 3V9z" fill="currentColor" stroke="none"/></svg></a>
+      <a href="https://t.me/cosmos_edu" target="_blank" class="dynamic-telegram-link" aria-label="Telegram"><svg class="icon-18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 4L3 11l6 2m12-9l-4 17-8-6m12-11L9 13"/></svg></a>
+      <a href="https://instagram.com/cosmos_edu" target="_blank" class="dynamic-instagram-link" aria-label="Instagram"><svg class="icon-18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="1" fill="currentColor" stroke="none"/></svg></a>
     </div>
   </div>
   <div class="wrap footer-bottom">
@@ -1287,11 +1532,27 @@
     }
   }, { passive: false });
 
-  // Cosmos canvas: starfield + comets
+  // Multi-Viewpoint Dynamic Cosmos Canvas Engine
   (function () {
     const canvas = document.getElementById('cosmos');
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    let w, h, dpr, stars, nebulae, comets, cometTimer, rafId;
+    let w, h, dpr, stars, nebulae, comets, rafId;
+    let meteorStorm = []; // High-speed comets swarm specifically for ustozlar / hyper-flight
+
+    // Viewpoint states
+    let activeSectionId = 'about';
+    let currentMode = {
+      storm: 0,           // 0: tranquil space, 1: FULL FAST COMET / METEOR STORM (ustozlar)
+      speedMult: 1,       // overall star speed
+      stretch: 0,         // tail stretch into streaks
+      constellations: 0,  // connecting lines in process
+      sparkle: 0,         // starburst flares in natijalar
+      driftY: 0,          // vertical drift (narxlar)
+      nebulaIntensity: 1,
+      nebulaR: 124, nebulaG: 92, nebulaB: 252 // primary nebula tint
+    };
+    let targetMode = { ...currentMode };
 
     function build() {
       dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -1303,73 +1564,419 @@
       canvas.style.height = h + 'px';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      const count = Math.round((w * h) / 9000);
-      stars = Array.from({ length: Math.min(Math.max(count, 90), 240) }, () => ({
-        x: Math.random() * w,
-        y: Math.random() * h,
-        r: Math.random() * 1.4 + 0.4,
-        base: Math.random() * 0.5 + 0.3,
-        speed: Math.random() * 0.02 + 0.006,
-        phase: Math.random() * Math.PI * 2,
-        dx: (Math.random() - 0.5) * 0.04,
-        dy: (Math.random() - 0.5) * 0.04
-      }));
+      // Star count: rich and dense
+      const count = Math.round((w * h) / 6000);
+      const starTotal = Math.min(Math.max(count, 140), 320);
+
+      stars = Array.from({ length: starTotal }, () => {
+        const baseSpeed = Math.random() * 0.02 + 0.008;
+        const stormVx = -(Math.random() * 4.2 + 3.0); // smooth left-ward glide
+        const stormVy = (Math.random() * 2.6 + 1.8);  // smooth downward glide
+        return {
+          x: Math.random() * w,
+          y: Math.random() * h,
+          r: Math.random() * 1.5 + 0.5,
+          base: Math.random() * 0.5 + 0.3,
+          speed: baseSpeed,
+          phase: Math.random() * Math.PI * 2,
+          dx: (Math.random() - 0.5) * 0.05,
+          dy: (Math.random() - 0.5) * 0.05,
+          // Storm parameters
+          stormVx,
+          stormVy,
+          stormLen: Math.random() * 55 + 40,
+          colorHue: Math.random() < 0.25 ? '#4ea8ff' : (Math.random() < 0.5 ? '#a78bfa' : '#f3f4fc')
+        };
+      });
 
       nebulae = [
-        { x: 0.14, y: 0.18, r: Math.max(w, h) * 0.32, c: 'rgba(124,92,252,0.14)' },
-        { x: 0.88, y: 0.12, r: Math.max(w, h) * 0.28, c: 'rgba(78,168,255,0.11)' },
-        { x: 0.55, y: 0.92, r: Math.max(w, h) * 0.34, c: 'rgba(201,78,224,0.08)' }
+        { x: 0.15, y: 0.2, r: Math.max(w, h) * 0.35, c: 'rgba(124,92,252,0.14)' },
+        { x: 0.85, y: 0.15, r: Math.max(w, h) * 0.32, c: 'rgba(78,168,255,0.12)' },
+        { x: 0.5, y: 0.88, r: Math.max(w, h) * 0.38, c: 'rgba(201,78,224,0.09)' }
       ];
+
       comets = [];
+
+      // Meteor storm pool for "ustozlar" section: reduced count by more than half (20 comets)
+      meteorStorm = Array.from({ length: 20 }, () => createMeteor(true));
     }
 
-    function spawnComet() {
+    function createMeteor(initial = false) {
+      // Balanced and smooth cruising speed (7 - 14 px/frame)
+      const speed = Math.random() * 7 + 7;
+      const angle = (Math.PI / 180) * (145 + (Math.random() * 8 - 4));
+      const vx = Math.cos(angle) * speed;
+      const vy = -Math.sin(angle) * speed;
+      const len = Math.random() * 110 + 70; // Streamlined, elegant tail
+      const thickness = Math.random() * 1.5 + 1.0;
+
+      return {
+        x: initial ? Math.random() * (w + 300) : (w + Math.random() * 200),
+        y: initial ? Math.random() * (h + 300) - 150 : -Math.random() * 150,
+        vx,
+        vy,
+        len,
+        thickness,
+        alpha: Math.random() * 0.35 + 0.45,
+        color: Math.random() < 0.4 ? '#60b2ff' : (Math.random() < 0.7 ? '#ffffff' : '#a78bfa')
+      };
+    }
+
+    function spawnGentleComet() {
       const x = Math.random() * w * 0.7 + w * 0.15;
       const dir = Math.random() < 0.5 ? 1 : -1;
       comets.push({
         x, y: -30,
-        vx: dir * (Math.random() * 1.5 + 1.5),
-        vy: Math.random() * 2.5 + 3,
-        len: Math.random() * 70 + 60,
+        vx: dir * (Math.random() * 1.8 + 1.8),
+        vy: Math.random() * 2.8 + 3.2,
+        len: Math.random() * 80 + 70,
         life: 0,
         maxLife: 90
       });
     }
 
+    // Viewpoint detection logic
+    function updateActiveSection() {
+      const sections = Array.from(document.querySelectorAll('section[id], header'));
+      const triggerY = window.innerHeight * 0.45;
+      let foundId = 'about';
+
+      for (let i = 0; i < sections.length; i++) {
+        const rect = sections[i].getBoundingClientRect();
+        if (rect.top <= triggerY && rect.bottom >= triggerY) {
+          foundId = sections[i].id || 'about';
+          break;
+        }
+      }
+
+      // Check bottom reached
+      if ((window.innerHeight + window.scrollY) >= (document.documentElement.scrollHeight - 100)) {
+        foundId = 'aloqa';
+      }
+
+      if (foundId !== activeSectionId) {
+        activeSectionId = foundId;
+        onSectionChanged(foundId);
+      }
+    }
+
+    function onSectionChanged(id) {
+      // Configure target state based on section
+      switch (id) {
+        case 'ustozlar':
+          // Balanced, smooth comet flow:
+          targetMode.storm = 1.0;          // Comet transform
+          targetMode.speedMult = 3.6;      // Smooth and comfortable speed (reduced from 16.0)
+          targetMode.stretch = 0.6;        // Refined comet tail stretch
+          targetMode.constellations = 0.0;
+          targetMode.sparkle = 0.2;
+          targetMode.driftY = 0;
+          targetMode.nebulaIntensity = 1.25;
+          targetMode.nebulaR = 78;
+          targetMode.nebulaG = 168;
+          targetMode.nebulaB = 255;
+          break;
+
+        case 'natijalar':
+          // Sparkling stars, victorious flares
+          targetMode.storm = 0.0;
+          targetMode.speedMult = 1.6;
+          targetMode.stretch = 0.0;
+          targetMode.constellations = 0.0;
+          targetMode.sparkle = 1.0;
+          targetMode.driftY = 0;
+          targetMode.nebulaIntensity = 1.2;
+          targetMode.nebulaR = 217;
+          targetMode.nebulaG = 119;
+          targetMode.nebulaB = 6; // warm gold + violet
+          break;
+
+        case 'process':
+          // Constellation lines connecting stars
+          targetMode.storm = 0.0;
+          targetMode.speedMult = 0.9;
+          targetMode.stretch = 0.0;
+          targetMode.constellations = 1.0;
+          targetMode.sparkle = 0.0;
+          targetMode.driftY = 0;
+          targetMode.nebulaIntensity = 0.9;
+          targetMode.nebulaR = 124;
+          targetMode.nebulaG = 92;
+          targetMode.nebulaB = 252;
+          break;
+
+        case 'courses':
+          // Cosmic wave drift
+          targetMode.storm = 0.0;
+          targetMode.speedMult = 1.3;
+          targetMode.stretch = 0.15;
+          targetMode.constellations = 0.0;
+          targetMode.sparkle = 0.3;
+          targetMode.driftY = 0;
+          targetMode.nebulaIntensity = 1.0;
+          targetMode.nebulaR = 99;
+          targetMode.nebulaG = 102;
+          targetMode.nebulaB = 241;
+          break;
+
+        case 'narxlar':
+          // Weightless crystal floating
+          targetMode.storm = 0.0;
+          targetMode.speedMult = 1.1;
+          targetMode.stretch = 0.05;
+          targetMode.constellations = 0.0;
+          targetMode.sparkle = 0.4;
+          targetMode.driftY = -0.6; // upward floating crystals
+          targetMode.nebulaIntensity = 1.1;
+          targetMode.nebulaR = 56;
+          targetMode.nebulaG = 189;
+          targetMode.nebulaB = 248;
+          break;
+
+        case 'portals':
+          // Deep space gravitational orbit
+          targetMode.storm = 0.0;
+          targetMode.speedMult = 1.2;
+          targetMode.stretch = 0.0;
+          targetMode.constellations = 0.1;
+          targetMode.sparkle = 0.2;
+          targetMode.driftY = 0;
+          targetMode.nebulaIntensity = 1.1;
+          targetMode.nebulaR = 147;
+          targetMode.nebulaG = 51;
+          targetMode.nebulaB = 234;
+          break;
+
+        case 'aloqa':
+        case 'contact':
+          // Welcoming warm cosmic pulse
+          targetMode.storm = 0.0;
+          targetMode.speedMult = 1.2;
+          targetMode.stretch = 0.0;
+          targetMode.constellations = 0.15;
+          targetMode.sparkle = 0.3;
+          targetMode.driftY = 0;
+          targetMode.nebulaIntensity = 1.2;
+          targetMode.nebulaR = 78;
+          targetMode.nebulaG = 168;
+          targetMode.nebulaB = 255;
+          break;
+
+        default: // 'about' / hero
+          targetMode.storm = 0.0;
+          targetMode.speedMult = 1.0;
+          targetMode.stretch = 0.0;
+          targetMode.constellations = 0.0;
+          targetMode.sparkle = 0.0;
+          targetMode.driftY = 0;
+          targetMode.nebulaIntensity = 1.0;
+          targetMode.nebulaR = 124;
+          targetMode.nebulaG = 92;
+          targetMode.nebulaB = 252;
+          break;
+      }
+    }
+
+    function lerp(a, b, t) {
+      return a + (b - a) * t;
+    }
+
     function drawFrame(t) {
       ctx.clearRect(0, 0, w, h);
 
+      // Smoothly interpolate current mode towards target mode
+      const lerpSpeed = 0.055;
+      currentMode.storm = lerp(currentMode.storm, targetMode.storm, lerpSpeed);
+      currentMode.speedMult = lerp(currentMode.speedMult, targetMode.speedMult, lerpSpeed);
+      currentMode.stretch = lerp(currentMode.stretch, targetMode.stretch, lerpSpeed);
+      currentMode.constellations = lerp(currentMode.constellations, targetMode.constellations, lerpSpeed);
+      currentMode.sparkle = lerp(currentMode.sparkle, targetMode.sparkle, lerpSpeed);
+      currentMode.driftY = lerp(currentMode.driftY, targetMode.driftY, lerpSpeed);
+      currentMode.nebulaIntensity = lerp(currentMode.nebulaIntensity, targetMode.nebulaIntensity, lerpSpeed);
+      currentMode.nebulaR = lerp(currentMode.nebulaR, targetMode.nebulaR, lerpSpeed);
+      currentMode.nebulaG = lerp(currentMode.nebulaG, targetMode.nebulaG, lerpSpeed);
+      currentMode.nebulaB = lerp(currentMode.nebulaB, targetMode.nebulaB, lerpSpeed);
+
+      // 1. Dynamic Space Background Gradient
       const bg = ctx.createLinearGradient(0, 0, w, h);
       bg.addColorStop(0, '#06071a');
       bg.addColorStop(1, '#0d1130');
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, w, h);
 
-      nebulae.forEach(n => {
+      // 2. Nebulae with adaptive tinting
+      nebulae.forEach((n, idx) => {
         const g = ctx.createRadialGradient(n.x * w, n.y * h, 0, n.x * w, n.y * h, n.r);
-        g.addColorStop(0, n.c);
+        const r = Math.round(currentMode.nebulaR);
+        const gCol = Math.round(currentMode.nebulaG);
+        const b = Math.round(currentMode.nebulaB);
+        const alpha = (idx === 0 ? 0.16 : 0.11) * currentMode.nebulaIntensity;
+        g.addColorStop(0, `rgba(${r},${gCol},${b},${alpha})`);
         g.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = g;
         ctx.fillRect(0, 0, w, h);
       });
 
+      // 3. Constellations (Active in Process section)
+      if (currentMode.constellations > 0.01) {
+        ctx.lineWidth = 0.8;
+        const maxDist = 80;
+        const maxDistSq = maxDist * maxDist;
+        const maxLines = 90;
+        let lineCount = 0;
+
+        for (let i = 0; i < stars.length && lineCount < maxLines; i += 2) {
+          for (let j = i + 1; j < stars.length && lineCount < maxLines; j += 2) {
+            const dx = stars[i].x - stars[j].x;
+            const dy = stars[i].y - stars[j].y;
+            const distSq = dx * dx + dy * dy;
+            if (distSq < maxDistSq) {
+              const alpha = (1 - Math.sqrt(distSq) / maxDist) * 0.35 * currentMode.constellations;
+              ctx.strokeStyle = `rgba(78, 168, 255, ${alpha})`;
+              ctx.beginPath();
+              ctx.moveTo(stars[i].x, stars[i].y);
+              ctx.lineTo(stars[j].x, stars[j].y);
+              ctx.stroke();
+              lineCount++;
+            }
+          }
+        }
+      }
+
+      // 4. Stars & Comet Transformation
+      // When currentMode.storm > 0, stars stretch out into glowing comets flying rapidly!
+      const stormActive = currentMode.storm > 0.01;
+      const stretchRatio = currentMode.stretch;
+
       stars.forEach(s => {
         if (!prefersReducedMotion) {
-          s.x += s.dx; s.y += s.dy;
-          if (s.x < 0) s.x = w; if (s.x > w) s.x = 0;
-          if (s.y < 0) s.y = h; if (s.y > h) s.y = 0;
+          if (stormActive) {
+            // Smooth and controlled glide trajectory
+            const vx = s.stormVx * currentMode.speedMult * 0.22;
+            const vy = s.stormVy * currentMode.speedMult * 0.22;
+            s.x += vx;
+            s.y += vy;
+            // Wrap around edges seamlessly
+            if (s.x < -100) s.x = w + 100;
+            if (s.y > h + 100) s.y = -50;
+            if (s.y < -100) s.y = h + 50;
+            if (s.x > w + 100) s.x = -50;
+          } else {
+            // Normal gentle floating drift
+            s.x += s.dx * currentMode.speedMult;
+            s.y += (s.dy + currentMode.driftY) * currentMode.speedMult;
+            if (s.x < 0) s.x = w; if (s.x > w) s.x = 0;
+            if (s.y < 0) s.y = h; if (s.y > h) s.y = 0;
+          }
         }
-        const a = prefersReducedMotion ? s.base : s.base + Math.sin(t * s.speed + s.phase) * 0.28;
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(243,244,252,' + Math.max(0, Math.min(1, a)) + ')';
-        ctx.fill();
+
+        // Twinkle brightness
+        const twinkle = prefersReducedMotion 
+          ? s.base 
+          : s.base + Math.sin(t * s.speed + s.phase) * (0.28 + currentMode.sparkle * 0.35);
+        const clampedAlpha = Math.max(0, Math.min(1, twinkle));
+
+        if (stretchRatio > 0.05) {
+          // COMET TRANSFORMATION: The star is now a flying comet with a tail!
+          const tailLen = s.stormLen * stretchRatio * (currentMode.speedMult * 0.12 + 0.5);
+          // Direction of comet tail is opposite to motion (motion is vx, vy)
+          const angle = Math.atan2(s.stormVy, s.stormVx);
+          const tailX = s.x - Math.cos(angle) * tailLen;
+          const tailY = s.y - Math.sin(angle) * tailLen;
+
+          const cometGrad = ctx.createLinearGradient(s.x, s.y, tailX, tailY);
+          cometGrad.addColorStop(0, `rgba(255, 255, 255, ${clampedAlpha})`);
+          cometGrad.addColorStop(0.18, `rgba(78, 168, 255, ${clampedAlpha * 0.85})`);
+          cometGrad.addColorStop(0.55, `rgba(124, 92, 252, ${clampedAlpha * 0.4})`);
+          cometGrad.addColorStop(1, 'rgba(78, 168, 255, 0)');
+
+          ctx.strokeStyle = cometGrad;
+          ctx.lineWidth = (s.r * 1.5 + 0.8) * Math.min(stretchRatio * 1.2, 1);
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(s.x, s.y);
+          ctx.lineTo(tailX, tailY);
+          ctx.stroke();
+
+          // Glowing comet head
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.r * (1 + stretchRatio * 0.8), 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(255, 255, 255, ${clampedAlpha})`;
+          ctx.fill();
+        } else {
+          // Standard star
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(243, 244, 252, ${clampedAlpha})`;
+          ctx.fill();
+
+          // Sparkle starburst cross (in Natijalar section)
+          if (currentMode.sparkle > 0.3 && clampedAlpha > 0.65 && s.r > 1.1) {
+            const fSize = s.r * (3 + currentMode.sparkle * 4);
+            ctx.strokeStyle = `rgba(255, 255, 255, ${(clampedAlpha - 0.5) * currentMode.sparkle * 0.9})`;
+            ctx.lineWidth = 0.8;
+            ctx.beginPath();
+            ctx.moveTo(s.x - fSize, s.y); ctx.lineTo(s.x + fSize, s.y);
+            ctx.moveTo(s.x, s.y - fSize); ctx.lineTo(s.x, s.y + fSize);
+            ctx.stroke();
+          }
+        }
       });
 
-      if (!prefersReducedMotion) {
+      // 5. HYPER-SPEED COMET SWARM (specifically active in "ustozlar" section!)
+      // A massive swarm of high-speed shooting comets streaming across smoothly
+      if (currentMode.storm > 0.05 && !prefersReducedMotion) {
+        const stormAlpha = currentMode.storm;
+
+        meteorStorm.forEach(m => {
+          m.x += m.vx;
+          m.y += m.vy;
+
+          // Recycle when out of bounds
+          if (m.x < -200 || m.y > h + 200) {
+            m.x = w + Math.random() * 250 + 50;
+            m.y = Math.random() * (h * 0.7) - 150;
+            m.len = Math.random() * 110 + 70;
+          }
+
+          const angle = Math.atan2(m.vy, m.vx);
+          const tailX = m.x - Math.cos(angle) * m.len;
+          const tailY = m.y - Math.sin(angle) * m.len;
+
+          const grad = ctx.createLinearGradient(m.x, m.y, tailX, tailY);
+          grad.addColorStop(0, `rgba(255, 255, 255, ${m.alpha * stormAlpha})`);
+          grad.addColorStop(0.12, `rgba(96, 178, 255, ${m.alpha * 0.9 * stormAlpha})`);
+          grad.addColorStop(0.45, `rgba(167, 139, 250, ${m.alpha * 0.5 * stormAlpha})`);
+          grad.addColorStop(1, 'rgba(78, 168, 255, 0)');
+
+          ctx.strokeStyle = grad;
+          ctx.lineWidth = m.thickness;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(m.x, m.y);
+          ctx.lineTo(tailX, tailY);
+          ctx.stroke();
+
+          // Radiant comet head
+          ctx.beginPath();
+          ctx.arc(m.x, m.y, m.thickness * 1.5, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(255, 255, 255, ${m.alpha * stormAlpha})`;
+          ctx.fill();
+
+          // Sparkle halo
+          ctx.beginPath();
+          ctx.arc(m.x, m.y, m.thickness * 3.5, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(78, 168, 255, ${m.alpha * 0.3 * stormAlpha})`;
+          ctx.fill();
+        });
+      }
+
+      // 6. Occasional ambient comets (for non-storm sections)
+      if (!prefersReducedMotion && currentMode.storm < 0.3) {
         comets.forEach(c => {
           c.x += c.vx; c.y += c.vy; c.life++;
-          const a = 1 - c.life / c.maxLife;
+          const a = (1 - c.life / c.maxLife) * (1 - currentMode.storm);
+          if (a <= 0) return;
           const tx = c.x - c.vx * c.len / 4;
           const ty = c.y - c.vy * c.len / 4;
           const g = ctx.createLinearGradient(c.x, c.y, tx, ty);
@@ -1393,19 +2000,30 @@
     }
 
     build();
+
     if (prefersReducedMotion) {
       drawFrame(0);
     } else {
       rafId = requestAnimationFrame(loop);
-      cometTimer = setInterval(() => { if (Math.random() < 0.65) spawnComet(); }, 4200);
+      setInterval(() => {
+        if (currentMode.storm < 0.3 && Math.random() < 0.65) spawnGentleComet();
+      }, 3800);
     }
 
+    // Scroll & Viewport tracking
+    window.addEventListener('scroll', updateActiveSection, { passive: true });
     window.addEventListener('resize', () => {
       build();
+      updateActiveSection();
       if (prefersReducedMotion) drawFrame(0);
     });
+
+    // Initial check
+    setTimeout(updateActiveSection, 100);
   })();
 </script>
+
+<script type="module" src="/src/app/landing-main.js"></script>
 
 </body>
 </html>
