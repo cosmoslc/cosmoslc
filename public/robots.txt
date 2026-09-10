@@ -1,0 +1,9 @@
+# Robots.txt for COSMOS LC (Cosmos Learning Center)
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /teacher.html
+Disallow: /student.html
+
+# Sitemap
+Sitemap: https://cosmoslc.uz/sitemap.xml

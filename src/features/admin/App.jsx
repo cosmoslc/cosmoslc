@@ -121,7 +121,7 @@ import { ImportStudentsModal } from "./modals/ImportStudentsModal";
 import { SetStudentStatusModal } from "./modals/SetStudentStatusModal";
 import { AssignStudentToGroupModal } from "./modals/AssignStudentToGroupModal";
 import { StudentBulkMessageModal } from "./modals/StudentBulkMessageModal";
-import { StudentProfileModal } from "./modals/StudentProfileModal";
+import { StudentProfilePage as StudentProfileModal } from "./pages/StudentProfilePage";
 import { RoomFormModal } from "./modals/RoomFormModal";
 import { EditAttendanceModal } from "./modals/EditAttendanceModal";
 

@@ -1,30 +1,57 @@
-<svg width="600" height="600" viewBox="0 0 600 600" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <!-- Website palette: primary #1B3BFF, deep #0A1454, accent #4F73FF -->
-    <radialGradient id="planetHighlight" cx="32%" cy="28%" r="78%">
-      <stop offset="0%" stop-color="#5C7BFF"/>
-      <stop offset="45%" stop-color="#1B3BFF"/>
-      <stop offset="100%" stop-color="#0A1454"/>
+    <!-- Background Gradient -->
+    <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#141842"/>
+      <stop offset="65%" stop-color="#090b20"/>
+      <stop offset="100%" stop-color="#040510"/>
     </radialGradient>
-    <linearGradient id="planetRingOutline" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0A1454"/>
-      <stop offset="50%" stop-color="#3C5BFF"/>
-      <stop offset="100%" stop-color="#0A1454"/>
+
+    <!-- Planet 3D Sphere -->
+    <radialGradient id="planetSphere" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#7c5cfc"/>
+      <stop offset="40%" stop-color="#3060f0"/>
+      <stop offset="85%" stop-color="#0f1d5e"/>
+      <stop offset="100%" stop-color="#080c29"/>
+    </radialGradient>
+
+    <!-- Ring Gradient -->
+    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4ea8ff" stop-opacity="0.9"/>
+      <stop offset="50%" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#a78bff" stop-opacity="0.8"/>
     </linearGradient>
-    <filter id="planetShadow" x="-50%" y="-50%" width="200%" height="200%">
-      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#0A1454" flood-opacity="0.35"/>
-    </filter>
-    <filter id="ringGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feDropShadow dx="0" dy="5" stdDeviation="8" flood-color="#0A1454" flood-opacity="0.25"/>
+
+    <!-- Glow Filter -->
+    <filter id="cometGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#4ea8ff" flood-opacity="0.9"/>
     </filter>
   </defs>
 
-  <!-- Planet sphere -->
-  <circle cx="300" cy="300" r="160" fill="url(#planetHighlight)" filter="url(#planetShadow)"/>
+  <!-- Rounded Background Container for Tab Visibility -->
+  <rect width="512" height="512" rx="128" fill="url(#bgGlow)"/>
 
-  <!-- Tilted ring passing in front of the sphere -->
-  <g transform="rotate(-33 300 300)" filter="url(#ringGlow)">
-    <ellipse cx="300" cy="300" rx="285" ry="70" fill="none" stroke="url(#planetRingOutline)" stroke-width="12"/>
-    <ellipse cx="300" cy="300" rx="285" ry="70" fill="#FFFFFF" fill-opacity="0.9" stroke="url(#planetRingOutline)" stroke-width="6"/>
+  <!-- Back of the Ring -->
+  <g opacity="0.75">
+    <ellipse cx="256" cy="256" rx="205" ry="60" transform="rotate(-28 256 256)" fill="none" stroke="url(#ringGrad)" stroke-width="12" stroke-dasharray="350 350" stroke-dashoffset="0"/>
   </g>
+
+  <!-- Central Planet Sphere -->
+  <circle cx="256" cy="256" r="118" fill="url(#planetSphere)"/>
+  <circle cx="256" cy="256" r="118" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
+
+  <!-- Front of the Ring -->
+  <g filter="url(#cometGlow)">
+    <ellipse cx="256" cy="256" rx="205" ry="60" transform="rotate(-28 256 256)" fill="none" stroke="url(#ringGrad)" stroke-width="14" stroke-dasharray="320 380" stroke-dashoffset="320"/>
+  </g>
+
+  <!-- Glowing Fast Comet Spark on Ring -->
+  <circle cx="400" cy="180" r="14" fill="#ffffff" filter="url(#cometGlow)"/>
+  <circle cx="400" cy="180" r="8" fill="#ffffff"/>
+  
+  <!-- Tiny Twinkling Stars -->
+  <circle cx="110" cy="115" r="4" fill="#ffffff" opacity="0.8"/>
+  <circle cx="410" cy="390" r="3.5" fill="#4ea8ff" opacity="0.85"/>
+  <circle cx="130" cy="380" r="3" fill="#ffc857" opacity="0.9"/>
+  <circle cx="370" cy="95" r="2.5" fill="#ffffff" opacity="0.75"/>
 </svg>

@@ -1765,12 +1765,11 @@ export function StudentProfilePage({
         </div>
       )}
 
-      {/* TWO MAIN BLOCKS LAYOUT (MATCHING REQUESTED HTML TEMPLATE STYLE) */}
-      <div className="layout">
-
+      {/* TWO MAIN BLOCKS LAYOUT */}
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
         {/* LEFT CARD */}
-        <div className="card" style={{ position: "relative" }}>
-          <div className="profile-header">
+        <div className="w-full lg:w-[380px] shrink-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm relative">
+          <div className="flex items-start gap-4 mb-5">
             <button
               type="button"
               onClick={onBack}
@@ -1807,8 +1806,22 @@ export function StudentProfilePage({
               </label>
             </div>
 
-            <div className="name-block">
-              <h1>{currentStudent.name || "Xusanov Bexruzbek"}</h1>
+            <div className="flex-1 min-w-0 pt-1">
+              <h1 className="text-lg font-bold text-slate-900 dark:text-white leading-tight truncate">
+                {currentStudent.name || "Xusanov Bexruzbek"}
+              </h1>
+              <div className="flex flex-col gap-0.5 mt-1.5">
+                <div className="text-[13px] font-medium text-slate-600 dark:text-slate-400 flex items-center gap-1.5 truncate">
+                  <Phone size={13} className="text-indigo-500 shrink-0" />
+                  <span>+(998) {currentStudent.phone ? displayPhone(currentStudent.phone) : "—"}</span>
+                </div>
+                {(currentStudent.parentPhone || currentStudent.phone2) && (
+                  <div className="text-[12px] font-medium text-slate-500 dark:text-slate-500 flex items-center gap-1.5 truncate">
+                    <Phone size={11} className="text-slate-400 shrink-0" />
+                    <span>+(998) {displayPhone(currentStudent.parentPhone || currentStudent.phone2)} <span className="text-[10px] text-slate-400 ml-1">(qo'shimcha)</span></span>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="relative header-actions-container">
               <button
@@ -1945,31 +1958,27 @@ export function StudentProfilePage({
             </button>
           </div>
 
-          <div className="info-line">
-            <span className="label">Telefon raqam:</span>{" "}
-            <span className="value">+(998) {currentStudent.phone ? displayPhone(currentStudent.phone) : "—"}</span>
+          <div className="flex flex-col gap-1 pb-3 border-b border-slate-100 dark:border-slate-800/60 mt-3">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tug'ilgan sana:</span>{" "}
+            <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{currentStudent.birthDate ? formatDate(currentStudent.birthDate) : "Mavjud emas"}</span>
           </div>
-          <div className="info-line">
-            <span className="label">Tug'ilgan sana:</span>{" "}
-            <span className="value">{currentStudent.birthDate ? formatDate(currentStudent.birthDate) : "Mavjud emas"}</span>
-          </div>
-          <div className="info-line">
-            <span className="label">Talaba qo'shilgan sana :</span>{" "}
-            <span className="value">{currentStudent.joinedAt ? formatDate(currentStudent.joinedAt) : currentStudent.createdAt ? formatDate(currentStudent.createdAt.slice(0, 10)) : formatDate(new Date().toISOString().slice(0, 10))}</span>
+          <div className="flex flex-col gap-1 pb-3 border-b border-slate-100 dark:border-slate-800/60 mt-3">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Talaba qo'shilgan sana :</span>{" "}
+            <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{currentStudent.joinedAt ? formatDate(currentStudent.joinedAt) : currentStudent.createdAt ? formatDate(currentStudent.createdAt.slice(0, 10)) : formatDate(new Date().toISOString().slice(0, 10))}</span>
           </div>
 
-          <div className="actions-row">
+          <div className="flex items-center gap-2 mt-4 pt-2">
             <button
               type="button"
               onClick={() => setShowMoreInfo(!showMoreInfo)}
-              className="link-btn text-xs font-semibold hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-0 p-0 text-indigo-600 dark:text-indigo-400"
+              className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
             >
               <span>Qo'shimcha ma'lumotlar</span>
               {showMoreInfo ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
             </button>
             <button
               type="button"
-              className="icon-btn-mini"
+              className="p-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/50 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400 transition-colors"
               onClick={() => setActiveTab("sms")}
               title="SMS jo'natish"
             >
@@ -1977,7 +1986,7 @@ export function StudentProfilePage({
             </button>
             <button
               type="button"
-              className="icon-btn-mini"
+              className="p-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/50 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400 transition-colors"
               onClick={() => triggerPayment()}
               title="To'lov qabul qilish"
             >
@@ -1985,7 +1994,7 @@ export function StudentProfilePage({
             </button>
             <button
               type="button"
-              className="outline-btn flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold cursor-pointer rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 hover:bg-indigo-100/50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50 rounded-lg text-xs font-semibold text-indigo-700 dark:text-indigo-300 transition-colors"
               onClick={() => setActiveTab("history")}
             >
               <History size={13} />
@@ -1994,34 +2003,30 @@ export function StudentProfilePage({
           </div>
 
           {showMoreInfo && (
-            <div className="info-table">
-              <div className="row">
-                <div className="k">Kurs</div>
-                <div className="v">{assignedCourseNames || "Biriktirilmagan"}</div>
+            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3 bg-slate-50/50 dark:bg-slate-800/20 p-3 rounded-xl">
+              <div className="flex flex-col gap-0.5">
+                <div className="text-[11px] font-semibold text-slate-500 uppercase">Kurs</div>
+                <div className="text-xs font-medium text-slate-800 dark:text-slate-200">{assignedCourseNames || "Biriktirilmagan"}</div>
               </div>
-              <div className="row">
-                <div className="k">Qo'shimcha raqam</div>
-                <div className="v">{currentStudent.parentPhone || currentStudent.phone2 || "Kiritilmagan"}</div>
+              <div className="flex flex-col gap-0.5">
+                <div className="text-[11px] font-semibold text-slate-500 uppercase">Sana</div>
+                <div className="text-xs font-medium text-slate-800 dark:text-slate-200">{currentStudent.joinedAt ? formatDate(currentStudent.joinedAt) : currentStudent.createdAt ? formatDate(currentStudent.createdAt.slice(0, 10)) : "—"}</div>
               </div>
-              <div className="row">
-                <div className="k">Sana</div>
-                <div className="v">{currentStudent.joinedAt ? formatDate(currentStudent.joinedAt) : currentStudent.createdAt ? formatDate(currentStudent.createdAt.slice(0, 10)) : "—"}</div>
+              <div className="flex flex-col gap-0.5">
+                <div className="text-[11px] font-semibold text-slate-500 uppercase">Biz haqqimizda qaerdan eshitdingiz</div>
+                <div className="text-xs font-medium text-slate-800 dark:text-slate-200">{currentStudent.source || "Kiritilmagan"}</div>
               </div>
-              <div className="row">
-                <div className="k">Biz haqqimizda qaerdan eshitdingiz</div>
-                <div className="v">{currentStudent.source || "Kiritilmagan"}</div>
-              </div>
-              <div className="row">
-                <div className="k">Qiziqqan kursi</div>
-                <div className="v">{currentStudent.targetCourse || currentStudent.interestedCourse || "—"}</div>
+              <div className="flex flex-col gap-0.5">
+                <div className="text-[11px] font-semibold text-slate-500 uppercase">Qiziqqan kursi</div>
+                <div className="text-xs font-medium text-slate-800 dark:text-slate-200">{currentStudent.targetCourse || currentStudent.interestedCourse || "—"}</div>
               </div>
             </div>
           )}
         </div>
 
         {/* RIGHT CARD */}
-        <div className="card">
-          <div className="tabs-row">
+        <div className="flex-1 min-w-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center gap-1 overflow-x-auto pb-3 mb-5 border-b border-slate-100 dark:border-slate-800 scrollbar-hide">
             {[
               { id: "groups", label: "Guruhlar" },
               { id: "payments", label: "To'lovlar" },
@@ -2033,23 +2038,28 @@ export function StudentProfilePage({
               { id: "purchases", label: "Xaridlar" },
               { id: "sms", label: "SMS" },
             ].map((tb) => (
-              <span
+              <button
                 key={tb.id}
-                className={`tab ${activeTab === tb.id ? "active" : ""}`}
+                type="button"
+                className={`px-3.5 py-2 whitespace-nowrap rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
+                  activeTab === tb.id
+                    ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300"
+                    : "text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                }`}
                 onClick={() => {
                   setActiveTab(tb.id);
                   setIsEditing(false);
                 }}
               >
                 {tb.label}
-              </span>
+              </button>
             ))}
           </div>
 
           {/* TAB 1: GURUHLAR */}
           {activeTab === "groups" && (
             <div className="space-y-6">
-              <div className="bg-white dark:bg-slate-850 rounded-xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-4">
+              <div className="space-y-5">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-xl bg-violet-100 dark:bg-violet-950/80 text-violet-600 dark:text-violet-400 flex items-center justify-center font-bold">
@@ -2095,7 +2105,7 @@ export function StudentProfilePage({
                     </button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 2xl:grid-cols-2 gap-5">
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                     {groupDebts.map((item) => {
                       const {
                         group: grp,
@@ -2162,24 +2172,24 @@ export function StudentProfilePage({
                                    {/* Dropdown Menu */}
                                   {isMenuOpen && (
                                     <div className="absolute right-0 top-full mt-1.5 w-56 bg-white dark:bg-slate-850 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 py-1.5 z-30 text-xs animate-in fade-in zoom-in-95">
-                                      {/* 1. Faollashtirish */}
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setOpenGroupMenuId(null);
-                                          setActivateModalData({
-                                            group: grp,
-                                            membership,
-                                            fullPrice,
-                                          });
-                                        }}
-                                        className="w-full px-3.5 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-200 flex items-center gap-2.5 font-semibold transition-colors cursor-pointer"
-                                      >
-                                        <Zap size={14} className="text-amber-500 shrink-0" />
-                                        <span>Faollashtirish</span>
-                                      </button>
+                                      {isTrial && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setOpenGroupMenuId(null);
+                                            setActivateModalData({
+                                              group: grp,
+                                              membership,
+                                              fullPrice,
+                                            });
+                                          }}
+                                          className="w-full px-3.5 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-200 flex items-center gap-2.5 font-semibold transition-colors cursor-pointer"
+                                        >
+                                          <Zap size={14} className="text-amber-500 shrink-0" />
+                                          <span>Faollashtirish</span>
+                                        </button>
+                                      )}
 
-                                      {/* 2. To'lov qilish */}
                                       <button
                                         type="button"
                                         onClick={() => {
@@ -2192,7 +2202,6 @@ export function StudentProfilePage({
                                         <span>To'lov qilish</span>
                                       </button>
 
-                                      {/* 3. Muzlatish / Muzlatishdan chiqarish */}
                                       <button
                                         type="button"
                                         onClick={() => {
@@ -2205,18 +2214,19 @@ export function StudentProfilePage({
                                         <span>{currentStudent?.status === "paused" || isPaused ? "Muzlatishdan chiqarish" : "Muzlatish"}</span>
                                       </button>
 
-                                      {/* 4. Sinov darsiga qaytarish */}
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setOpenGroupMenuId(null);
-                                          handleReturnToTrial(grp.id);
-                                        }}
-                                        className="w-full px-3.5 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-200 flex items-center gap-2.5 font-semibold transition-colors cursor-pointer"
-                                      >
-                                        <RotateCcw size={14} className="text-amber-500 shrink-0" />
-                                        <span>Sinov darsiga qaytarish</span>
-                                      </button>
+                                      {!isTrial && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setOpenGroupMenuId(null);
+                                            handleReturnToTrial(grp.id);
+                                          }}
+                                          className="w-full px-3.5 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-200 flex items-center gap-2.5 font-semibold transition-colors cursor-pointer"
+                                        >
+                                          <RotateCcw size={14} className="text-amber-500 shrink-0" />
+                                          <span>Sinov darsiga qaytarish</span>
+                                        </button>
+                                      )}
 
                                       {/* 5. Boshqa guruhga o'tkazish */}
                                       <button
